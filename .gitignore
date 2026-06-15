@@ -11,6 +11,7 @@ node_modules
 dist
 dist-ssr
 *.local
+data/
 
 # Quinielas reales de los participantes (datos personales, no subir al repo)
 *.xlsx

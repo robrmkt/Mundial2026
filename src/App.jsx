@@ -14,14 +14,11 @@ import { celebrateGoal, celebrateMexicoGoal, celebratePodium, celebrateFinal, ce
 import { getSession, logout } from './services/auth';
 
 import initialMatches from './matches.json';
-import initialParticipants from './participants.json';
 
 const DATA_VERSION = 'real-data-2026-06-15-v1';
 const DATA_VERSION_KEY = 'quiniela_data_version';
 const VERSIONED_STORAGE_KEYS = [
   'quiniela_matches',
-  'quiniela_participants',
-  'quiniela_documents',
   'quiniela_chat'
 ];
 
@@ -137,12 +134,28 @@ function nowTimeStr() {
   return `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
 }
 
+async function fetchSharedState() {
+  const response = await fetch('/api/state', { cache: 'no-store' });
+  if (!response.ok) throw new Error('No pude leer los datos compartidos.');
+  return response.json();
+}
+
+async function saveSharedState(state) {
+  const response = await fetch('/api/state', {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(state)
+  });
+  if (!response.ok) throw new Error('No pude guardar los datos compartidos.');
+  return response.json();
+}
+
 export default function App() {
   ensureCurrentDataVersion();
 
   const [matches, setMatches] = useLocalStorage('quiniela_matches', initialMatches);
-  const [participants, setParticipants] = useLocalStorage('quiniela_participants', initialParticipants);
-  const [documents, setDocuments] = useLocalStorage('quiniela_documents', []);
+  const [participants, setParticipantsState] = useState([]);
+  const [documents, setDocumentsState] = useState([]);
   const [chatMessages, setChatMessages] = useLocalStorage('quiniela_chat', [
     { id: 1, user: 'Sistema', time: '12:00', text: '¡Bienvenidos a la Quiniela del Mundial 26! Que gane el mejor. 🏆' }
   ]);
@@ -152,12 +165,14 @@ export default function App() {
   const [toasts, setToasts] = useState([]);
   const [syncState, setSyncState] = useState({ status: 'idle', lastSync: null });
   const [session, setSession] = useState(getSession);
+  const [, setSharedState] = useState({ status: 'loading', lastSync: null });
 
   const simIntervalRef = useRef(null);
   const simActiveRef = useRef(simActive);
   const syncBusyRef = useRef(false);
   const prevLeaderRef = useRef(null);
   const matchesRef = useRef(matches);
+  const sharedDataRef = useRef({ participants: [], documents: [] });
 
   useEffect(() => {
     simActiveRef.current = simActive;
@@ -167,10 +182,82 @@ export default function App() {
     matchesRef.current = matches;
   }, [matches]);
 
+  // Trigger Goal Alert Toast
+  const triggerToast = useCallback((title, desc) => {
+    const id = Date.now() + Math.random();
+    setToasts(prev => [...prev, { id, title, desc }]);
+    setTimeout(() => {
+      setToasts(prev => prev.filter(t => t.id !== id));
+    }, 5000);
+  }, []);
+
   const participantsRef = useRef(participants);
   useEffect(() => {
     participantsRef.current = participants;
   }, [participants]);
+
+  useEffect(() => {
+    sharedDataRef.current = { participants, documents };
+  }, [participants, documents]);
+
+  const loadSharedData = useCallback(async ({ silent = true } = {}) => {
+    try {
+      if (!silent) setSharedState(prev => ({ ...prev, status: 'loading' }));
+      const data = await fetchSharedState();
+      const nextParticipants = Array.isArray(data.participants) ? data.participants : [];
+      const nextDocuments = Array.isArray(data.documents) ? data.documents : [];
+      setParticipantsState(nextParticipants);
+      setDocumentsState(nextDocuments);
+      sharedDataRef.current = { participants: nextParticipants, documents: nextDocuments };
+      setSharedState({ status: 'ok', lastSync: new Date() });
+    } catch (error) {
+      console.error(error);
+      setSharedState(prev => ({ ...prev, status: 'error' }));
+      if (!silent) triggerToast('Datos compartidos', 'No pude leer los datos guardados en Railway.');
+    }
+  }, [triggerToast]);
+
+  const persistSharedData = useCallback(async (nextData) => {
+    try {
+      const saved = await saveSharedState(nextData);
+      setSharedState({ status: 'ok', lastSync: new Date() });
+      return saved;
+    } catch (error) {
+      console.error(error);
+      setSharedState(prev => ({ ...prev, status: 'error' }));
+      triggerToast('No se guardó en Railway', 'Revisa conexión y vuelve a intentar. Los demás podrían no ver este cambio.');
+      return null;
+    }
+  }, [triggerToast]);
+
+  const setSharedParticipants = useCallback((updater) => {
+    setParticipantsState(prev => {
+      const nextParticipants = updater instanceof Function ? updater(prev) : updater;
+      const nextData = { ...sharedDataRef.current, participants: nextParticipants };
+      sharedDataRef.current = nextData;
+      persistSharedData({ participants: nextParticipants });
+      return nextParticipants;
+    });
+  }, [persistSharedData]);
+
+  const setSharedDocuments = useCallback((updater) => {
+    setDocumentsState(prev => {
+      const nextDocuments = updater instanceof Function ? updater(prev) : updater;
+      const nextData = { ...sharedDataRef.current, documents: nextDocuments };
+      sharedDataRef.current = nextData;
+      persistSharedData({ documents: nextDocuments });
+      return nextDocuments;
+    });
+  }, [persistSharedData]);
+
+  useEffect(() => {
+    const initialLoad = setTimeout(() => loadSharedData(), 0);
+    const interval = setInterval(() => loadSharedData(), 15000);
+    return () => {
+      clearTimeout(initialLoad);
+      clearInterval(interval);
+    };
+  }, [loadSharedData]);
 
   // Routing por hash: el admin no aparece en el menú, se entra con #admin
   useEffect(() => {
@@ -183,15 +270,6 @@ export default function App() {
     setActiveTab(tab);
     window.history.replaceState(null, '', HASH_BY_TAB[tab] || '#tabla');
   };
-
-  // Trigger Goal Alert Toast
-  const triggerToast = useCallback((title, desc) => {
-    const id = Date.now() + Math.random();
-    setToasts(prev => [...prev, { id, title, desc }]);
-    setTimeout(() => {
-      setToasts(prev => prev.filter(t => t.id !== id));
-    }, 5000);
-  }, []);
 
   const pushChatMessage = useCallback((user, text, highlight = false) => {
     setChatMessages(prev => [
@@ -394,8 +472,10 @@ export default function App() {
 
   const handleReset = () => {
     setMatches(initialMatches);
-    setParticipants(initialParticipants);
-    setDocuments([]);
+    setParticipantsState([]);
+    setDocumentsState([]);
+    sharedDataRef.current = { participants: [], documents: [] };
+    persistSharedData({ participants: [], documents: [] });
     setChatMessages([
       { id: 1, user: 'Sistema', time: nowTimeStr(), text: 'Quiniela restablecida. Sincronizando resultados reales… 🔄' }
     ]);
@@ -543,9 +623,9 @@ export default function App() {
               <AdminPanel
                 matches={matches}
                 participants={participants}
-                setParticipants={setParticipants}
+                setParticipants={setSharedParticipants}
                 documents={documents}
-                setDocuments={setDocuments}
+                setDocuments={setSharedDocuments}
                 simActive={simActive}
                 setSimActive={setSimActive}
                 handleReset={handleReset}
