@@ -16,6 +16,27 @@ import { getSession, logout } from './services/auth';
 import initialMatches from './matches.json';
 import initialParticipants from './participants.json';
 
+const DATA_VERSION = 'real-data-2026-06-15-v1';
+const DATA_VERSION_KEY = 'quiniela_data_version';
+const VERSIONED_STORAGE_KEYS = [
+  'quiniela_matches',
+  'quiniela_participants',
+  'quiniela_documents',
+  'quiniela_chat'
+];
+
+function ensureCurrentDataVersion() {
+  try {
+    const currentVersion = window.localStorage.getItem(DATA_VERSION_KEY);
+    if (currentVersion === DATA_VERSION) return;
+
+    VERSIONED_STORAGE_KEYS.forEach(key => window.localStorage.removeItem(key));
+    window.localStorage.setItem(DATA_VERSION_KEY, DATA_VERSION);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
 // Custom hook to persistent state
 function useLocalStorage(key, initialValue) {
   const [storedValue, setStoredValue] = useState(() => {
@@ -117,6 +138,8 @@ function nowTimeStr() {
 }
 
 export default function App() {
+  ensureCurrentDataVersion();
+
   const [matches, setMatches] = useLocalStorage('quiniela_matches', initialMatches);
   const [participants, setParticipants] = useLocalStorage('quiniela_participants', initialParticipants);
   const [documents, setDocuments] = useLocalStorage('quiniela_documents', []);
