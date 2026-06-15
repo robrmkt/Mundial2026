@@ -1,5 +1,5 @@
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Trophy, Square, Users, MonitorPlay, MessageSquare, RefreshCw, Wifi, WifiOff } from 'lucide-react';
+import { Trophy, Square, Users, MonitorPlay, RefreshCw, Wifi, WifiOff } from 'lucide-react';
 import AdminLogin from './components/AdminLogin';
 import Dashboard from './components/Dashboard';
 
@@ -8,9 +8,8 @@ import Dashboard from './components/Dashboard';
 const AdminPanel = lazy(() => import('./components/AdminPanel'));
 import PredictionGrid from './components/PredictionGrid';
 import LiveMatches from './components/LiveMatches';
-import LiveChat from './components/LiveChat';
 import { fetchScoreboard, mergeScoreboard } from './services/liveData';
-import { celebrateGoal, celebrateMexicoGoal, celebratePodium, celebrateFinal, celebrateExact } from './services/celebrations';
+import { celebrateGoal, celebrateMexicoGoal, celebratePodium, celebrateFinal, celebrateExact, celebrateReaction } from './services/celebrations';
 import { getSession, logout } from './services/auth';
 
 import initialMatches from './matches.json';
@@ -113,7 +112,6 @@ const TAB_HASHES = {
   '#tabla': 'dashboard',
   '#pronosticos': 'predictions',
   '#partidos': 'matches',
-  '#chat': 'chat',
   '#admin': 'admin'
 };
 
@@ -121,7 +119,6 @@ const HASH_BY_TAB = {
   dashboard: '#tabla',
   predictions: '#pronosticos',
   matches: '#partidos',
-  chat: '#chat',
   admin: '#admin'
 };
 
@@ -173,6 +170,7 @@ export default function App() {
   const prevLeaderRef = useRef(null);
   const matchesRef = useRef(matches);
   const sharedDataRef = useRef({ participants: [], documents: [] });
+  const persistBusyRef = useRef(0);
 
   useEffect(() => {
     simActiveRef.current = simActive;
@@ -201,6 +199,9 @@ export default function App() {
   }, [participants, documents]);
 
   const loadSharedData = useCallback(async ({ silent = true } = {}) => {
+    // Si hay un guardado (PUT) en vuelo, no dejamos que el sondeo traiga datos
+    // viejos y revierta lo recién subido (p.ej. una foto).
+    if (persistBusyRef.current > 0) return;
     try {
       if (!silent) setSharedState(prev => ({ ...prev, status: 'loading' }));
       const data = await fetchSharedState();
@@ -218,6 +219,7 @@ export default function App() {
   }, [triggerToast]);
 
   const persistSharedData = useCallback(async (nextData) => {
+    persistBusyRef.current += 1;
     try {
       const saved = await saveSharedState(nextData);
       setSharedState({ status: 'ok', lastSync: new Date() });
@@ -227,6 +229,8 @@ export default function App() {
       setSharedState(prev => ({ ...prev, status: 'error' }));
       triggerToast('No se guardó en Railway', 'Revisa conexión y vuelve a intentar. Los demás podrían no ver este cambio.');
       return null;
+    } finally {
+      persistBusyRef.current -= 1;
     }
   }, [triggerToast]);
 
@@ -470,6 +474,15 @@ export default function App() {
     pushChatMessage('Tú', text);
   };
 
+  // Porra lanzada desde el muro. Fase 1: animación local + nota en el muro.
+  // Fase 2: se emitirá por el canal en vivo para que la vean todos.
+  const REACTION_EMOJI = { confetti: '🎉', balls: '⚽', fire: '🔥', mexico: '🇲🇽', clap: '👏' };
+  const handleReaction = useCallback((type) => {
+    celebrateReaction(type);
+    pushChatMessage('Tú', `lanzó una porra ${REACTION_EMOJI[type] || '🎉'}`, true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pushChatMessage]);
+
   const handleReset = () => {
     setMatches(initialMatches);
     setParticipantsState([]);
@@ -496,7 +509,7 @@ export default function App() {
     : '—';
 
   return (
-    <div className="app-container">
+    <div className={`app-container ${activeTab === 'dashboard' ? 'dashboard-active' : ''}`}>
       {/* Toast Goal Alerts */}
       <div className="toast-container">
         {toasts.map(t => (
@@ -547,13 +560,6 @@ export default function App() {
               <span className="nav-btn-text">Partidos</span>
               {liveCount > 0 && <span className="nav-live-count">{liveCount}</span>}
             </button>
-            <button
-              className={`nav-btn ${activeTab === 'chat' ? 'active' : ''}`}
-              onClick={() => goToTab('chat')}
-            >
-              <MessageSquare size={15} />
-              <span className="nav-btn-text">Chat</span>
-            </button>
           </nav>
 
           <div className="header-status">
@@ -594,7 +600,13 @@ export default function App() {
       {/* Main View Container */}
       <main className="main-content-area">
         {activeTab === 'dashboard' && (
-          <Dashboard standings={standings} matches={matches} />
+          <Dashboard
+            standings={standings}
+            matches={matches}
+            chatMessages={chatMessages}
+            onSendMessage={handleManualChatMessage}
+            onReaction={handleReaction}
+          />
         )}
         {activeTab === 'predictions' && (
           <div className="page-card">
@@ -607,15 +619,6 @@ export default function App() {
         )}
         {activeTab === 'matches' && (
           <LiveMatches matches={matches} />
-        )}
-        {activeTab === 'chat' && (
-          <div className="page-card chat-page-card">
-            <h2 className="section-title">
-              <MessageSquare size={20} />
-              Chat de la Oficina
-            </h2>
-            <LiveChat chatMessages={chatMessages} onSendMessage={handleManualChatMessage} />
-          </div>
         )}
         {activeTab === 'admin' && (
           session ? (
@@ -642,7 +645,7 @@ export default function App() {
       </main>
 
       <footer className="app-footer">
-        Quiniela interna · Mundial FIFA 26 · Datos en vivo vía feed público de ESPN
+        Quiniela interna · Mundial FIFA 26 · Datos en vivo vía feed público de ESPN by Roby
       </footer>
     </div>
   );

@@ -50,3 +50,26 @@ export function celebratePodium() {
   setTimeout(() => fireConfetti({ particleCount: 180, spread: 110, origin: { y: 0.4 } }), 350);
   spawnBalls(10);
 }
+
+// Porras que lanzan los usuarios desde el muro. Cada tipo tiene su look.
+export function celebrateReaction(type) {
+  switch (type) {
+    case 'mexico':
+      celebrateMexicoGoal();
+      break;
+    case 'balls':
+      spawnBalls(9);
+      fireConfetti({ particleCount: 40, spread: 70, origin: { y: 0.8 } });
+      break;
+    case 'fire':
+      fireConfetti({ particleCount: 90, spread: 60, origin: { y: 0.8 }, colors: ['#D7282F', '#F4B400', '#ff7a18'] });
+      break;
+    case 'clap':
+      fireConfetti({ particleCount: 70, spread: 100, origin: { y: 0.85 }, colors: ['#F4B400', '#ffffff', '#0E7C4A'] });
+      break;
+    case 'confetti':
+    default:
+      celebrateGoal();
+      break;
+  }
+}

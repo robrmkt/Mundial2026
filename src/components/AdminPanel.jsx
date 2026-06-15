@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import {
   AlertCircle,
+  Camera,
   CheckCircle2,
   FileText,
   KeyRound,
@@ -19,6 +20,7 @@ import {
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { analyzeTextWithOpenAI, extractPdfText, getOpenAiKey, setOpenAiKey } from '../services/aiReader';
+import { resizeImageToDataUrl } from '../services/photos';
 
 const emptyReview = {
   participantName: '',
@@ -374,6 +376,28 @@ export default function AdminPanel({
     setParticipants(prev => prev.filter(participant => participant.name !== name));
   };
 
+  const handlePhotoUpload = async (participantName, file) => {
+    if (!file) return;
+    try {
+      setStatusMessage(`Procesando foto de ${participantName}…`);
+      const photo = await resizeImageToDataUrl(file);
+      setParticipants(prev => prev.map(p => (p.name === participantName ? { ...p, photo } : p)));
+      setStatusMessage(`Foto de ${participantName} guardada.`);
+    } catch (error) {
+      console.error(error);
+      setStatusMessage(`No pude procesar la foto: ${error.message}`);
+    }
+  };
+
+  const removePhoto = (participantName) => {
+    setParticipants(prev => prev.map(p => {
+      if (p.name !== participantName) return p;
+      const next = { ...p };
+      delete next.photo;
+      return next;
+    }));
+  };
+
   const removeDocument = (id) => {
     setDocuments(prev => prev.filter(document => document.id !== id));
   };
@@ -500,13 +524,38 @@ export default function AdminPanel({
               {participants.map(participant => (
                 <div key={participant.name} className="participant-admin-item">
                   <div className="participant-admin-info">
-                    <div className="participant-admin-avatar">{participant.avatar}</div>
+                    {participant.photo ? (
+                      <div className="participant-admin-avatar has-photo"><img src={participant.photo} alt={participant.name} /></div>
+                    ) : (
+                      <div className="participant-admin-avatar">{participant.avatar}</div>
+                    )}
                     <div className="participant-admin-copy">
                       <span className="participant-admin-name">{participant.name}</span>
                       <span className="participant-admin-meta">{Object.keys(participant.predictions || {}).length} pronósticos</span>
                     </div>
                   </div>
                   <div className="participant-admin-actions">
+                    <label
+                      className="participant-admin-photo-btn"
+                      title={participant.photo ? `Cambiar foto de ${participant.name}` : `Subir foto de ${participant.name}`}
+                    >
+                      <Camera size={13} />
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={(event) => { handlePhotoUpload(participant.name, event.target.files?.[0]); event.target.value = ''; }}
+                        hidden
+                      />
+                    </label>
+                    {participant.photo && (
+                      <button
+                        onClick={() => removePhoto(participant.name)}
+                        className="participant-admin-photo-remove"
+                        title={`Quitar foto de ${participant.name}`}
+                      >
+                        <Trash2 size={11} />
+                      </button>
+                    )}
                     <button
                       onClick={() => editParticipant(participant)}
                       className="participant-admin-edit-btn"

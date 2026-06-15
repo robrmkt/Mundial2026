@@ -1,39 +1,10 @@
-import { Trophy, Medal, Radio } from 'lucide-react';
-
-// Franja superior con los partidos en vivo / recién terminados
-function LiveTicker({ matches }) {
-  const interesting = matches.filter(m => m.status === 'LIVE');
-  if (interesting.length === 0) return null;
-
-  return (
-    <div className="live-ticker">
-      <span className="live-ticker-label">
-        <Radio size={14} />
-        En vivo
-      </span>
-      <div className="live-ticker-track">
-        {interesting.map(m => (
-          <div key={m.id} className="ticker-card">
-            <span className="ticker-minute">
-              <span className="live-dot" />
-              {m.isHalftime ? 'MT' : (m.displayClock || `${m.minute}'`)}
-            </span>
-            <span className="ticker-team">
-              {m.homeLogo ? <img src={m.homeLogo} alt="" /> : m.homeFlag} {m.homeTeam}
-            </span>
-            <strong className="ticker-score">{m.homeScore} - {m.awayScore}</strong>
-            <span className="ticker-team">
-              {m.awayTeam} {m.awayLogo ? <img src={m.awayLogo} alt="" /> : m.awayFlag}
-            </span>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
+import { useState } from 'react';
+import { Trophy, Medal } from 'lucide-react';
+import LivePulse from './LivePulse';
+import PlayerCard from './PlayerCard';
 
 // Pódium de los tres primeros lugares
-function Podium({ topThree }) {
+function Podium({ topThree, onSelect }) {
   const [first, second, third] = topThree;
 
   const renderStep = (player, place) => {
@@ -49,16 +20,25 @@ function Podium({ topThree }) {
 
     return (
       <div className={`podium-step ${meta.cls}`}>
-        <div className="podium-card">
+        <button
+          type="button"
+          className="podium-card"
+          onClick={() => onSelect(player)}
+          title={`Ver ficha de ${player.name}`}
+        >
+          {player.photo ? (
+            <div className="podium-avatar has-photo"><img src={player.photo} alt={player.name} /></div>
+          ) : (
+            <div className="podium-avatar">{player.avatar}</div>
+          )}
           <span className="podium-medal">{meta.medal}</span>
-          <div className="podium-avatar">{player.avatar}</div>
           <span className="podium-name">{player.name}</span>
           <span className="podium-points">{player.points} <small>PTS</small></span>
           <div className="podium-mini-stats">
             <span title="Marcadores exactos">{player.exactHits} exactos</span>
             <span title="Efectividad">{player.effectiveness}%</span>
           </div>
-        </div>
+        </button>
         <div className="podium-block">{meta.label}</div>
       </div>
     );
@@ -79,13 +59,26 @@ function Podium({ topThree }) {
   );
 }
 
-export default function Dashboard({ standings, matches = [] }) {
+export default function Dashboard({ standings, matches = [], chatMessages = [], onSendMessage, onReaction }) {
   const topThree = standings.slice(0, 3);
+  const [selected, setSelected] = useState(null);
+
+  const openCard = (player) => {
+    const d = new Date();
+    const todayKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    setSelected({ player, todayKey });
+  };
 
   return (
-    <div className="dashboard-layout">
-      <LiveTicker matches={matches} />
-      <Podium topThree={topThree} />
+    <div className="command-grid">
+      <Podium topThree={topThree} onSelect={openCard} />
+
+      <LivePulse
+        matches={matches}
+        chatMessages={chatMessages}
+        onSendMessage={onSendMessage}
+        onReaction={onReaction}
+      />
 
       <div className="page-card standings-card">
         <div className="standings-table-header">
@@ -113,13 +106,25 @@ export default function Dashboard({ standings, matches = [] }) {
               {standings.map((p) => {
                 const isTopThree = p.rank <= 3;
                 return (
-                  <tr key={p.name} className={`standings-row ${isTopThree ? `top-${p.rank}` : ''}`}>
+                  <tr
+                    key={p.name}
+                    className={`standings-row is-clickable ${isTopThree ? `top-${p.rank}` : ''}`}
+                    onClick={() => openCard(p)}
+                    tabIndex={0}
+                    aria-label={`Ver ficha de ${p.name}`}
+                    title={`Ver ficha de ${p.name}`}
+                    onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); openCard(p); } }}
+                  >
                     <td className="standings-rank-cell">
                       <div className={`rank-badge rank-${p.rank <= 3 ? p.rank : 'rest'}`}>{p.rank}</div>
                     </td>
                     <td>
                       <div className="standings-user-profile">
-                        <div className="standings-avatar">{p.avatar}</div>
+                        {p.photo ? (
+                          <div className="standings-avatar has-photo"><img src={p.photo} alt={p.name} /></div>
+                        ) : (
+                          <div className="standings-avatar">{p.avatar}</div>
+                        )}
                         <div className="standings-name-wrapper">
                           <span className="standings-user-name">{p.name}</span>
                           {isTopThree && (
@@ -158,6 +163,16 @@ export default function Dashboard({ standings, matches = [] }) {
           </table>
         </div>
       </div>
+
+      {selected && (
+        <PlayerCard
+          player={selected.player}
+          matches={matches}
+          totalParticipants={standings.length}
+          todayKey={selected.todayKey}
+          onClose={() => setSelected(null)}
+        />
+      )}
     </div>
   );
 }
