@@ -7,4 +7,7 @@ export default defineConfig({
   server: {
     port: Number(process.env.PORT) || 5173,
   },
+  preview: {
+    allowedHosts: ['.up.railway.app'],
+  },
 })
