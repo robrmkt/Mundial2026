@@ -1,0 +1,9 @@
+# Configuración para desplegar en Netlify (también sirve de referencia para Vercel/Cloudflare Pages).
+# Netlify normalmente autodetecta esto; lo dejamos explícito para que sea infalible.
+
+[build]
+  command = "npm run build"
+  publish = "dist"
+
+[build.environment]
+  NODE_VERSION = "20"

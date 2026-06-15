@@ -1,0 +1,546 @@
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Trophy, Square, Users, MonitorPlay, MessageSquare, RefreshCw, Wifi, WifiOff } from 'lucide-react';
+import AdminLogin from './components/AdminLogin';
+import Dashboard from './components/Dashboard';
+
+// El panel de admin (y la pesada librería xlsx) se cargan solo al entrar a #admin,
+// así el bundle inicial que descargan todos los participantes es mucho más ligero.
+const AdminPanel = lazy(() => import('./components/AdminPanel'));
+import PredictionGrid from './components/PredictionGrid';
+import LiveMatches from './components/LiveMatches';
+import LiveChat from './components/LiveChat';
+import { fetchScoreboard, mergeScoreboard } from './services/liveData';
+import { celebrateGoal, celebrateMexicoGoal, celebratePodium, celebrateFinal, celebrateExact } from './services/celebrations';
+import { getSession, logout } from './services/auth';
+
+import initialMatches from './matches.json';
+import initialParticipants from './participants.json';
+
+// Custom hook to persistent state
+function useLocalStorage(key, initialValue) {
+  const [storedValue, setStoredValue] = useState(() => {
+    try {
+      const item = window.localStorage.getItem(key);
+      return item ? JSON.parse(item) : initialValue;
+    } catch (error) {
+      console.error(error);
+      return initialValue;
+    }
+  });
+
+  const setValue = useCallback(value => {
+    try {
+      setStoredValue(prevValue => {
+        const valueToStore = value instanceof Function ? value(prevValue) : value;
+        window.localStorage.setItem(key, JSON.stringify(valueToStore));
+        return valueToStore;
+      });
+    } catch (error) {
+      console.error(error);
+    }
+  }, [key]);
+
+  return [storedValue, setValue];
+}
+
+function calculateDetailedStats(predictions, matchesList) {
+  let score = 0;
+  let exactHits = 0;
+  let outcomeHits = 0;
+  let playedAndPredicted = 0;
+
+  matchesList.forEach(m => {
+    if (m.status === 'SCHEDULED') return;
+
+    const pred = predictions[m.id];
+    if (!pred) return;
+
+    const pHome = parseInt(pred.homeScore, 10);
+    const pAway = parseInt(pred.awayScore, 10);
+    const mHome = parseInt(m.homeScore, 10);
+    const mAway = parseInt(m.awayScore, 10);
+    // Ignora pronósticos sin número válido (vacío, null, texto) para no perder puntos en silencio
+    if ([pHome, pAway, mHome, mAway].some(Number.isNaN)) return;
+
+    playedAndPredicted++;
+
+    const exactMatch = (pHome === mHome && pAway === mAway);
+    const predOutcome = Math.sign(pHome - pAway);
+    const actualOutcome = Math.sign(mHome - mAway);
+    const outcomeMatch = (predOutcome === actualOutcome);
+
+    if (exactMatch) {
+      score += 3;
+      exactHits++;
+    } else if (outcomeMatch) {
+      score += 1;
+      outcomeHits++;
+    }
+  });
+
+  const effectiveness = playedAndPredicted > 0
+    ? Math.round(((exactHits + outcomeHits) / playedAndPredicted) * 100)
+    : 0;
+
+  return {
+    points: score,
+    exactHits,
+    outcomeHits,
+    effectiveness,
+    playedAndPredicted
+  };
+}
+
+const TAB_HASHES = {
+  '#tabla': 'dashboard',
+  '#pronosticos': 'predictions',
+  '#partidos': 'matches',
+  '#chat': 'chat',
+  '#admin': 'admin'
+};
+
+const HASH_BY_TAB = {
+  dashboard: '#tabla',
+  predictions: '#pronosticos',
+  matches: '#partidos',
+  chat: '#chat',
+  admin: '#admin'
+};
+
+function tabFromHash() {
+  return TAB_HASHES[window.location.hash] || 'dashboard';
+}
+
+function nowTimeStr() {
+  const now = new Date();
+  return `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
+}
+
+export default function App() {
+  const [matches, setMatches] = useLocalStorage('quiniela_matches', initialMatches);
+  const [participants, setParticipants] = useLocalStorage('quiniela_participants', initialParticipants);
+  const [documents, setDocuments] = useLocalStorage('quiniela_documents', []);
+  const [chatMessages, setChatMessages] = useLocalStorage('quiniela_chat', [
+    { id: 1, user: 'Sistema', time: '12:00', text: '¡Bienvenidos a la Quiniela del Mundial 26! Que gane el mejor. 🏆' }
+  ]);
+
+  const [activeTab, setActiveTab] = useState(tabFromHash);
+  const [simActive, setSimActive] = useState(false);
+  const [toasts, setToasts] = useState([]);
+  const [syncState, setSyncState] = useState({ status: 'idle', lastSync: null });
+  const [session, setSession] = useState(getSession);
+
+  const simIntervalRef = useRef(null);
+  const simActiveRef = useRef(simActive);
+  const syncBusyRef = useRef(false);
+  const prevLeaderRef = useRef(null);
+  const matchesRef = useRef(matches);
+
+  useEffect(() => {
+    simActiveRef.current = simActive;
+  }, [simActive]);
+
+  useEffect(() => {
+    matchesRef.current = matches;
+  }, [matches]);
+
+  const participantsRef = useRef(participants);
+  useEffect(() => {
+    participantsRef.current = participants;
+  }, [participants]);
+
+  // Routing por hash: el admin no aparece en el menú, se entra con #admin
+  useEffect(() => {
+    const onHashChange = () => setActiveTab(tabFromHash());
+    window.addEventListener('hashchange', onHashChange);
+    return () => window.removeEventListener('hashchange', onHashChange);
+  }, []);
+
+  const goToTab = (tab) => {
+    setActiveTab(tab);
+    window.history.replaceState(null, '', HASH_BY_TAB[tab] || '#tabla');
+  };
+
+  // Trigger Goal Alert Toast
+  const triggerToast = useCallback((title, desc) => {
+    const id = Date.now() + Math.random();
+    setToasts(prev => [...prev, { id, title, desc }]);
+    setTimeout(() => {
+      setToasts(prev => prev.filter(t => t.id !== id));
+    }, 5000);
+  }, []);
+
+  const pushChatMessage = useCallback((user, text, highlight = false) => {
+    setChatMessages(prev => [
+      ...prev.slice(-120),
+      { id: Date.now() + Math.random(), user, time: nowTimeStr(), text, highlight }
+    ]);
+  }, [setChatMessages]);
+
+  // ---- Sincronización con resultados reales (ESPN, sin API key) ----
+  const syncNow = useCallback(async ({ silent = true } = {}) => {
+    if (syncBusyRef.current || simActiveRef.current) return;
+    syncBusyRef.current = true;
+    setSyncState(prev => ({ ...prev, status: 'syncing' }));
+
+    try {
+      const events = await fetchScoreboard();
+      const { merged, goals: detectedGoals, finished: detectedFinished, changed } = mergeScoreboard(matchesRef.current, events);
+
+      if (changed) {
+        matchesRef.current = merged;
+        setMatches(merged);
+      }
+
+      detectedGoals.forEach(goal => {
+        triggerToast('⚽ ¡GOOOL!', `${goal.flag} ${goal.team} anota vs ${goal.rival} · ${goal.score} (${goal.minute})`);
+        pushChatMessage('Sistema', `⚽ ¡Gol de ${goal.team}! Va ${goal.score} contra ${goal.rival} (${goal.minute}).`, true);
+      });
+      if (detectedGoals.length > 0) {
+        if (detectedGoals.some(goal => goal.team === 'México')) celebrateMexicoGoal();
+        else celebrateGoal();
+      }
+
+      // Partidos que terminaron mientras la página estaba abierta
+      detectedFinished.forEach(fin => {
+        triggerToast('🏁 Final', `${fin.homeFlag} ${fin.homeTeam} ${fin.homeScore} - ${fin.awayScore} ${fin.awayTeam} ${fin.awayFlag}`);
+        pushChatMessage('Sistema', `🏁 Final: ${fin.homeTeam} ${fin.homeScore} - ${fin.awayScore} ${fin.awayTeam}.`);
+
+        const exactWinners = participantsRef.current
+          .filter(p => {
+            const pred = p.predictions[fin.matchId];
+            return pred && Number(pred.homeScore) === fin.homeScore && Number(pred.awayScore) === fin.awayScore;
+          })
+          .map(p => p.name);
+
+        if (exactWinners.length > 0) {
+          celebrateExact();
+          triggerToast('🎯 ¡Marcador exacto!', `${exactWinners.join(', ')} clavó el ${fin.homeScore}-${fin.awayScore} (+3 pts)`);
+          pushChatMessage('Sistema', `🎯 ¡${exactWinners.join(' y ')} clavó el ${fin.homeScore}-${fin.awayScore}! +3 puntos.`, true);
+        } else {
+          celebrateFinal();
+        }
+      });
+
+      setSyncState({ status: 'ok', lastSync: new Date() });
+      if (!silent) triggerToast('Datos actualizados', 'Resultados reales del Mundial sincronizados.');
+    } catch (error) {
+      console.error('Sync error:', error);
+      setSyncState(prev => ({ ...prev, status: 'error' }));
+      if (!silent) triggerToast('Sin conexión al feed', 'No pude leer los resultados en vivo. Reintento automático en breve.');
+    } finally {
+      syncBusyRef.current = false;
+    }
+  }, [pushChatMessage, setMatches, triggerToast]);
+
+  // Sincroniza al abrir y luego en automático (30s con partidos en vivo, 90s si no)
+  const anyLive = matches.some(m => m.status === 'LIVE');
+  useEffect(() => {
+    const initialSync = setTimeout(() => syncNow(), 0);
+    return () => clearTimeout(initialSync);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    if (simActive) return undefined;
+    const interval = setInterval(() => syncNow(), anyLive ? 30000 : 90000);
+    return () => clearInterval(interval);
+  }, [anyLive, simActive, syncNow]);
+
+  // Compute standings with rankings
+  const standings = useMemo(() => {
+    const scoredList = participants.map(p => {
+      const stats = calculateDetailedStats(p.predictions, matches);
+      return { ...p, ...stats };
+    });
+
+    const sorted = [...scoredList].sort((a, b) => {
+      if (b.points !== a.points) return b.points - a.points;
+      if (b.exactHits !== a.exactHits) return b.exactHits - a.exactHits;
+      return b.effectiveness - a.effectiveness;
+    });
+
+    return sorted.map((p, idx) => ({ ...p, rank: idx + 1 }));
+  }, [matches, participants]);
+
+  // Celebración cuando cambia el líder del podio.
+  // Solo si el líder tiene ventaja REAL (no empatado en puntos con el 2º),
+  // así no se dispara por oscilaciones de desempate durante un partido en vivo.
+  useEffect(() => {
+    const leader = standings[0];
+    if (!leader || leader.points === 0) return;
+    const undisputed = leader.points > (standings[1]?.points ?? -1);
+    if (prevLeaderRef.current && prevLeaderRef.current !== leader.name && undisputed) {
+      celebratePodium();
+      triggerToast('👑 ¡Nuevo líder!', `${leader.name} toma la cima de la quiniela con ${leader.points} puntos.`);
+      pushChatMessage('Sistema', `👑 ¡${leader.name} es el nuevo líder de la quiniela con ${leader.points} puntos!`, true);
+    }
+    // Solo recordamos al líder cuando es indiscutido, para detectar el próximo cambio real
+    if (undisputed) prevLeaderRef.current = leader.name;
+  }, [standings, triggerToast, pushChatMessage]);
+
+  // Simulate a chat message from coworkers (solo en simulación)
+  const addRandomChatComment = useCallback((scoringTeam, opponentTeam) => {
+    const users = participants.map(p => p.name);
+    const randomUser = users[Math.floor(Math.random() * users.length)] || 'Oficina';
+
+    const goalPhrases = [
+      `¡Grande ${scoringTeam}! Ese gol me acomoda la quiniela. 😎`,
+      `¡Nooooo! Tenía el empate de ${opponentTeam}. Qué mala suerte. 😭`,
+      `¿Vieron ese golazo? ¡Espectacular!`,
+      `¡Gooool de ${scoringTeam}! Nos pusimos intensos.`,
+      `Esto se está moviendo demasiado, ¡la tabla está que arde! ⚡`
+    ];
+    const phrase = goalPhrases[Math.floor(Math.random() * goalPhrases.length)];
+    pushChatMessage(randomUser, phrase, true);
+  }, [participants, pushChatMessage]);
+
+  // Live match simulator effect (modo demo desde #admin)
+  useEffect(() => {
+    if (simActive) {
+      setMatches(prevMatches =>
+        prevMatches.map(m => m.status === 'SCHEDULED' ? { ...m, status: 'LIVE', minute: 1, homeScore: 0, awayScore: 0 } : m)
+      );
+
+      setTimeout(() => {
+        triggerToast('Modo demo', 'Simulación activa. La sincronización real se pausa hasta que la detengas.');
+      }, 0);
+
+      simIntervalRef.current = setInterval(() => {
+        setMatches(prevMatches => {
+          let updatedMatches = prevMatches.map(m => {
+            if (m.status !== 'LIVE') return m;
+
+            const nextMinute = m.minute + 3;
+            let nextStatus = 'LIVE';
+            let nextHome = m.homeScore;
+            let nextAway = m.awayScore;
+
+            if (nextMinute >= 90) {
+              nextStatus = 'FINISHED';
+            }
+
+            const isGoal = Math.random() < 0.15;
+            if (isGoal && nextStatus === 'LIVE') {
+              const isHome = Math.random() < 0.5;
+              if (isHome) {
+                nextHome += 1;
+                triggerToast('⚽ ¡GOOOL!', `${m.homeTeam} ${nextHome} - ${nextAway} ${m.awayTeam} (${nextMinute}')`);
+                addRandomChatComment(m.homeTeam, m.awayTeam);
+              } else {
+                nextAway += 1;
+                triggerToast('⚽ ¡GOOOL!', `${m.homeTeam} ${nextHome} - ${nextAway} ${m.awayTeam} (${nextMinute}')`);
+                addRandomChatComment(m.awayTeam, m.homeTeam);
+              }
+              celebrateGoal();
+            }
+
+            return {
+              ...m,
+              minute: nextMinute > 90 ? 90 : nextMinute,
+              status: nextStatus,
+              homeScore: nextHome,
+              awayScore: nextAway,
+              displayClock: `${nextMinute > 90 ? 90 : nextMinute}'`
+            };
+          });
+
+          const anyLiveSim = updatedMatches.some(m => m.status === 'LIVE');
+          if (!anyLiveSim) {
+            setSimActive(false);
+            triggerToast('Demo concluida', 'Todos los partidos simulados terminaron.');
+          }
+
+          return updatedMatches;
+        });
+      }, 2000);
+    } else {
+      if (simIntervalRef.current) {
+        clearInterval(simIntervalRef.current);
+      }
+    }
+
+    return () => {
+      if (simIntervalRef.current) clearInterval(simIntervalRef.current);
+    };
+  }, [addRandomChatComment, setMatches, simActive, triggerToast]);
+
+  const handleManualChatMessage = (text) => {
+    pushChatMessage('Tú', text);
+  };
+
+  const handleReset = () => {
+    setMatches(initialMatches);
+    setParticipants(initialParticipants);
+    setDocuments([]);
+    setChatMessages([
+      { id: 1, user: 'Sistema', time: nowTimeStr(), text: 'Quiniela restablecida. Sincronizando resultados reales… 🔄' }
+    ]);
+    setSimActive(false);
+    setTimeout(() => syncNow({ silent: false }), 400);
+  };
+
+  const handleLogout = () => {
+    logout();
+    setSession(null);
+    setSimActive(false);
+    goToTab('dashboard');
+  };
+
+  const liveCount = matches.filter(m => m.status === 'LIVE').length;
+  const lastSyncLabel = syncState.lastSync
+    ? syncState.lastSync.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' })
+    : '—';
+
+  return (
+    <div className="app-container">
+      {/* Toast Goal Alerts */}
+      <div className="toast-container">
+        {toasts.map(t => (
+          <div key={t.id} className="toast">
+            <div className="toast-content">
+              <div className="toast-title">{t.title}</div>
+              <div className="toast-desc">{t.desc}</div>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Navigation Header */}
+      <header className="nav-header">
+        <div className="header-stripe" aria-hidden="true" />
+        <div className="header-inner">
+          <div className="brand-section">
+            <div className="brand-mark">
+              <Trophy size={26} className="brand-trophy" />
+              <div className="brand-words">
+                <span className="brand-top">QUINIELA</span>
+                <span className="brand-bottom">MUNDIAL <em>26</em></span>
+              </div>
+            </div>
+            <span className="brand-badge">Canadá · México · USA</span>
+          </div>
+
+          <nav className="nav-tabs">
+            <button
+              className={`nav-btn ${activeTab === 'dashboard' ? 'active' : ''}`}
+              onClick={() => goToTab('dashboard')}
+            >
+              <Trophy size={15} />
+              <span className="nav-btn-text">Tabla General</span>
+            </button>
+            <button
+              className={`nav-btn ${activeTab === 'predictions' ? 'active' : ''}`}
+              onClick={() => goToTab('predictions')}
+            >
+              <Users size={15} />
+              <span className="nav-btn-text">Pronósticos</span>
+            </button>
+            <button
+              className={`nav-btn ${activeTab === 'matches' ? 'active' : ''}`}
+              onClick={() => goToTab('matches')}
+            >
+              <MonitorPlay size={15} />
+              <span className="nav-btn-text">Partidos</span>
+              {liveCount > 0 && <span className="nav-live-count">{liveCount}</span>}
+            </button>
+            <button
+              className={`nav-btn ${activeTab === 'chat' ? 'active' : ''}`}
+              onClick={() => goToTab('chat')}
+            >
+              <MessageSquare size={15} />
+              <span className="nav-btn-text">Chat</span>
+            </button>
+          </nav>
+
+          <div className="header-status">
+            {liveCount > 0 && (
+              <span className="header-live-pill">
+                <span className="live-dot" /> {liveCount} en vivo
+              </span>
+            )}
+            <button
+              className={`sync-chip ${syncState.status}`}
+              onClick={() => syncNow({ silent: false })}
+              title={`Última sincronización: ${lastSyncLabel}`}
+            >
+              {syncState.status === 'error'
+                ? <WifiOff size={13} />
+                : syncState.status === 'syncing'
+                  ? <RefreshCw size={13} className="spin" />
+                  : <Wifi size={13} />}
+              <span>{lastSyncLabel}</span>
+            </button>
+          </div>
+        </div>
+      </header>
+
+      {/* Simulation Active Banner */}
+      {simActive && (
+        <div className="sim-indicator-bar">
+          <div className="sim-status">
+            <span className="live-dot"></span>
+            Modo demo activo — la sincronización real está en pausa
+          </div>
+          <button className="btn-stop-sim" onClick={() => setSimActive(false)}>
+            <Square size={12} /> Detener
+          </button>
+        </div>
+      )}
+
+      {/* Main View Container */}
+      <main className="main-content-area">
+        {activeTab === 'dashboard' && (
+          <Dashboard standings={standings} matches={matches} />
+        )}
+        {activeTab === 'predictions' && (
+          <div className="page-card">
+            <h2 className="section-title">
+              <Users size={20} />
+              Matriz Comparativa de Pronósticos
+            </h2>
+            <PredictionGrid matches={matches} participants={participants} />
+          </div>
+        )}
+        {activeTab === 'matches' && (
+          <LiveMatches matches={matches} />
+        )}
+        {activeTab === 'chat' && (
+          <div className="page-card chat-page-card">
+            <h2 className="section-title">
+              <MessageSquare size={20} />
+              Chat de la Oficina
+            </h2>
+            <LiveChat chatMessages={chatMessages} onSendMessage={handleManualChatMessage} />
+          </div>
+        )}
+        {activeTab === 'admin' && (
+          session ? (
+            <Suspense fallback={<div className="page-card admin-loading">Cargando panel…</div>}>
+              <AdminPanel
+                matches={matches}
+                participants={participants}
+                setParticipants={setParticipants}
+                documents={documents}
+                setDocuments={setDocuments}
+                simActive={simActive}
+                setSimActive={setSimActive}
+                handleReset={handleReset}
+                onSyncNow={() => syncNow({ silent: false })}
+                syncState={syncState}
+                session={session}
+                onLogout={handleLogout}
+              />
+            </Suspense>
+          ) : (
+            <AdminLogin onLogin={setSession} onBack={() => goToTab('dashboard')} />
+          )
+        )}
+      </main>
+
+      <footer className="app-footer">
+        Quiniela interna · Mundial FIFA 26 · Datos en vivo vía feed público de ESPN
+      </footer>
+    </div>
+  );
+}
