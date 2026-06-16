@@ -3,6 +3,7 @@ import {
   AlertCircle,
   Camera,
   CheckCircle2,
+  Download,
   FileText,
   KeyRound,
   LogOut,
@@ -21,6 +22,7 @@ import {
 import * as XLSX from 'xlsx';
 import { analyzeTextWithOpenAI, extractPdfText, getOpenAiKey, setOpenAiKey } from '../services/aiReader';
 import { resizeImageToDataUrl } from '../services/photos';
+import { exportAllQuinielas, exportParticipantQuiniela } from '../services/quinielaExport';
 
 const emptyReview = {
   participantName: '',
@@ -507,6 +509,15 @@ export default function AdminPanel({
               <Users2 size={18} />
               Participantes ({participants.length})
             </h2>
+            <button
+              type="button"
+              className="admin-export-all-btn"
+              onClick={() => exportAllQuinielas(participants, matches)}
+              disabled={participants.length === 0}
+            >
+              <Download size={14} />
+              Descargar todo
+            </button>
             <form onSubmit={addParticipant} className="participant-add-form">
               <input
                 type="text"
@@ -557,6 +568,15 @@ export default function AdminPanel({
                       </button>
                     )}
                     <button
+                      type="button"
+                      onClick={() => exportParticipantQuiniela(participant, matches)}
+                      className="participant-admin-export-btn"
+                      title={`Descargar quiniela de ${participant.name}`}
+                    >
+                      <Download size={13} />
+                    </button>
+                    <button
+                      type="button"
                       onClick={() => editParticipant(participant)}
                       className="participant-admin-edit-btn"
                       title={`Editar a ${participant.name}`}
@@ -564,6 +584,7 @@ export default function AdminPanel({
                       <Pencil size={13} />
                     </button>
                     <button
+                      type="button"
                       onClick={() => removeParticipant(participant.name)}
                       className="participant-admin-delete-btn"
                       title={`Eliminar a ${participant.name}`}

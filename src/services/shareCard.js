@@ -2,13 +2,37 @@
 // html-to-image. Excluye los elementos con clase `no-export` (botones, cerrar).
 import { toPng } from 'html-to-image';
 
-export async function exportCardPng(node, { pixelRatio = 3 } = {}) {
-  return toPng(node, {
-    pixelRatio,
-    cacheBust: true,
-    backgroundColor: null,
-    filter: (el) => !(el.classList && el.classList.contains('no-export'))
-  });
+export async function exportCardPng(node, { pixelRatio = 2 } = {}) {
+  if (!node) throw new Error('No hay nodo para exportar.');
+  const rect = node.getBoundingClientRect();
+
+  // 1) Asegura que las fuentes (Barlow) estén listas antes de capturar.
+  try { if (document.fonts && document.fonts.ready) await document.fonts.ready; } catch { /* noop */ }
+
+  // 2) Congela animaciones (entrada, brillo, sweep) para no capturar un fotograma a medias.
+  node.classList.add('is-exporting');
+  await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+
+  try {
+    return await toPng(node, {
+      pixelRatio,
+      width: Math.ceil(rect.width),
+      height: Math.ceil(rect.height),
+      // OJO: sin cacheBust — corrompe las fotos en data URL (les añade query y revientan).
+      // skipFonts: evita que intente leer/embeber la hoja cross-origin de Google Fonts,
+      // que es lo que lanzaba el error "Event" (usa la tipografía del sistema en el PNG).
+      skipFonts: true,
+      backgroundColor: '#f6f8fb',
+      style: {
+        margin: '0',
+        transform: 'none',
+        opacity: '1'
+      },
+      filter: (el) => !(el.classList && el.classList.contains('no-export'))
+    });
+  } finally {
+    node.classList.remove('is-exporting');
+  }
 }
 
 export function downloadDataUrl(dataUrl, fileName) {

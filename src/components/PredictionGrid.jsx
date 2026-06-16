@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Search, Calendar } from 'lucide-react';
+import { Search, Calendar, Download } from 'lucide-react';
+import { exportParticipantQuiniela } from '../services/quinielaExport';
 
 export default function PredictionGrid({ matches, participants }) {
   const [selectedTab, setSelectedTab] = useState(() => {
@@ -146,6 +147,15 @@ export default function PredictionGrid({ matches, participants }) {
                       <div className="participant-cell-content">
                         <div className="participant-mini-avatar">{p.avatar}</div>
                         <span className="participant-name-text">{p.name}</span>
+                        <button
+                          type="button"
+                          className="participant-export-btn"
+                          onClick={() => exportParticipantQuiniela(p, matches)}
+                          title={`Descargar quiniela de ${p.name}`}
+                          aria-label={`Descargar quiniela de ${p.name}`}
+                        >
+                          <Download size={13} />
+                        </button>
                       </div>
                     </td>
                     {filteredMatches.map(m => {

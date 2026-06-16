@@ -2389,6 +2389,39 @@ img {
   white-space: nowrap;
 }
 
+.participant-export-btn {
+  width: 26px;
+  height: 26px;
+  border-radius: 7px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text-faint);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  opacity: 0;
+  transform: translateX(-3px);
+  transition: opacity 0.15s ease, transform 0.15s ease, color 0.15s ease, border-color 0.15s ease, background 0.15s ease;
+  flex-shrink: 0;
+}
+.participant-cell-content:hover .participant-export-btn,
+.participant-export-btn:focus-visible {
+  opacity: 1;
+  transform: translateX(0);
+}
+.participant-export-btn:hover {
+  color: var(--green);
+  border-color: #bfe3d0;
+  background: var(--green-soft);
+}
+@media (hover: none) {
+  .participant-export-btn {
+    opacity: 1;
+    transform: none;
+  }
+}
+
 .pred-cell {
   text-align: center;
   padding: 0.3rem 0.4rem;
@@ -3245,8 +3278,29 @@ img {
   gap: 0.3rem;
 }
 
+.admin-export-all-btn {
+  width: 100%;
+  border: 1px solid var(--green);
+  background: var(--green);
+  color: #fff;
+  border-radius: 9px;
+  padding: 0.62rem 0.8rem;
+  font-weight: 800;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  cursor: pointer;
+  margin-bottom: 0.75rem;
+}
+.admin-export-all-btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
 .participant-admin-edit-btn,
-.participant-admin-delete-btn {
+.participant-admin-delete-btn,
+.participant-admin-export-btn {
   width: 28px;
   height: 28px;
   border-radius: 7px;
@@ -3264,6 +3318,12 @@ img {
   color: var(--blue);
   border-color: #bcd0f7;
   background: var(--blue-soft);
+}
+
+.participant-admin-export-btn:hover {
+  color: var(--green);
+  border-color: #bfe3d0;
+  background: var(--green-soft);
 }
 
 .participant-admin-delete-btn:hover {
@@ -4398,3 +4458,16 @@ img {
   .podium-legend-tag,
   .app-container.page-shake { animation: none; }
 }
+
+/* Captura limpia de la ficha (html-to-image): congela animaciones y oculta el brillo. */
+.player-sticker.is-exporting,
+.player-sticker.is-exporting * {
+  animation: none !important;
+  transition: none !important;
+}
+.player-sticker.is-exporting {
+  transform: none !important;
+  opacity: 1 !important;
+}
+.player-sticker.is-exporting .sticker-shine,
+.player-sticker.is-exporting .sticker-foil { display: none !important; }
