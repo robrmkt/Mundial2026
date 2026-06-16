@@ -2,6 +2,8 @@
 // Scoreboard: marcadores y estados de los 72 partidos de fase de grupos.
 // Summary: cronología (goles, tarjetas, cambios) y estadísticas por partido.
 
+import { buildTimeline } from './timelineAdapter';
+
 const BASE = 'https://site.api.espn.com/apis/site/v2/sports/soccer/fifa.world';
 const RANGE = '20260611-20260627';
 const LANG = 'lang=es&region=mx';
@@ -135,23 +137,6 @@ export function mergeScoreboard(matches, espnEvents) {
   return { merged, goals, finished, changed };
 }
 
-const EVENT_ICONS = [
-  { test: /penal.*fallado|fallado.*penal/i, icon: '❌' },
-  { test: /gol|penalty.*scored/i, icon: '⚽' },
-  { test: /tarjeta amarilla/i, icon: '🟨' },
-  { test: /tarjeta roja/i, icon: '🟥' },
-  { test: /sustituc|substitution|cambio/i, icon: '🔁' },
-  { test: /var/i, icon: '📺' },
-  { test: /saque inicial|kickoff/i, icon: '🏁' },
-  { test: /medio tiempo|halftime/i, icon: '⏸' },
-  { test: /final|tiempo completo/i, icon: '🏁' }
-];
-
-function iconFor(typeText) {
-  const found = EVENT_ICONS.find(e => e.test.test(typeText || ''));
-  return found ? found.icon : '•';
-}
-
 const STAT_LABELS = [
   { key: 'possessionPct', label: 'Posesión', suffix: '%' },
   { key: 'totalShots', label: 'Tiros totales' },
@@ -168,21 +153,9 @@ export async function fetchMatchSummary(espnId) {
   if (!res.ok) throw new Error(`ESPN summary ${res.status}`);
   const data = await res.json();
 
-  const timeline = (data.keyEvents || [])
-    .map(ev => {
-      const typeText = ev.type?.text || '';
-      return {
-        id: ev.id || `${ev.clock?.displayValue}-${typeText}-${ev.text?.slice(0, 20)}`,
-        minute: ev.clock?.displayValue || '',
-        type: typeText,
-        icon: iconFor(typeText),
-        text: ev.text || typeText,
-        team: ev.team?.displayName || '',
-        isGoal: /gol/i.test(typeText)
-      };
-    })
-    .filter(ev => ev.text || ev.type)
-    .reverse(); // más reciente primero, como Google
+  // El adapter lee de varias ramas del feed (keyEvents, details, plays, …) y
+  // normaliza con tipos semánticos + dedupe; ya viene reciente primero.
+  const timeline = buildTimeline(data, { espnId, mexicoNames: ['México', 'Mexico'] });
 
   const teams = (data.boxscore?.teams || []).map(t => {
     const stats = Object.fromEntries((t.statistics || []).map(s => [s.name, s.displayValue]));
@@ -202,6 +175,7 @@ export async function fetchMatchSummary(espnId) {
     attendance: data.gameInfo?.attendance || null,
     venue: data.gameInfo?.venue?.fullName || '',
     city: data.gameInfo?.venue?.address?.city || '',
-    statusDetail: header?.status?.type?.detail || ''
+    statusDetail: header?.status?.type?.detail || '',
+    fetchedAt: new Date().toISOString()
   };
 }

@@ -17,6 +17,16 @@ function formatKickoff(iso) {
   }
 }
 
+// "Actualizado hace X" relativo, para que se note que el feed está vivo.
+function relativeTime(iso, nowMs) {
+  if (!iso) return '';
+  const diff = Math.max(0, Math.floor((nowMs - new Date(iso).getTime()) / 1000));
+  if (diff < 5) return 'hace un momento';
+  if (diff < 60) return `hace ${diff} s`;
+  const min = Math.floor(diff / 60);
+  return `hace ${min} min`;
+}
+
 function TeamBadge({ logo, flag, name }) {
   return (
     <div className="mc-team">
@@ -35,6 +45,13 @@ export default function MatchCenter({ match, onClose }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [tab, setTab] = useState('timeline');
+  const [now, setNow] = useState(() => Date.now());
+
+  // Reloj suave para el "actualizado hace X" (solo mientras el panel está abierto).
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), 5000);
+    return () => clearInterval(id);
+  }, []);
 
   const isLive = match.status === 'LIVE';
   const isScheduled = match.status === 'SCHEDULED';
@@ -130,6 +147,9 @@ export default function MatchCenter({ match, onClose }) {
               <RefreshCw size={14} />
             </button>
           )}
+          {summary?.fetchedAt && tab === 'timeline' && !loading && (
+            <span className="mc-updated">Actualizado {relativeTime(summary.fetchedAt, now)}</span>
+          )}
         </div>
 
         <div className="mc-body">
@@ -147,15 +167,19 @@ export default function MatchCenter({ match, onClose }) {
                     <span className="mc-event-minute">{ev.minute || '—'}</span>
                     <span className="mc-event-icon">{ev.icon}</span>
                     <div className="mc-event-copy">
-                      {ev.type && <strong>{ev.type}{ev.team ? ` · ${ev.team}` : ''}</strong>}
-                      <span>{ev.text}</span>
+                      {ev.label && <strong>{ev.label}{ev.team ? ` · ${ev.team}` : ''}</strong>}
+                      <span>{ev.text}{ev.player ? ` — ${ev.player}` : ''}</span>
                     </div>
                   </li>
                 ))}
               </ul>
             ) : (
               <div className="mc-empty">
-                {isScheduled ? 'El partido aún no comienza. La cronología aparecerá aquí en vivo.' : 'Sin eventos registrados todavía.'}
+                {isScheduled
+                  ? 'El partido aún no comienza. La cronología aparecerá aquí en vivo.'
+                  : isLive
+                    ? 'En cuanto pase algo (gol, tarjeta, cambio) aparece aquí al instante.'
+                    : 'No se registraron jugadas destacadas en este partido.'}
               </div>
             )
           ) : hasStats ? (

@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Activity, MessageCircle, Send, Clock, Radio } from 'lucide-react';
 import { fetchMatchSummary } from '../services/liveData';
 
-// Porras que cualquiera puede lanzar; en Fase 2 se compartirán en vivo con todos.
+// Porras que cualquiera puede lanzar; ya se comparten en vivo con todos (Fase 1).
 const REACTIONS = [
   { key: 'confetti', emoji: '🎉', label: 'Confeti' },
   { key: 'balls', emoji: '⚽', label: 'Balones' },
@@ -10,6 +10,14 @@ const REACTIONS = [
   { key: 'mexico', emoji: '🇲🇽', label: 'México' },
   { key: 'clap', emoji: '👏', label: 'Aplausos' }
 ];
+
+function relativeTime(iso, nowMs) {
+  if (!iso) return '';
+  const diff = Math.max(0, Math.floor((nowMs - new Date(iso).getTime()) / 1000));
+  if (diff < 5) return 'hace un momento';
+  if (diff < 60) return `hace ${diff} s`;
+  return `hace ${Math.floor(diff / 60)} min`;
+}
 
 function useCountdown(targetIso) {
   const [now, setNow] = useState(() => Date.now());
@@ -60,6 +68,8 @@ function NextMatch({ match }) {
 function LiveTimeline({ liveMatch }) {
   const [timeline, setTimeline] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [fetchedAt, setFetchedAt] = useState(null);
+  const [now, setNow] = useState(() => Date.now());
 
   const espnId = liveMatch?.espnId;
   useEffect(() => {
@@ -71,7 +81,7 @@ function LiveTimeline({ liveMatch }) {
       }
       try {
         const summary = await fetchMatchSummary(espnId);
-        if (active) setTimeline(summary.timeline.slice(0, 10));
+        if (active) { setTimeline(summary.timeline.slice(0, 10)); setFetchedAt(summary.fetchedAt); }
       } catch {
         if (active) setTimeline([]);
       } finally {
@@ -87,6 +97,11 @@ function LiveTimeline({ liveMatch }) {
     };
   }, [espnId]);
 
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), 5000);
+    return () => clearInterval(id);
+  }, []);
+
   return (
     <div className="pulse-live">
       <div className="pulse-live-score">
@@ -101,17 +116,20 @@ function LiveTimeline({ liveMatch }) {
       {loading ? (
         <div className="pulse-empty">Cargando cronología…</div>
       ) : timeline.length === 0 ? (
-        <div className="pulse-empty">Aún sin eventos. En cuanto pase algo, aparece aquí.</div>
+        <div className="pulse-empty">Aún sin jugadas. En cuanto pase algo, aparece aquí.</div>
       ) : (
-        <ul className="pulse-timeline">
-          {timeline.map(ev => (
-            <li key={ev.id} className={`pulse-event ${ev.isGoal ? 'is-goal' : ''}`}>
-              <span className="pulse-event-min">{ev.minute || '—'}</span>
-              <span className="pulse-event-icon">{ev.icon}</span>
-              <span className="pulse-event-text">{ev.text}</span>
-            </li>
-          ))}
-        </ul>
+        <>
+          <ul className="pulse-timeline">
+            {timeline.map(ev => (
+              <li key={ev.id} className={`pulse-event ${ev.isGoal ? 'is-goal' : ''}`}>
+                <span className="pulse-event-min">{ev.minute || '—'}</span>
+                <span className="pulse-event-icon">{ev.icon}</span>
+                <span className="pulse-event-text">{ev.text}</span>
+              </li>
+            ))}
+          </ul>
+          {fetchedAt && <div className="pulse-updated">Actualizado {relativeTime(fetchedAt, now)}</div>}
+        </>
       )}
     </div>
   );
@@ -175,6 +193,8 @@ export default function LivePulse({ matches, chatMessages, onSendMessage, onReac
 
   const hasLive = liveMatches.length > 0;
   const [tab, setTab] = useState(hasLive ? 'vivo' : 'muro');
+  const [liveIdx, setLiveIdx] = useState(0);
+  const safeIdx = Math.min(liveIdx, Math.max(0, liveMatches.length - 1));
 
   return (
     <div className="pulse-panel">
@@ -202,7 +222,25 @@ export default function LivePulse({ matches, chatMessages, onSendMessage, onReac
 
       <div className="pulse-body">
         {tab === 'vivo' ? (
-          hasLive ? <LiveTimeline liveMatch={liveMatches[0]} /> : <NextMatch match={nextMatch} />
+          hasLive ? (
+            <>
+              {liveMatches.length > 1 && (
+                <div className="pulse-live-selector">
+                  {liveMatches.map((m, i) => (
+                    <button
+                      key={m.id}
+                      className={`pulse-live-chip ${i === safeIdx ? 'active' : ''}`}
+                      onClick={() => setLiveIdx(i)}
+                      title={`${m.homeTeam} vs ${m.awayTeam}`}
+                    >
+                      <span className="live-dot" />{m.homeFlag} {m.homeScore}-{m.awayScore} {m.awayFlag}
+                    </button>
+                  ))}
+                </div>
+              )}
+              <LiveTimeline liveMatch={liveMatches[safeIdx]} />
+            </>
+          ) : <NextMatch match={nextMatch} />
         ) : (
           <Wall chatMessages={chatMessages} onSendMessage={onSendMessage} />
         )}

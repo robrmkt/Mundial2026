@@ -3753,3 +3753,41 @@ img {
 @media (prefers-reduced-motion: reduce) {
   .player-sticker, .sticker-shine { animation: none; }
 }
+
+/* ===== V4 · Fase 3: cronología y pulso en vivo ===== */
+.pulse-updated {
+  font-size: 11px;
+  color: var(--text-faint);
+  text-align: right;
+  padding: 4px 8px 0;
+}
+.mc-updated {
+  font-size: 11px;
+  color: var(--text-faint);
+  margin-left: auto;
+  align-self: center;
+}
+.pulse-live-selector {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  padding: 6px 0 8px;
+}
+.pulse-live-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--surface-soft);
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+.pulse-live-chip.active {
+  background: var(--green);
+  color: #fff;
+  border-color: var(--green);
+}
