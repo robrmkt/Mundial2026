@@ -126,7 +126,130 @@ export const BADGES = [
   { id: 'el_del_ambiente', title: 'El del ambiente 🎉', rarity: 'common', desc: 'Usa reacciones seguido.' }
 ];
 
-const BADGE_BY_ID = Object.fromEntries(BADGES.map(b => [b.id, b]));
+// Explicación creativa (el "por qué" de cada insignia, con personalidad).
+const BADGE_FLAVOR = {
+  // Podio y leyenda
+  leyenda_del_podio: 'No es el que más brilla un día: es el que NUNCA se baja. La oficina ya le reservó la silla de honor en el podio.',
+  vive_en_el_podio: 'Ya colgó cuadros y cambió las cortinas allá arriba. Más de 24 horas viviendo en el top 3.',
+  toco_metal: 'Sintió el friito de la medalla en el cuello. Entró al podio… y le gustó.',
+  volvio_al_podio: 'Lo dieron por muerto, pidió taxi y regresó al top 3. Segunda temporada confirmada.',
+  no_me_bajen: 'Clavó las uñas en el podio: tres cortes seguidos arriba y no piensa soltar.',
+  tercero_peligroso: 'El bronce que no deja dormir al líder. Está a un golazo de robarse la corona.',
+  foto_del_podio: 'Salió en la foto oficial. Ya puede presumir que ESTUVO ahí arriba.',
+  rento_arriba: 'Entra y sale del podio como si pagara renta. Tres mudanzas al top 3.',
+  sombra_del_lider: 'Le respira en la nuca al líder. Donde voltee, ahí está el subcampeón.',
+  bronce_con_orgullo: 'Tercer lugar, pero con el pecho inflado. El bronce también pesa.',
+  medalla_prestada: 'Subió al podio por un pelito de rana calva. La medalla es en comodato, que no se confíe.',
+  no_suelta_el_metal: 'Varios cortes, misma medalla. Se la soldaron al cuerpo.',
+  // Liderato
+  dueno_del_balon: 'Aquí se juega como él dice. Número 1 de la tabla, con balón y todo.',
+  salio_dorada: '¡Sonó el sobre y salió la carta dorada! Nuevo líder en la cima.',
+  la_silla_grande: 'El que más veces se ha sentado en el trono. Ya le queda la silla a la medida.',
+  me_estan_persiguiendo: 'Lidera, pero con el retrovisor pegado: la jauría viene a un punto.',
+  lider_silencioso: 'Arriba sin hacer ruido ni clavar exactos. Pura cabeza fría.',
+  amanecio_lider: 'Se durmió en segundo y amaneció mandando. El madrugador se llevó la cima.',
+  no_pidio_permiso: 'Saltó al primer lugar desde fuera del podio sin avisar ni tocar. Pasón de moda.',
+  trono_caliente: 'El trono le quema: tiene perseguidores pisándole los talones.',
+  carta_dorada: 'Su nombre disparó la animación de líder. Brillo, confeti y drama.',
+  todos_contra_el: 'Es líder y por eso es el villano. Toda la oficina quiere verlo caer.',
+  // México
+  tengo_fe: 'Le creyó al Tri desde el primer partido… ¡y le pagó con un exacto! Fe nivel abuela.',
+  modo_tricolor: 'Verde, blanco y rojo en el corazón: le atinó al resultado de México.',
+  mexico_me_sostiene: 'Si México cae, él cae. Buena parte de sus puntos son tricolores.',
+  grupo_mexico: 'Se sabe a México de memoria: le pegó al resultado de sus 3 partidos.',
+  trilogia_tricolor: 'Exacto en los TRES de México. ¿Brujo o le habló al técnico? Trilogía perfecta.',
+  corazon_verde: 'Apostó por el Tri en todas, contra viento, marea y sentido común. Puro corazón.',
+  sin_miedo_al_tri: 'Le apostó EN CONTRA a México. Valiente o traidor, tú decides.',
+  traicion_deportiva: 'Apostó contra México… y le salió. Sumó puntos, perdió amigos.',
+  grito_en_la_oficina: 'Un gol del Tri y la oficina entera gritó por sus puntos.',
+  mexico_si_cumplio: 'Por una vez, México no lo decepcionó: le regaló un exacto.',
+  el_tri_lo_rescato: 'Venía hundido y México le aventó el salvavidas. Bendito Tri.',
+  mas_mexa_que_el_var: 'Apostó por México SIEMPRE. Más mexicano que el chile en el mango.',
+  // Corea / incómodas
+  modo_kpop: 'Le puso fichas a Corea por encima de México. Andaba en modo K-pop.',
+  modo_bts: 'Apostó por Corea sobre México… y acertó. Dynamite, baby.',
+  me_dolio_pero_sume: 'Le dolió en el alma apostar así, pero los puntos no tienen sentimientos.',
+  villano_de_la_oficina: 'Acertó el resultado que arruinó media quiniela. Aplausos malvados.',
+  nadie_me_creyo: 'Cantó la sorpresa cuando todos se reían. Casi el único profeta.',
+  perdon_mexico: 'Sumó apostando contra el Tri. Pidió perdón… pero guardó los puntos.',
+  traia_datos_no_fe: 'Le ganó al favorito de todos con frialdad. No reza, calcula.',
+  enemigo_del_grupo: 'Su pronóstico va justo contra lo que toda la oficina quiere. Enemigo público.',
+  // Precisión
+  clavo_el_resultado: 'Primer marcador exacto. Sintió el clavito entrar perfecto.',
+  brujo_del_marcador: 'Dos exactos o más. Algo sabe que nosotros no. ¿Brujería?',
+  cirujano_del_marcador: 'Tres exactos con bisturí. Opera marcadores sin que sangre.',
+  bola_de_cristal: 'Cinco exactos. O vio el futuro, o el futuro le mandó WhatsApp.',
+  profeta_del_2_1: 'Cantó un 2-1 exacto: el marcador más mundialista, clavado.',
+  rey_del_empate: 'Dos empates bien puestos. Corona en la cabeza, X en la mano.',
+  uno_a_cero_sufrido: 'Acertó el 1-0 más sufrido. Ganó de panzazo, pero ganó.',
+  goleada_detectada: 'Olió la goleada antes de que pasara. Diferencia de 3+ clavada.',
+  dos_cero_de_manual: '2-0 de libro. El resultado más cómodo, predicho con calma.',
+  empate_con_colmillo: 'Vio venir el empate que nadie esperaba. Colmillo de quinielero viejo.',
+  leyo_el_guion: 'Le pegó exacto a un partidazo. Tenía el guion antes que el árbitro.',
+  var_humano: 'Efectividad altísima. No necesita repetición: él YA lo sabía.',
+  no_adivina_calcula: 'Acumula aciertos sin despeinarse. Pura matemática.',
+  le_susurro_al_balon: 'Exacto en un partido de muchos goles. Le habla bonito al balón.',
+  tiro_quirurgico: 'Exacto en un partido cerradito. Disparo de precisión absoluta.',
+  // Rachas
+  tres_al_hilo: 'Tres jornadas seguidas sumando. Agarró ritmo de campeón.',
+  racha_caliente: 'Viene tan caliente que quema el teclado. No falla.',
+  no_falla_ni_queriendo: 'Cinco seguidos sumando. Imbatible de oficina, leyenda viviente.',
+  se_congelo: 'Tres fallos al hilo. Se le congeló la quiniela: tráiganle un café.',
+  necesita_limpia: 'Cinco fallos seguidos. Esto ya es brujería… necesita limpia con huevo.',
+  de_puntito: 'De a un puntito, como hormiguita. Sin prisa pero sin pausa.',
+  casi_casi: 'Muchos resultados, casi ningún exacto. El rey del "por poquito".',
+  hoy_si_trajo: 'Hoy amaneció encendido: un montón de puntos en una sola jornada.',
+  dia_frio: 'Jornada en blanco, cero puntos. Día para olvidar y reiniciar.',
+  resucito: 'Estaba muerto y volvió a la vida. Rompió la mala racha, Lázaro FC.',
+  modo_apagado: 'Anda en modo avión: muchos errores recientes. A reconectarse.',
+  volvio_el_toque: 'Rompió la sequía con un EXACTO. Volvió el toque mágico.',
+  // Movimiento
+  subio_como_espuma: 'Subió 3+ lugares de un jalón. Como espuma de chela bien servida.',
+  remontada_de_pelicula: 'Subió 8+ desde el fondo. Esto ya es guion de Netflix.',
+  salio_del_fondo: 'Dejó los últimos lugares. Salió del sótano oliendo a gloria.',
+  resbalon: 'Bajó 3+ lugares. Pisó cáscara de plátano en plena tabla.',
+  aguanto_vara: 'Mala jornada, pero se quedó en el top 12. Aguantó vara como los buenos.',
+  no_se_mueve: 'Varios cortes en la misma posición. Piedra en la tabla, inamovible.',
+  volvio_del_vestidor: 'Salió del descanso recargado y mejoró. Charla técnica que sí sirvió.',
+  se_metio_por_la_banda: 'Subiditas discretas y constantes. Se cuela por la banda sin que lo marquen.',
+  caida_libre: 'Bajón en picada. Que alguien le abra el paracaídas.',
+  cambio_tactico: 'Cambió la tendencia de golpe. Movió el pizarrón y le funcionó.',
+  // Fondo / banca
+  banca_vip: 'Fuera del top 12, pero en la banca cómoda. Palco con vista a la tabla.',
+  fue_por_las_aguas: 'Último lugar. Lo mandaron por las aguas… y no ha vuelto.',
+  modo_tutorial: 'Últimos lugares con poquitos puntos. Sigue en el tutorial del juego.',
+  todavia_cree: 'Anda abajo, pero sumó algo y no suelta la fe. Aplausos por la actitud.',
+  la_epica_empieza_abajo: 'Último, pero con chance matemático. Toda épica empieza desde el sótano.',
+  no_es_fondo_es_impulso: 'Tocó fondo y rebotó hacia arriba. No era caída, era envión.',
+  cuidando_la_banca: 'Varios cortes fuera del top 12. Ya es el dueño moral de la banca.',
+  hielera_fc: 'Último y sin puntos recientes. Frío, frío… que traigan la hielera.',
+  apenas_calentando: 'Poquito avance todavía. Apenas está entrando en calor.',
+  historia_de_superacion: 'Abajo, pero mejorando jornada a jornada. Documental en proceso.',
+  // Interacción
+  alma_de_estadio: 'El que más mueve la fiesta. Pura alma de estadio en la oficina.',
+  treboles_para_ti: 'La oficina le mandó suerte. Que los tréboles le rindan.',
+  con_toda_la_fe: '5+ tréboles recibidos. Lo están encomendando con todo.',
+  bendicion_colectiva: '10+ suertes encima. Bendición colectiva nivel procesión.',
+  porrista_oficial: 'Lanza porras a cada rato. Porrista oficial con megáfono y todo.',
+  dedo_cansado: 'Tantos taps que ya le duele el dedo. Campeón del botón.',
+  barra_brava: 'Apoya a los equipos con todo. Barra brava de una sola persona.',
+  buuu_con_carino: 'Reparte abucheos… pero a los equipos, con cariño fingido.',
+  trebolero_mayor: 'El que más suerte reparte. Trébolero mayor de la oficina.',
+  el_del_ambiente: 'Siempre poniendo ambiente con reacciones. El alma de la reunión quinielera.'
+};
+
+// Separa el título en texto + emoji (para mostrar el medallón).
+function splitTitle(title) {
+  const m = String(title).match(/[\p{Extended_Pictographic}\p{Regional_Indicator}️‍]+\s*$/u);
+  if (!m) return { label: String(title).trim(), icon: '🏅' };
+  return { label: String(title).slice(0, m.index).trim(), icon: m[0].trim() };
+}
+
+// Cada insignia se enriquece con icono (emoji), etiqueta limpia y flavor creativo.
+const BADGE_BY_ID = Object.fromEntries(BADGES.map(b => {
+  const { label, icon } = splitTitle(b.title);
+  return [b.id, { ...b, label, icon, flavor: BADGE_FLAVOR[b.id] || b.desc }];
+}));
 
 function parseScore(str) {
   const [h, a] = String(str || '').split('-').map(n => Number.parseInt(n, 10));

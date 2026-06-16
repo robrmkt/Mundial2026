@@ -3492,9 +3492,9 @@ img {
   background: rgba(16, 28, 46, 0.55);
   backdrop-filter: blur(4px);
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: center;
-  padding: 2rem 1rem;
+  padding: 1.25rem 1rem;
   overflow-y: auto;
   animation: fadeIn 0.18s ease;
 }
@@ -3503,6 +3503,7 @@ img {
   position: relative;
   width: 340px;
   max-width: 100%;
+  margin: auto;
   border: 5px solid transparent;
   border-radius: 22px;
   background:
@@ -3947,3 +3948,52 @@ img {
 }
 .share-btn.ghost { background: var(--surface); color: var(--green); }
 .share-btn:disabled { opacity: 0.55; cursor: default; }
+
+/* ===== Insignias tipo medalla coleccionable ===== */
+.medal-grid { display: flex; flex-wrap: wrap; gap: 9px; justify-content: center; }
+.medal {
+  width: 50px; height: 50px; border-radius: 50%;
+  display: grid; place-items: center;
+  font-size: 23px; cursor: pointer; position: relative; padding: 0;
+  border: 3px solid;
+  box-shadow: 0 3px 7px rgba(16, 28, 46, .22), inset 0 2px 4px rgba(255, 255, 255, .55);
+  transition: transform .12s ease;
+}
+.medal::after {
+  content: ''; position: absolute; inset: 3px; border-radius: 50%;
+  background: linear-gradient(155deg, rgba(255, 255, 255, .6), transparent 48%); pointer-events: none;
+}
+.medal:hover, .medal:focus-visible { transform: translateY(-2px) scale(1.07); outline: none; }
+.medal .medal-icon { position: relative; z-index: 1; filter: drop-shadow(0 1px 1px rgba(0, 0, 0, .25)); }
+.medal.big { width: 86px; height: 86px; font-size: 40px; border-width: 4px; }
+
+.medal.rarity-legendary { background: radial-gradient(circle at 35% 28%, #fff6cf, #f4b400 55%, #b9850a); border-color: #ffe9a8; box-shadow: 0 0 16px rgba(244, 180, 0, .6), inset 0 2px 5px rgba(255, 255, 255, .6); animation: medalShimmer 2.6s ease-in-out infinite; }
+.medal.rarity-epic { background: radial-gradient(circle at 35% 28%, #efdcff, #9333ea 60%, #6b21a8); border-color: #d8b4fe; box-shadow: 0 0 13px rgba(147, 51, 234, .5), inset 0 2px 5px rgba(255, 255, 255, .5); }
+.medal.rarity-rare { background: radial-gradient(circle at 35% 28%, #dbeafe, #2563eb 60%, #1e40af); border-color: #bfdbfe; box-shadow: 0 0 11px rgba(37, 99, 235, .45), inset 0 2px 5px rgba(255, 255, 255, .5); }
+.medal.rarity-common { background: radial-gradient(circle at 35% 28%, #ffffff, #cbd5e1 60%, #94a3b8); border-color: #e2e8f0; }
+.medal.rarity-meme { background: radial-gradient(circle at 35% 28%, #fde0ef, #ec4899 60%, #be185d); border-color: #fbcfe8; box-shadow: 0 0 11px rgba(236, 72, 153, .45), inset 0 2px 5px rgba(255, 255, 255, .5); }
+@keyframes medalShimmer { 0%, 100% { filter: brightness(1); } 50% { filter: brightness(1.2); } }
+
+.badge-detail-overlay {
+  position: fixed; inset: 0; z-index: 300;
+  background: rgba(16, 28, 46, .62); backdrop-filter: blur(3px);
+  display: flex; align-items: center; justify-content: center; padding: 1.5rem;
+  animation: fadeIn .15s ease;
+}
+.badge-detail {
+  position: relative; background: var(--surface); border-radius: 18px;
+  padding: 1.6rem 1.4rem 1.4rem; max-width: 320px; width: 100%; text-align: center;
+  box-shadow: var(--shadow-pop); animation: stickerIn .32s cubic-bezier(.18, .9, .32, 1.2);
+}
+.badge-detail .medal { margin: 0 auto .7rem; cursor: default; }
+.badge-detail .medal:hover { transform: none; }
+.badge-detail-name { font-family: var(--font-display); font-weight: 800; font-size: 1.4rem; line-height: 1.1; color: var(--text-primary); }
+.badge-detail-rarity { display: inline-block; margin: .45rem 0 .8rem; font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: .05em; padding: 3px 11px; border-radius: 999px; }
+.badge-detail-rarity.rarity-legendary { background: var(--gold-soft); color: var(--gold); }
+.badge-detail-rarity.rarity-epic { background: #efe7fd; color: #6b21a8; }
+.badge-detail-rarity.rarity-rare { background: var(--blue-soft); color: var(--blue); }
+.badge-detail-rarity.rarity-common { background: var(--surface-soft); color: var(--text-secondary); }
+.badge-detail-rarity.rarity-meme { background: #fde9f3; color: #b83280; }
+.badge-detail-flavor { font-size: 14px; line-height: 1.55; color: var(--text-secondary); margin: 0; }
+.badge-detail-close { position: absolute; top: 10px; right: 10px; background: var(--surface-soft); border: none; border-radius: 8px; width: 30px; height: 30px; display: grid; place-items: center; cursor: pointer; color: var(--text-secondary); }
+@media (prefers-reduced-motion: reduce) { .medal.rarity-legendary { animation: none; } }
