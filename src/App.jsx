@@ -11,8 +11,18 @@ import LiveMatches from './components/LiveMatches';
 import { fetchScoreboard, mergeScoreboard } from './services/liveData';
 import { celebrateGoal, celebrateMexicoGoal, celebratePodium, celebrateFinal, celebrateExact, celebrateReaction } from './services/celebrations';
 import { getSession, logout } from './services/auth';
+import {
+  fetchEventsSince,
+  postEvent,
+  hasSeenEvent,
+  markEventSeen,
+  isOwnEvent
+} from './services/sharedEvents';
 
 import initialMatches from './matches.json';
+
+// Emoji por tipo de porra (fallback visual; la lógica usa la clave, no el emoji).
+const REACTION_EMOJI = { confetti: '🎉', balls: '⚽', fire: '🔥', mexico: '🇲🇽', clap: '👏' };
 
 const DATA_VERSION = 'real-data-2026-06-15-v1';
 const DATA_VERSION_KEY = 'quiniela_data_version';
@@ -171,6 +181,7 @@ export default function App() {
   const matchesRef = useRef(matches);
   const sharedDataRef = useRef({ participants: [], documents: [] });
   const persistBusyRef = useRef(0);
+  const eventCursorRef = useRef(null);
 
   useEffect(() => {
     simActiveRef.current = simActive;
@@ -352,6 +363,56 @@ export default function App() {
     return () => clearInterval(interval);
   }, [anyLive, simActive, syncNow]);
 
+  // ---- Bus de eventos compartido (Fase 1): lo que pasa en un navegador se ve en todos ----
+  const handleIncomingEvent = useCallback((event) => {
+    if (!event || hasSeenEvent(event.id)) return;
+    markEventSeen(event.id);
+    if (isOwnEvent(event)) return; // no me re-animo lo que yo mismo lancé
+    const p = event.payload || {};
+    switch (event.type) {
+      case 'reaction':
+        celebrateReaction(p.reaction);
+        pushChatMessage(p.user || 'Oficina', `lanzó una porra ${REACTION_EMOJI[p.reaction] || '🎉'}`, true);
+        break;
+      case 'luck':
+        if (p.target) {
+          celebrateReaction('clap');
+          pushChatMessage('Oficina', `🍀 La oficina le mandó suerte a ${p.target}.`, true);
+        }
+        break;
+      case 'boo':
+        if (p.team) pushChatMessage('Oficina', `👻 La oficina abuchea a ${p.team}.`, true);
+        break;
+      default:
+        break;
+    }
+  }, [pushChatMessage]);
+
+  useEffect(() => {
+    let cancelled = false;
+    let timer = null;
+    const poll = async () => {
+      try {
+        const since = eventCursorRef.current;
+        const { events, serverTime } = await fetchEventsSince(since || undefined);
+        if (cancelled) return;
+        if (!since) {
+          // Primera carga: no re-animamos el historial, solo fijamos el cursor.
+          (events || []).forEach(e => markEventSeen(e.id));
+        } else {
+          (events || []).forEach(handleIncomingEvent);
+        }
+        eventCursorRef.current = serverTime || eventCursorRef.current;
+      } catch {
+        /* silencioso: reintenta en el próximo tick */
+      } finally {
+        if (!cancelled) timer = setTimeout(poll, anyLive ? 2000 : 4500);
+      }
+    };
+    poll();
+    return () => { cancelled = true; if (timer) clearTimeout(timer); };
+  }, [anyLive, handleIncomingEvent]);
+
   // Compute standings with rankings
   const standings = useMemo(() => {
     const scoredList = participants.map(p => {
@@ -474,13 +535,12 @@ export default function App() {
     pushChatMessage('Tú', text);
   };
 
-  // Porra lanzada desde el muro. Fase 1: animación local + nota en el muro.
-  // Fase 2: se emitirá por el canal en vivo para que la vean todos.
-  const REACTION_EMOJI = { confetti: '🎉', balls: '⚽', fire: '🔥', mexico: '🇲🇽', clap: '👏' };
+  // Porra lanzada desde el muro: anima local, lo deja en el muro y lo emite al
+  // bus para que TODOS los navegadores lo vean (Fase 1).
   const handleReaction = useCallback((type) => {
     celebrateReaction(type);
     pushChatMessage('Tú', `lanzó una porra ${REACTION_EMOJI[type] || '🎉'}`, true);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    postEvent({ type: 'reaction', payload: { reaction: type, user: 'Alguien' } });
   }, [pushChatMessage]);
 
   const handleReset = () => {

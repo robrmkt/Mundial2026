@@ -7,12 +7,35 @@ const __dirname = fileURLToPath(new URL('.', import.meta.url));
 const distDir = resolve(__dirname, 'dist');
 const dataDir = process.env.DATA_DIR || resolve(__dirname, 'data');
 const stateFile = resolve(dataDir, 'shared-state.json');
+const avatarsDir = resolve(dataDir, 'avatars');
 const port = Number(process.env.PORT) || 4173;
 
+// Estado compartido ampliado (V4). Cada colección nueva es opcional y arranca
+// vacía: NUNCA debe pisar `participants`/`documents` existentes. La fuente de la
+// verdad es este archivo; sin volumen persistente en Railway se borra al redeploy.
 const defaultState = {
   participants: [],
   documents: [],
+  events: [],
+  luckWishes: [],
+  boos: [],
+  support: {},
+  rankingSnapshots: [],
+  podiumHistory: {},
+  leaderHistory: [],
+  lastProcessedFeedEvents: {},
+  userActivity: {},
   updatedAt: null
+};
+
+// Límites de limpieza para que el JSON no crezca sin control.
+const LIMITS = {
+  events: 200,
+  rankingSnapshots: 30,
+  leaderHistory: 50,
+  luckWindowMs: 15 * 60 * 1000, // la suerte dura 15 minutos
+  booWindowMs: 5 * 60 * 1000,   // los abucheos viven 5 minutos
+  dedupeWindowMs: 60 * 1000     // mismo dedupeKey en <1 min = duplicado
 };
 
 const contentTypes = {
@@ -32,35 +55,99 @@ const contentTypes = {
 
 function ensureDataFile() {
   if (!existsSync(dataDir)) mkdirSync(dataDir, { recursive: true });
+  if (!existsSync(avatarsDir)) mkdirSync(avatarsDir, { recursive: true });
   if (!existsSync(stateFile)) {
     writeFileSync(stateFile, JSON.stringify(defaultState, null, 2));
   }
 }
 
+const isObject = (v) => v !== null && typeof v === 'object' && !Array.isArray(v);
+const asArray = (v) => (Array.isArray(v) ? v : []);
+const asObject = (v) => (isObject(v) ? v : {});
+const toMs = (v) => (typeof v === 'number' ? v : Date.parse(v) || 0);
+
+// Normaliza cualquier objeto a la forma completa del estado, sin perder colecciones.
+function coerceState(parsed) {
+  const p = isObject(parsed) ? parsed : {};
+  return {
+    participants: asArray(p.participants),
+    documents: asArray(p.documents),
+    events: asArray(p.events),
+    luckWishes: asArray(p.luckWishes),
+    boos: asArray(p.boos),
+    support: asObject(p.support),
+    rankingSnapshots: asArray(p.rankingSnapshots),
+    podiumHistory: asObject(p.podiumHistory),
+    leaderHistory: asArray(p.leaderHistory),
+    lastProcessedFeedEvents: asObject(p.lastProcessedFeedEvents),
+    userActivity: asObject(p.userActivity),
+    updatedAt: p.updatedAt || null
+  };
+}
+
 function readState() {
   ensureDataFile();
   try {
-    const parsed = JSON.parse(readFileSync(stateFile, 'utf8'));
-    return {
-      participants: Array.isArray(parsed.participants) ? parsed.participants : [],
-      documents: Array.isArray(parsed.documents) ? parsed.documents : [],
-      updatedAt: parsed.updatedAt || null
-    };
+    return coerceState(JSON.parse(readFileSync(stateFile, 'utf8')));
   } catch (error) {
     console.error('Unable to read shared state:', error);
-    return defaultState;
+    return coerceState(defaultState);
   }
+}
+
+// Aplica los topes/ventanas de limpieza. Se corre en cada escritura.
+function pruneState(state) {
+  const now = Date.now();
+  return {
+    ...state,
+    events: state.events.slice(-LIMITS.events),
+    luckWishes: state.luckWishes.filter(w => now - toMs(w.createdAt) <= LIMITS.luckWindowMs),
+    boos: state.boos.filter(b => now - toMs(b.createdAt) <= LIMITS.booWindowMs),
+    rankingSnapshots: state.rankingSnapshots.slice(-LIMITS.rankingSnapshots),
+    leaderHistory: state.leaderHistory.slice(-LIMITS.leaderHistory)
+  };
 }
 
 function writeState(nextState) {
   ensureDataFile();
-  const state = {
-    participants: Array.isArray(nextState.participants) ? nextState.participants : [],
-    documents: Array.isArray(nextState.documents) ? nextState.documents : [],
-    updatedAt: new Date().toISOString()
+  const merged = pruneState(coerceState(nextState));
+  merged.updatedAt = new Date().toISOString();
+  writeFileSync(stateFile, JSON.stringify(merged, null, 2));
+  return merged;
+}
+
+function makeId(prefix) {
+  return `${prefix}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
+}
+
+// ---- Canal de eventos compartido (el "bus" que ven todos los navegadores) ----
+
+function appendEvent(state, rawEvent) {
+  const now = Date.now();
+  const event = {
+    id: rawEvent.id || makeId('evt'),
+    type: rawEvent.type || 'generic',
+    dedupeKey: rawEvent.dedupeKey || '',
+    payload: asObject(rawEvent.payload),
+    createdAt: new Date().toISOString()
   };
-  writeFileSync(stateFile, JSON.stringify(state, null, 2));
-  return state;
+  // Dedupe: mismo dedupeKey dentro de la ventana corta => lo descartamos.
+  if (event.dedupeKey) {
+    const dupe = state.events.some(e =>
+      e.dedupeKey && e.dedupeKey === event.dedupeKey &&
+      now - toMs(e.createdAt) <= LIMITS.dedupeWindowMs
+    );
+    if (dupe) return { state, event: null, deduped: true };
+  }
+  return { state: { ...state, events: [...state.events, event] }, event, deduped: false };
+}
+
+function sendJson(response, statusCode, payload) {
+  response.writeHead(statusCode, {
+    'Content-Type': 'application/json; charset=utf-8',
+    'Cache-Control': 'no-store'
+  });
+  response.end(JSON.stringify(payload));
 }
 
 function readBody(request) {
@@ -80,17 +167,35 @@ function readBody(request) {
   });
 }
 
-function sendJson(response, statusCode, payload) {
-  response.writeHead(statusCode, {
-    'Content-Type': 'application/json; charset=utf-8',
-    'Cache-Control': 'no-store'
+async function readJsonBody(request) {
+  const body = await readBody(request);
+  return JSON.parse(body || '{}');
+}
+
+function serveAvatar(response, requestedPath) {
+  const name = normalize(requestedPath.replace(/^\/avatars\//, ''));
+  const filePath = resolve(avatarsDir, `./${name}`);
+  if (!filePath.startsWith(avatarsDir) || !existsSync(filePath)) {
+    sendJson(response, 404, { error: 'Avatar not found' });
+    return;
+  }
+  response.writeHead(200, {
+    'Content-Type': contentTypes[extname(filePath)] || 'application/octet-stream',
+    'Cache-Control': 'public, max-age=86400'
   });
-  response.end(JSON.stringify(payload));
+  createReadStream(filePath).pipe(response);
 }
 
 function serveStatic(request, response) {
   const url = new URL(request.url, `http://${request.headers.host}`);
   const requestedPath = normalize(decodeURIComponent(url.pathname));
+
+  // Las fotos subidas por el admin se guardan en el volumen, fuera de /dist.
+  if (requestedPath.startsWith('/avatars/')) {
+    serveAvatar(response, requestedPath);
+    return;
+  }
+
   const filePath = requestedPath === '/'
     ? join(distDir, 'index.html')
     : resolve(distDir, `.${requestedPath}`);
@@ -113,20 +218,121 @@ function serveStatic(request, response) {
 
 const server = createServer(async (request, response) => {
   try {
-    if (request.url?.startsWith('/api/state')) {
+    const url = new URL(request.url || '/', `http://${request.headers.host}`);
+    const path = url.pathname;
+
+    // ---- Estado completo (participantes, documentos y todo lo demás) ----
+    if (path === '/api/state') {
       if (request.method === 'GET') {
         sendJson(response, 200, readState());
         return;
       }
-
       if (request.method === 'PUT') {
-        const body = await readBody(request);
-        const parsed = JSON.parse(body || '{}');
+        const parsed = await readJsonBody(request);
+        // Merge superficial sobre el estado actual: un PUT parcial (p.ej. solo
+        // {participants}) conserva el resto de colecciones intactas.
         sendJson(response, 200, writeState({ ...readState(), ...parsed }));
         return;
       }
-
       sendJson(response, 405, { error: 'Method not allowed' });
+      return;
+    }
+
+    // ---- Bus de eventos: GET lee desde un timestamp, POST publica uno ----
+    if (path === '/api/events') {
+      if (request.method === 'GET') {
+        const sinceRaw = url.searchParams.get('since');
+        const since = sinceRaw ? toMs(sinceRaw) : 0;
+        const state = readState();
+        const events = since
+          ? state.events.filter(e => toMs(e.createdAt) > since)
+          : state.events.slice(-50);
+        sendJson(response, 200, { events, serverTime: new Date().toISOString() });
+        return;
+      }
+      if (request.method === 'POST') {
+        const parsed = await readJsonBody(request);
+        const { state, event, deduped } = appendEvent(readState(), parsed.event || parsed);
+        if (!deduped) writeState(state);
+        sendJson(response, 200, { event, deduped, serverTime: new Date().toISOString() });
+        return;
+      }
+      sendJson(response, 405, { error: 'Method not allowed' });
+      return;
+    }
+
+    // ---- Suerte (tréboles) a un participante: dura 15 min + emite evento ----
+    if (path === '/api/luck' && request.method === 'POST') {
+      const { target, clientId } = await readJsonBody(request);
+      const base = readState();
+      const wish = {
+        id: makeId('luck'),
+        target: String(target || ''),
+        clientId: String(clientId || ''),
+        createdAt: new Date().toISOString()
+      };
+      const withWish = { ...base, luckWishes: [...base.luckWishes, wish] };
+      const { state, event } = appendEvent(withWish, {
+        type: 'luck',
+        dedupeKey: `luck|${wish.target}|${wish.clientId}|${Math.floor(Date.now() / 5000)}`,
+        payload: { target: wish.target }
+      });
+      const saved = writeState(state);
+      const count = saved.luckWishes.filter(w => w.target === wish.target).length;
+      sendJson(response, 200, { wish, count, event });
+      return;
+    }
+
+    // ---- Apoyo a un equipo de un partido (taps agrupados en el cliente) ----
+    if (path === '/api/support' && request.method === 'POST') {
+      const { matchId, side, amount } = await readJsonBody(request);
+      const base = readState();
+      const key = String(matchId);
+      const bucket = asObject(base.support[key]);
+      const add = Number.isFinite(Number(amount)) ? Math.max(1, Math.min(50, Number(amount))) : 1;
+      const nextBucket = {
+        home: Number(bucket.home || 0) + (side === 'home' ? add : 0),
+        away: Number(bucket.away || 0) + (side === 'away' ? add : 0)
+      };
+      const saved = writeState({ ...base, support: { ...base.support, [key]: nextBucket } });
+      sendJson(response, 200, { matchId: key, support: saved.support[key] });
+      return;
+    }
+
+    // ---- Abucheo a un equipo (nunca a personas): vive 5 min + emite evento ----
+    if (path === '/api/boo' && request.method === 'POST') {
+      const { matchId, team, clientId } = await readJsonBody(request);
+      const base = readState();
+      const boo = {
+        id: makeId('boo'),
+        matchId: String(matchId || ''),
+        team: String(team || ''),
+        clientId: String(clientId || ''),
+        createdAt: new Date().toISOString()
+      };
+      const withBoo = { ...base, boos: [...base.boos, boo] };
+      const { state, event } = appendEvent(withBoo, {
+        type: 'boo',
+        dedupeKey: `boo|${boo.matchId}|${boo.team}|${boo.clientId}|${Math.floor(Date.now() / 3000)}`,
+        payload: { team: boo.team, matchId: boo.matchId }
+      });
+      const saved = writeState(state);
+      const count = saved.boos.filter(b => b.matchId === boo.matchId && b.team === boo.team).length;
+      sendJson(response, 200, { boo, count, event });
+      return;
+    }
+
+    // ---- Snapshot del ranking (para flechas de movimiento ▲▼) ----
+    if (path === '/api/ranking-snapshot' && request.method === 'POST') {
+      const { snapshot } = await readJsonBody(request);
+      const base = readState();
+      const entry = {
+        id: makeId('snap'),
+        createdAt: new Date().toISOString(),
+        ranking: asArray(snapshot) // [{ name, rank, points }]
+      };
+      const saved = writeState({ ...base, rankingSnapshots: [...base.rankingSnapshots, entry] });
+      sendJson(response, 200, { snapshot: entry, total: saved.rankingSnapshots.length });
       return;
     }
 
