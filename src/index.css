@@ -596,9 +596,49 @@ img {
   .app-container.dashboard-active .command-grid .command-right .support-title {
     font-size: 0.9rem;
   }
-  .app-container.dashboard-active .command-grid .command-right .support-line,
+  .app-container.dashboard-active .command-grid .command-right .support-label {
+    font-size: 0.58rem;
+  }
+  .app-container.dashboard-active .command-grid .command-right .support-pred {
+    font-size: 0.72rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .app-container.dashboard-active .command-grid .command-right .support-bar {
+    height: 16px;
+  }
   .app-container.dashboard-active .command-grid .command-right .support-actions {
-    display: none;
+    gap: 0.45rem;
+    flex-wrap: nowrap;
+  }
+  .app-container.dashboard-active .command-grid .command-right .support-team {
+    min-width: 0;
+    flex: 1 1 0;
+    gap: 0.45rem;
+  }
+  .app-container.dashboard-active .command-grid .command-right .support-team-name {
+    min-width: 0;
+    font-size: 0.7rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .app-container.dashboard-active .command-grid .command-right .sup-controls {
+    gap: 0.3rem;
+    flex-shrink: 0;
+  }
+  .app-container.dashboard-active .command-grid .command-right .sup-ball {
+    width: 32px;
+    height: 32px;
+  }
+  .app-container.dashboard-active .command-grid .command-right .sup-ball-emoji {
+    font-size: 18px;
+  }
+  .app-container.dashboard-active .command-grid .command-right .sup-boo {
+    width: 30px;
+    height: 30px;
+    font-size: 15px;
   }
   .app-container.dashboard-active .command-grid .command-right .standings-card {
     flex: 1;
@@ -960,6 +1000,46 @@ img {
 
 .reaction-btn:hover { border-color: var(--border-strong); transform: translateY(-2px); }
 .reaction-btn:active { transform: scale(0.9); }
+
+.host-flag {
+  width: 24px;
+  height: 16px;
+  border-radius: 3px;
+  border: 1px solid rgba(16, 28, 46, 0.18);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.22);
+  display: inline-block;
+  position: relative;
+  overflow: hidden;
+}
+.host-flag-mx {
+  background: linear-gradient(90deg, #006847 0 33.3%, #fff 33.3% 66.6%, #ce1126 66.6% 100%);
+}
+.host-flag-ca {
+  background: linear-gradient(90deg, #d80621 0 25%, #fff 25% 75%, #d80621 75% 100%);
+}
+.host-flag-ca::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 3px;
+  width: 6px;
+  height: 9px;
+  transform: translateX(-50%);
+  background: #d80621;
+  clip-path: polygon(50% 0, 62% 26%, 92% 14%, 78% 45%, 100% 55%, 68% 62%, 72% 100%, 50% 78%, 28% 100%, 32% 62%, 0 55%, 22% 45%, 8% 14%, 38% 26%);
+}
+.host-flag-us {
+  background:
+    linear-gradient(#b22234 0 7.69%, #fff 7.69% 15.38%, #b22234 15.38% 23.07%, #fff 23.07% 30.76%, #b22234 30.76% 38.45%, #fff 38.45% 46.14%, #b22234 46.14% 53.83%, #fff 53.83% 61.52%, #b22234 61.52% 69.21%, #fff 69.21% 76.9%, #b22234 76.9% 84.59%, #fff 84.59% 92.28%, #b22234 92.28% 100%);
+}
+.host-flag-us::before {
+  content: '';
+  position: absolute;
+  inset: 0 auto auto 0;
+  width: 11px;
+  height: 9px;
+  background: #3c3b6e;
+}
 
 /* ============ Dashboard: ticker en vivo (legado) ============ */
 

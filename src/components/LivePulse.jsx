@@ -7,13 +7,25 @@ const REACTIONS = [
   { key: 'confetti', emoji: '🎉', label: 'Confeti' },
   { key: 'balls', emoji: '⚽', label: 'Balones' },
   { key: 'fire', emoji: '🔥', label: 'Fuego' },
-  { key: 'mexico', emoji: '🇲🇽', label: 'México' },
-  { key: 'canada', emoji: '🇨🇦', label: 'Canadá' },
-  { key: 'usa', emoji: '🇺🇸', label: 'USA' },
+  { key: 'mexico', flag: 'mx', label: 'México' },
+  { key: 'canada', flag: 'ca', label: 'Canadá' },
+  { key: 'usa', flag: 'us', label: 'USA' },
   { key: 'luck', emoji: '🍀', label: 'Suerte' },
   { key: 'buzz', emoji: '🥁', label: 'Zumbido' },
   { key: 'clap', emoji: '👏', label: 'Aplausos' }
 ];
+
+function ReactionIcon({ reaction }) {
+  if (reaction.flag) {
+    return (
+      <span
+        className={`host-flag host-flag-${reaction.flag}`}
+        aria-hidden="true"
+      />
+    );
+  }
+  return reaction.emoji;
+}
 
 function relativeTime(iso, nowMs) {
   if (!iso) return '';
@@ -261,7 +273,7 @@ export default function LivePulse({ matches, chatMessages, onSendMessage, onReac
               aria-label={r.label}
               onClick={() => onReaction(r.key)}
             >
-              {r.emoji}
+              <ReactionIcon reaction={r} />
             </button>
           ))}
         </div>
