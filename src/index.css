@@ -507,8 +507,11 @@ img {
   }
 }
 
-/* ===== Dashboard "cero scroll" para proyección (≥1024px) ===== */
-@media (min-width: 1024px) {
+/* ===== Dashboard "cero scroll" SOLO en pantallas altas (TV/monitor grande) =====
+   En laptops de 14" (alto chico) NO se bloquea: la página hace scroll normal y se
+   ve TODO (podio, pulso, tabla completa) sin recortes. El bloqueo aplica únicamente
+   a partir de ~940px de alto, donde sí cabe el centro de mando completo. */
+@media (min-width: 1024px) and (min-height: 940px) {
   .app-container.dashboard-active {
     height: 100vh;
     overflow: hidden;
