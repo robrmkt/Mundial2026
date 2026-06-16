@@ -16,14 +16,11 @@ import { getSession, logout } from './services/auth';
 import {
   fetchEventsSince,
   postEvent,
-  postRankingSnapshot,
-  postPodiumTick,
   hasSeenEvent,
   markEventSeen,
   isOwnEvent
 } from './services/sharedEvents';
-import { computeMovement, toSnapshot } from './services/rankingHistory';
-import { getLegend } from './services/podiumTime';
+import { computePodiumAndMovement } from './services/podiumReplay';
 
 import initialMatches from './matches.json';
 
@@ -170,8 +167,6 @@ export default function App() {
   const [participants, setParticipantsState] = useState([]);
   const [documents, setDocumentsState] = useState([]);
   const [support, setSupportState] = useState({});
-  const [rankingSnapshots, setRankingSnapshots] = useState([]);
-  const [podiumHistory, setPodiumHistory] = useState({});
   const [chatMessages, setChatMessages] = useLocalStorage('quiniela_chat', [
     { id: 1, user: 'Sistema', time: '12:00', text: '¡Bienvenidos a la Quiniela del Mundial 26! Que gane el mejor. 🏆' }
   ]);
@@ -183,6 +178,8 @@ export default function App() {
   const [syncState, setSyncState] = useState({ status: 'idle', lastSync: null });
   const [session, setSession] = useState(getSession);
   const [, setSharedState] = useState({ status: 'loading', lastSync: null });
+  // Reloj lento (cada 60 s) para refrescar el "tiempo en podio" sin re-render por segundo.
+  const [nowTs, setNowTs] = useState(() => Date.now());
 
   const simIntervalRef = useRef(null);
   const simActiveRef = useRef(simActive);
@@ -240,13 +237,9 @@ export default function App() {
       const nextParticipants = Array.isArray(data.participants) ? data.participants : [];
       const nextDocuments = Array.isArray(data.documents) ? data.documents : [];
       const nextSupport = data.support && typeof data.support === 'object' && !Array.isArray(data.support) ? data.support : {};
-      const nextSnaps = Array.isArray(data.rankingSnapshots) ? data.rankingSnapshots : [];
-      const nextPodium = data.podiumHistory && typeof data.podiumHistory === 'object' && !Array.isArray(data.podiumHistory) ? data.podiumHistory : {};
       setParticipantsState(nextParticipants);
       setDocumentsState(nextDocuments);
       setSupportState(nextSupport);
-      setRankingSnapshots(nextSnaps);
-      setPodiumHistory(nextPodium);
       sharedDataRef.current = { participants: nextParticipants, documents: nextDocuments };
       setSharedState({ status: 'ok', lastSync: new Date() });
     } catch (error) {
@@ -463,37 +456,18 @@ export default function App() {
     return sorted.map((p, idx) => ({ ...p, rank: idx + 1 }));
   }, [matches, participants]);
 
-  // ---- Fase 6: movimiento de ranking + tiempo en podio (Modo Leyenda) ----
-  const standingsRef = useRef(standings);
-  useEffect(() => { standingsRef.current = standings; }, [standings]);
+  // ---- Movimiento de ranking + tiempo en podio (Modo Leyenda) ----
+  // Cálculo RETROACTIVO desde el inicio del Mundial: tiempo real acumulado en el
+  // top-3 según los resultados (no ticks en vivo), y movimiento vs el último partido.
+  const { podiumMs, legend, movement } = useMemo(
+    () => computePodiumAndMovement(matches, participants, nowTs),
+    [matches, participants, nowTs]
+  );
 
-  const movement = useMemo(() => computeMovement(standings, rankingSnapshots), [standings, rankingSnapshots]);
-  const legend = useMemo(() => getLegend(podiumHistory), [podiumHistory]);
-
-  // Guarda un snapshot del ranking cuando termina un partido (baseline del movimiento).
-  const finishedCount = useMemo(() => matches.filter(m => m.status === 'FINISHED').length, [matches]);
-  const prevFinishedRef = useRef(null);
+  // Refresca el reloj cada 60 s para que el "tiempo en podio" siga avanzando.
   useEffect(() => {
-    if (participants.length === 0) return;
-    if (prevFinishedRef.current === null) { prevFinishedRef.current = finishedCount; return; }
-    if (finishedCount > prevFinishedRef.current) {
-      prevFinishedRef.current = finishedCount;
-      postRankingSnapshot(toSnapshot(standingsRef.current)).then(res => {
-        if (res?.snapshot) setRankingSnapshots(prev => [...prev, res.snapshot].slice(-30));
-      });
-    }
-  }, [finishedCount, participants.length]);
-
-  // Acumula tiempo en el podio: tick cada 60 s con el top 3 actual.
-  useEffect(() => {
-    const tick = () => {
-      const top3 = standingsRef.current.slice(0, 3).map(p => p.name).filter(Boolean);
-      if (top3.length === 0) return;
-      postPodiumTick(top3).then(res => { if (res?.podiumHistory) setPodiumHistory(res.podiumHistory); });
-    };
-    const first = setTimeout(tick, 4000);
-    const id = setInterval(tick, 60000);
-    return () => { clearTimeout(first); clearInterval(id); };
+    const id = setInterval(() => setNowTs(Date.now()), 60000);
+    return () => clearInterval(id);
   }, []);
 
   // Celebración cuando cambia el líder del podio.
@@ -739,7 +713,7 @@ export default function App() {
             chatMessages={chatMessages}
             support={support}
             movement={movement}
-            podiumHistory={podiumHistory}
+            podiumMs={podiumMs}
             legend={legend}
             onSendMessage={handleManualChatMessage}
             onReaction={handleReaction}

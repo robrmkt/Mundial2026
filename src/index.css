@@ -480,11 +480,19 @@ img {
 
   .command-grid .podium-section { grid-area: podium; }
   .command-grid .pulse-panel { grid-area: pulse; min-height: 0; }
-  .command-grid .standings-card {
+  /* Columna derecha: Pulso de la oficina (pequeño, arriba) + Tabla (grande, abajo) */
+  .command-grid .command-right {
     grid-area: standings;
     display: flex;
     flex-direction: column;
+    gap: 0.9rem;
     min-height: 0;
+  }
+  .command-grid .command-right .standings-card {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    flex: 1;
   }
   .command-grid .standings-card .standings-table-container {
     overflow-y: auto;
@@ -517,10 +525,14 @@ img {
     min-height: 0;
     grid-template-rows: auto minmax(0, 1fr);
   }
-  /* La tabla ocupa toda la altura de la columna derecha, con scroll SOLO interno */
-  .app-container.dashboard-active .command-grid .standings-card {
+  /* La columna derecha llena el alto; el Pulso queda chico arriba y la tabla
+     ocupa el resto con scroll SOLO interno. */
+  .app-container.dashboard-active .command-grid .command-right {
     height: 100%;
     max-height: 100%;
+  }
+  .app-container.dashboard-active .command-grid .command-right .support-meter {
+    flex-shrink: 0;
   }
   /* El podio ocupa su altura natural; el muro/pulso llena el resto a la izquierda */
   .app-container.dashboard-active .command-grid .pulse-panel {
@@ -3997,3 +4009,41 @@ img {
 .badge-detail-flavor { font-size: 14px; line-height: 1.55; color: var(--text-secondary); margin: 0; }
 .badge-detail-close { position: absolute; top: 10px; right: 10px; background: var(--surface-soft); border: none; border-radius: 8px; width: 30px; height: 30px; display: grid; place-items: center; cursor: pointer; color: var(--text-secondary); }
 @media (prefers-reduced-motion: reduce) { .medal.rarity-legendary { animation: none; } }
+
+/* ===== Ajustes: Pulso de la oficina compacto + Leyenda en el podio/fila ===== */
+/* El "Pulso de la oficina" va como recuadro PEQUEÑO encima de la tabla. */
+.command-right .support-meter {
+  gap: 6px;
+  padding: 0.7rem 0.95rem;
+}
+.command-right .support-title { font-size: 0.98rem; }
+.command-right .support-bar { height: 20px; }
+.command-right .support-actions { gap: 8px; }
+.command-right .sup-btn { padding: 4px 10px; }
+
+/* Etiqueta de Leyenda DENTRO de la tarjeta del podio de esa persona. */
+.podium-legend-tag {
+  margin-top: 0.3rem;
+  font-size: 0.6rem;
+  font-weight: 800;
+  color: #6b4e00;
+  background: var(--gold-soft);
+  border: 1px solid var(--gold-bright);
+  border-radius: 999px;
+  padding: 0.12rem 0.5rem;
+  white-space: nowrap;
+  line-height: 1.2;
+}
+
+/* Tags junto al nombre en la tabla (líder/podio + leyenda). */
+.standings-tags { display: inline-flex; align-items: center; gap: 0.3rem; flex-wrap: wrap; }
+.standings-legend-chip {
+  font-size: 0.56rem;
+  font-weight: 800;
+  color: #6b4e00;
+  background: var(--gold-soft);
+  border: 1px solid var(--gold-bright);
+  border-radius: 999px;
+  padding: 0.05rem 0.4rem;
+  white-space: nowrap;
+}

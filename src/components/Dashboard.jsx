@@ -4,10 +4,10 @@ import LivePulse from './LivePulse';
 import PlayerCard from './PlayerCard';
 import SupportMeter from './SupportMeter';
 import RankMovement from './RankMovement';
-import { podiumMsFor, formatPodiumTime } from '../services/podiumTime';
+import { formatPodiumTime } from '../services/podiumTime';
 
 // Pódium de los tres primeros lugares
-function Podium({ topThree, onSelect }) {
+function Podium({ topThree, onSelect, legend }) {
   const [first, second, third] = topThree;
 
   const renderStep = (player, place) => {
@@ -41,6 +41,11 @@ function Podium({ topThree, onSelect }) {
             <span title="Marcadores exactos">{player.exactHits} exactos</span>
             <span title="Efectividad">{player.effectiveness}%</span>
           </div>
+          {legend?.name === player.name && (
+            <span className="podium-legend-tag" title="Más tiempo acumulado en el podio desde el inicio del Mundial">
+              🏛️ Leyenda · {formatPodiumTime(legend.totalMs)}
+            </span>
+          )}
         </button>
         <div className="podium-block">{meta.label}</div>
       </div>
@@ -62,7 +67,7 @@ function Podium({ topThree, onSelect }) {
   );
 }
 
-export default function Dashboard({ standings, matches = [], chatMessages = [], support = {}, movement = {}, podiumHistory = {}, legend = null, onSendMessage, onReaction }) {
+export default function Dashboard({ standings, matches = [], chatMessages = [], support = {}, movement = {}, podiumMs = {}, legend = null, onSendMessage, onReaction }) {
   const topThree = standings.slice(0, 3);
   const [selected, setSelected] = useState(null);
 
@@ -74,14 +79,7 @@ export default function Dashboard({ standings, matches = [], chatMessages = [], 
 
   return (
     <div className="command-grid">
-      <Podium topThree={topThree} onSelect={openCard} />
-
-      {legend && (
-        <div className="legend-banner" title="Mayor tiempo acumulado en el top 3">
-          <span className="legend-emoji">🏛️</span>
-          <span><strong>Leyenda del Podio:</strong> {legend.name} · {formatPodiumTime(legend.totalMs)} en el podio</span>
-        </div>
-      )}
+      <Podium topThree={topThree} onSelect={openCard} legend={legend} />
 
       <LivePulse
         matches={matches}
@@ -90,9 +88,10 @@ export default function Dashboard({ standings, matches = [], chatMessages = [], 
         onReaction={onReaction}
       />
 
-      <SupportMeter matches={matches} standings={standings} support={support} />
+      <div className="command-right">
+        <SupportMeter matches={matches} standings={standings} support={support} />
 
-      <div className="page-card standings-card">
+        <div className="page-card standings-card">
         <div className="standings-table-header">
           <h3 className="section-title">
             <Medal size={20} />
@@ -140,11 +139,16 @@ export default function Dashboard({ standings, matches = [], chatMessages = [], 
                         )}
                         <div className="standings-name-wrapper">
                           <span className="standings-user-name">{p.name}</span>
-                          {isTopThree && (
-                            <span className="standings-badge-tag">
-                              {p.rank === 1 ? 'Líder' : p.rank === 2 ? 'Sublíder' : 'Podio'}
-                            </span>
-                          )}
+                          <span className="standings-tags">
+                            {isTopThree && (
+                              <span className="standings-badge-tag">
+                                {p.rank === 1 ? 'Líder' : p.rank === 2 ? 'Sublíder' : 'Podio'}
+                              </span>
+                            )}
+                            {legend?.name === p.name && (
+                              <span className="standings-legend-chip" title={`Leyenda del Podio · ${formatPodiumTime(podiumMs[p.name] || 0)} en el podio`}>🏛️ Leyenda</span>
+                            )}
+                          </span>
                         </div>
                       </div>
                     </td>
@@ -176,6 +180,7 @@ export default function Dashboard({ standings, matches = [], chatMessages = [], 
           </table>
         </div>
       </div>
+      </div>
 
       {selected && (
         <PlayerCard
@@ -184,7 +189,7 @@ export default function Dashboard({ standings, matches = [], chatMessages = [], 
           totalParticipants={standings.length}
           todayKey={selected.todayKey}
           rankDelta={movement[selected.player.name]}
-          podiumMs={podiumMsFor(podiumHistory, selected.player.name)}
+          podiumMs={podiumMs[selected.player.name] || 0}
           isLegend={legend?.name === selected.player.name}
           onClose={() => setSelected(null)}
         />
