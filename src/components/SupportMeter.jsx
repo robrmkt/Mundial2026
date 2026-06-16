@@ -44,6 +44,34 @@ function floatPlusOne(el, color) {
   setTimeout(() => span.remove(), 750);
 }
 
+const BOO_WORDS = ['¡buuu!', 'buuu', '¡buuu!'];
+// Abucheo: fantasmitas que suben + palabras "buuu" flotando.
+function booFx(el) {
+  if (!el) return;
+  const r = el.getBoundingClientRect();
+  const cx = r.left + r.width / 2;
+  BOO_WORDS.forEach((txt, i) => {
+    const s = document.createElement('span');
+    s.className = 'sup-boo-word';
+    s.textContent = txt;
+    s.style.left = `${cx + (i - 1) * 26}px`;
+    s.style.top = `${r.top}px`;
+    s.style.animationDelay = `${i * 0.09}s`;
+    document.body.appendChild(s);
+    setTimeout(() => s.remove(), 1050);
+  });
+  for (let i = 0; i < 3; i++) {
+    const g = document.createElement('span');
+    g.className = 'sup-ghost';
+    g.textContent = '👻';
+    g.style.left = `${cx + (Math.random() * 70 - 35)}px`;
+    g.style.top = `${r.top}px`;
+    g.style.animationDelay = `${Math.random() * 0.25}s`;
+    document.body.appendChild(g);
+    setTimeout(() => g.remove(), 1300);
+  }
+}
+
 function predictionSplit(standings, matchId) {
   let home = 0, draw = 0, away = 0, total = 0;
   standings.forEach(p => {
@@ -161,10 +189,10 @@ export default function SupportMeter({ matches = [], standings = [], support = {
             </button>
             <button
               className="sup-boo"
-              onClick={(e) => { boo('home'); e.currentTarget.classList.remove('thrown'); void e.currentTarget.offsetWidth; e.currentTarget.classList.add('thrown'); }}
+              onClick={(e) => { boo('home'); booFx(e.currentTarget); }}
               aria-label={`Abuchear a ${match.homeTeam}`}
-              title="Lanzar tomatazo"
-            >🍅</button>
+              title="¡Abuchear!"
+            >👻</button>
           </div>
         </div>
         <div className="support-team">
@@ -180,10 +208,10 @@ export default function SupportMeter({ matches = [], standings = [], support = {
             </button>
             <button
               className="sup-boo"
-              onClick={(e) => { boo('away'); e.currentTarget.classList.remove('thrown'); void e.currentTarget.offsetWidth; e.currentTarget.classList.add('thrown'); }}
+              onClick={(e) => { boo('away'); booFx(e.currentTarget); }}
               aria-label={`Abuchear a ${match.awayTeam}`}
-              title="Lanzar tomatazo"
-            >🍅</button>
+              title="¡Abuchear!"
+            >👻</button>
           </div>
         </div>
       </div>

@@ -3873,7 +3873,7 @@ img {
 .ticker-live { color: var(--live); font-weight: 700; }
 .ticker-next { color: var(--text-primary); }
 .ticker-marquee { flex: 1; overflow: hidden; }
-.ticker-track { display: inline-flex; gap: 28px; animation: tickerScroll 40s linear infinite; }
+.ticker-track { display: inline-flex; gap: 28px; animation: tickerScroll 80s linear infinite; }
 .ticker-marquee:hover .ticker-track { animation-play-state: paused; }
 .ticker-rest { color: var(--text-faint); }
 @keyframes tickerScroll { from { transform: translateX(0); } to { transform: translateX(-50%); } }
@@ -4116,4 +4116,83 @@ img {
 
 @media (prefers-reduced-motion: reduce) {
   .sup-ball-emoji { animation: none; }
+}
+
+/* ===== Ajustes V5: resplandor en el podio, zumbido (buzz) y abucheo fantasma ===== */
+
+/* Resplandor del podio: oro notorio (1º), plata y bronce mucho más discretos. */
+.podium-step.gold .podium-card { animation: podiumGlowGold 2.8s ease-in-out infinite; }
+.podium-step.silver .podium-card { animation: podiumGlowSilver 3.6s ease-in-out infinite; }
+.podium-step.bronze .podium-card { animation: podiumGlowBronze 3.6s ease-in-out infinite; }
+
+@keyframes podiumGlowGold {
+  0%, 100% { box-shadow: var(--shadow-card), 0 0 0 0 rgba(244, 180, 0, 0); }
+  50% { box-shadow: var(--shadow-card), 0 0 22px 3px rgba(244, 180, 0, 0.5); }
+}
+@keyframes podiumGlowSilver {
+  0%, 100% { box-shadow: var(--shadow-card), 0 0 0 0 rgba(150, 163, 180, 0); }
+  50% { box-shadow: var(--shadow-card), 0 0 12px 1px rgba(150, 163, 180, 0.32); }
+}
+@keyframes podiumGlowBronze {
+  0%, 100% { box-shadow: var(--shadow-card), 0 0 0 0 rgba(200, 136, 79, 0); }
+  50% { box-shadow: var(--shadow-card), 0 0 12px 1px rgba(200, 136, 79, 0.3); }
+}
+
+/* La etiqueta de Leyenda ahora sí resplandece (suave, dorado). */
+.podium-legend-tag { box-shadow: 0 0 6px rgba(244, 180, 0, 0.45); animation: legendTagGlow 2.4s ease-in-out infinite; }
+@keyframes legendTagGlow {
+  0%, 100% { box-shadow: 0 0 6px rgba(244, 180, 0, 0.4); }
+  50% { box-shadow: 0 0 15px 2px rgba(244, 180, 0, 0.75); }
+}
+
+/* Zumbido tipo MSN: sacude toda la página. */
+.app-container.page-shake { animation: pageShake 0.6s cubic-bezier(.36,.07,.19,.97); }
+@keyframes pageShake {
+  10%, 90% { transform: translate(-2px, 1px) rotate(-0.4deg); }
+  20%, 80% { transform: translate(4px, -2px) rotate(0.5deg); }
+  30%, 50%, 70% { transform: translate(-7px, 2px) rotate(-0.7deg); }
+  40%, 60% { transform: translate(7px, -1px) rotate(0.7deg); }
+}
+
+/* Abucheo: palabras "buuu" que suben y fantasmitas que flotan. */
+.sup-boo-word {
+  position: fixed;
+  z-index: 350;
+  pointer-events: none;
+  transform: translate(-50%, 0);
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 16px;
+  color: #6b21a8;
+  text-shadow: 0 1px 3px rgba(255, 255, 255, 0.9);
+  animation: booRise 1s ease-out forwards;
+}
+@keyframes booRise {
+  0% { opacity: 0; transform: translate(-50%, 6px) scale(0.7) rotate(-6deg); }
+  25% { opacity: 1; }
+  100% { opacity: 0; transform: translate(-50%, -46px) scale(1.1) rotate(6deg); }
+}
+.sup-ghost {
+  position: fixed;
+  z-index: 349;
+  pointer-events: none;
+  transform: translate(-50%, 0);
+  font-size: 22px;
+  animation: ghostFloat 1.25s ease-out forwards;
+}
+@keyframes ghostFloat {
+  0% { opacity: 0; transform: translate(-50%, 8px) scale(0.7); }
+  25% { opacity: 0.95; }
+  100% { opacity: 0; transform: translate(calc(-50% + 14px), -56px) scale(1.05); }
+}
+
+/* Más porras → que quepan en varias líneas. */
+.pulse-reactions-row { flex-wrap: wrap; }
+
+@media (prefers-reduced-motion: reduce) {
+  .podium-step.gold .podium-card,
+  .podium-step.silver .podium-card,
+  .podium-step.bronze .podium-card,
+  .podium-legend-tag,
+  .app-container.page-shake { animation: none; }
 }

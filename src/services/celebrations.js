@@ -8,17 +8,64 @@ function fireConfetti(options) {
   confetti({ colors: WC_COLORS, disableForReducedMotion: true, ...options });
 }
 
-function spawnBalls(count = 6) {
+// Lluvia de emojis que cruzan la pantalla (reusa la animación de los balones).
+function spawnEmojiRain(emojis, count = 10) {
   for (let i = 0; i < count; i++) {
-    const ball = document.createElement('span');
-    ball.className = 'goal-ball';
-    ball.textContent = '⚽';
-    ball.style.left = `${Math.random() * 90}vw`;
-    ball.style.animationDelay = `${Math.random() * 0.6}s`;
-    ball.style.fontSize = `${22 + Math.random() * 26}px`;
-    document.body.appendChild(ball);
-    setTimeout(() => ball.remove(), 3200);
+    const el = document.createElement('span');
+    el.className = 'goal-ball';
+    el.textContent = emojis[Math.floor(Math.random() * emojis.length)];
+    el.style.left = `${Math.random() * 92}vw`;
+    el.style.animationDelay = `${Math.random() * 0.7}s`;
+    el.style.fontSize = `${20 + Math.random() * 24}px`;
+    document.body.appendChild(el);
+    setTimeout(() => el.remove(), 3200);
   }
+}
+
+function spawnBalls(count = 6) {
+  spawnEmojiRain(['⚽'], count);
+}
+
+// Porras temáticas por país: confeti + lluvia de íconos típicos.
+const THEMES = {
+  mexico: { colors: ['#0E7C4A', '#ffffff', '#D7282F'], emojis: ['🇲🇽', '🌮', '🌶️', '🪅', '🤠', '🌵', '🎉'] },
+  canada: { colors: ['#FF0000', '#ffffff'], emojis: ['🇨🇦', '🍁', '🏒', '🐻', '🦫'] },
+  usa: { colors: ['#3C3B6E', '#B22234', '#ffffff'], emojis: ['🇺🇸', '🦅', '⭐', '🗽', '🍔'] },
+  fire: { colors: ['#D7282F', '#F4B400', '#ff7a18'], emojis: ['🔥', '🔥', '🔥', '🌋'] }
+};
+
+// Zumbido tipo MSN: sacude la página + golpe de tambor (WebAudio, sin archivo).
+let audioCtx = null;
+function playDrum() {
+  try {
+    const Ctx = window.AudioContext || window.webkitAudioContext;
+    if (!Ctx) return;
+    audioCtx = audioCtx || new Ctx();
+    const ctx = audioCtx;
+    if (ctx.state === 'suspended') ctx.resume();
+    const t = ctx.currentTime;
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.frequency.setValueAtTime(170, t);
+    osc.frequency.exponentialRampToValueAtTime(52, t + 0.18);
+    gain.gain.setValueAtTime(0.0001, t);
+    gain.gain.exponentialRampToValueAtTime(0.6, t + 0.012);
+    gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.38);
+    osc.connect(gain).connect(ctx.destination);
+    osc.start(t);
+    osc.stop(t + 0.4);
+  } catch {
+    // audio bloqueado (sin interacción previa): el temblor visual igual ocurre
+  }
+}
+
+export function buzzPage() {
+  const el = document.querySelector('.app-container') || document.body;
+  el.classList.remove('page-shake');
+  void el.offsetWidth; // reinicia la animación
+  el.classList.add('page-shake');
+  setTimeout(() => el.classList.remove('page-shake'), 650);
+  playDrum();
 }
 
 export function celebrateGoal(colors) {
@@ -55,17 +102,29 @@ export function celebratePodium() {
 export function celebrateReaction(type) {
   switch (type) {
     case 'mexico':
-      celebrateMexicoGoal();
+    case 'canada':
+    case 'usa': {
+      const th = THEMES[type];
+      fireConfetti({ particleCount: 80, spread: 90, origin: { y: 0.8 }, colors: th.colors });
+      spawnEmojiRain(th.emojis, 12);
+      break;
+    }
+    case 'fire':
+      fireConfetti({ particleCount: 70, spread: 60, origin: { y: 0.85 }, colors: THEMES.fire.colors });
+      spawnEmojiRain(THEMES.fire.emojis, 12);
       break;
     case 'balls':
       spawnBalls(9);
       fireConfetti({ particleCount: 40, spread: 70, origin: { y: 0.8 } });
       break;
-    case 'fire':
-      fireConfetti({ particleCount: 90, spread: 60, origin: { y: 0.8 }, colors: ['#D7282F', '#F4B400', '#ff7a18'] });
-      break;
     case 'clap':
       fireConfetti({ particleCount: 70, spread: 100, origin: { y: 0.85 }, colors: ['#F4B400', '#ffffff', '#0E7C4A'] });
+      break;
+    case 'luck':
+      celebrateLuck();
+      break;
+    case 'buzz':
+      buzzPage();
       break;
     case 'confetti':
     default:

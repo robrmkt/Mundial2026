@@ -8,6 +8,10 @@ const REACTIONS = [
   { key: 'balls', emoji: '⚽', label: 'Balones' },
   { key: 'fire', emoji: '🔥', label: 'Fuego' },
   { key: 'mexico', emoji: '🇲🇽', label: 'México' },
+  { key: 'canada', emoji: '🇨🇦', label: 'Canadá' },
+  { key: 'usa', emoji: '🇺🇸', label: 'USA' },
+  { key: 'luck', emoji: '🍀', label: 'Suerte' },
+  { key: 'buzz', emoji: '🥁', label: 'Zumbido' },
   { key: 'clap', emoji: '👏', label: 'Aplausos' }
 ];
 

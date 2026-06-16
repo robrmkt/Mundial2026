@@ -3,9 +3,12 @@
 // Respeta prefers-reduced-motion (sin auto-scroll).
 import { useMemo } from 'react';
 
-function fmtTime(iso) {
+function fmtWhen(iso) {
   try {
-    return new Date(iso).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' });
+    const d = new Date(iso);
+    const date = d.toLocaleDateString('es-MX', { weekday: 'short', day: 'numeric', month: 'short' });
+    const time = d.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' });
+    return `${date} · ${time}`;
   } catch {
     return '';
   }
@@ -33,7 +36,7 @@ export default function MatchTicker({ matches = [] }) {
       ))}
       {next && (
         <span className="ticker-item ticker-next">
-          PRÓXIMO · {next.homeFlag} {next.homeTeam} vs {next.awayTeam} {next.awayFlag} · {fmtTime(next.kickoff)}
+          PRÓXIMO · {next.homeFlag} {next.homeTeam} vs {next.awayTeam} {next.awayFlag} · {fmtWhen(next.kickoff)}
         </span>
       )}
       {rest.length > 0 && (
@@ -41,7 +44,7 @@ export default function MatchTicker({ matches = [] }) {
           <div className="ticker-track">
             {[...rest, ...rest].map((m, i) => (
               <span key={`${m.id}-${i}`} className="ticker-item ticker-rest">
-                {m.homeFlag} {m.homeTeam} vs {m.awayTeam} {m.awayFlag} · {fmtTime(m.kickoff)}
+                {m.homeFlag} {m.homeTeam} vs {m.awayTeam} {m.awayFlag} · {fmtWhen(m.kickoff)}
               </span>
             ))}
           </div>

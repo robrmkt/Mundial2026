@@ -25,7 +25,7 @@ import { computePodiumAndMovement } from './services/podiumReplay';
 import initialMatches from './matches.json';
 
 // Emoji por tipo de porra (fallback visual; la lógica usa la clave, no el emoji).
-const REACTION_EMOJI = { confetti: '🎉', balls: '⚽', fire: '🔥', mexico: '🇲🇽', clap: '👏' };
+const REACTION_EMOJI = { confetti: '🎉', balls: '⚽', fire: '🔥', mexico: '🇲🇽', canada: '🇨🇦', usa: '🇺🇸', luck: '🍀', buzz: '🥁', clap: '👏' };
 
 const DATA_VERSION = 'real-data-2026-06-15-v1';
 const DATA_VERSION_KEY = 'quiniela_data_version';
