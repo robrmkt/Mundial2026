@@ -3605,6 +3605,32 @@ img {
 }
 
 @media (max-width: 640px) {
+  /* === Tabla general SOLO móvil: deja POS · Participante · Puntos ===
+     Oculta Partidos, Exactos, Resultados y Efectividad. (Escritorio intacto.) */
+  .standings-table { min-width: 0; }
+  .standings-table th:nth-child(3),
+  .standings-table th:nth-child(4),
+  .standings-table th:nth-child(5),
+  .standings-table th:nth-child(6),
+  .standings-table td:nth-child(3),
+  .standings-table td:nth-child(4),
+  .standings-table td:nth-child(5),
+  .standings-table td:nth-child(6) {
+    display: none;
+  }
+  /* El Participante ocupa el espacio sobrante y empuja Puntos al extremo derecho. */
+  .standings-table th:nth-child(2),
+  .standings-table td:nth-child(2) { width: 100%; }
+  /* Puntos pegado a la derecha: encabezado y números alineados. */
+  .standings-table th:nth-child(7),
+  .standings-table td:nth-child(7) {
+    text-align: right !important;
+    width: auto;
+    white-space: nowrap;
+    padding-right: 0.5rem;
+  }
+  .standings-table td:nth-child(7) .standings-points-cell { display: inline-block; }
+
   .header-inner {
     padding: 0.6rem 0.9rem;
     gap: 0.6rem;
