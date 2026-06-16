@@ -120,6 +120,56 @@ function makeId(prefix) {
   return `${prefix}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
 }
 
+// ---- Fotos a disco (Fase 2): base64 -> archivo en el volumen /data/avatars ----
+function slugName(name) {
+  return String(name || 'p')
+    .normalize('NFD').replace(/[̀-ͯ]/g, '')
+    .toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'p';
+}
+
+function shortHash(s) {
+  let h = 0;
+  const str = String(s || '');
+  for (let i = 0; i < str.length; i++) h = (h * 31 + str.charCodeAt(i)) | 0;
+  return Math.abs(h).toString(36).slice(0, 6);
+}
+
+// Si participant.photo es un Data URL base64, lo guarda como archivo y reemplaza
+// la foto por la ruta /avatars/<archivo>. Si ya es una ruta, lo deja igual.
+function persistAvatar(participant) {
+  const p = participant;
+  if (!p || typeof p.photo !== 'string' || !p.photo.startsWith('data:image')) return p;
+  const match = p.photo.match(/^data:image\/(png|jpe?g|webp);base64,(.+)$/);
+  if (!match) return p;
+  try {
+    ensureDataFile();
+    const ext = match[1] === 'jpeg' ? 'jpg' : match[1];
+    const file = `${slugName(p.name)}-${shortHash(p.name)}.${ext}`;
+    writeFileSync(resolve(avatarsDir, file), Buffer.from(match[2], 'base64'));
+    return { ...p, photo: `/avatars/${file}` };
+  } catch (error) {
+    console.error('No pude guardar el avatar de', p?.name, error);
+    return p; // ante la duda, conservamos el base64 (no perdemos la foto)
+  }
+}
+
+// Migra al inicio cualquier foto base64 que aún viva dentro del JSON.
+function migrateBase64Avatars() {
+  const state = readState();
+  let changed = false;
+  const participants = state.participants.map(p => {
+    if (typeof p.photo === 'string' && p.photo.startsWith('data:image')) {
+      changed = true;
+      return persistAvatar(p);
+    }
+    return p;
+  });
+  if (changed) {
+    writeState({ ...state, participants });
+    console.log('Avatares base64 migrados a /avatars.');
+  }
+}
+
 // ---- Canal de eventos compartido (el "bus" que ven todos los navegadores) ----
 
 function appendEvent(state, rawEvent) {
@@ -229,6 +279,11 @@ const server = createServer(async (request, response) => {
       }
       if (request.method === 'PUT') {
         const parsed = await readJsonBody(request);
+        // Las fotos base64 que lleguen se guardan como archivo (volumen) y se
+        // reemplazan por su ruta /avatars, para no inflar el JSON.
+        if (Array.isArray(parsed.participants)) {
+          parsed.participants = parsed.participants.map(persistAvatar);
+        }
         // Merge superficial sobre el estado actual: un PUT parcial (p.ej. solo
         // {participants}) conserva el resto de colecciones intactas.
         sendJson(response, 200, writeState({ ...readState(), ...parsed }));
@@ -336,12 +391,41 @@ const server = createServer(async (request, response) => {
       return;
     }
 
+    // ---- Tiempo acumulado en el podio (Modo Leyenda) ----
+    // Mide el tiempo desde el ÚLTIMO tick (de cualquier navegador), así varios
+    // clientes no duplican el conteo. Solo suma a quien está en el top 3 ahora.
+    if (path === '/api/podium-tick' && request.method === 'POST') {
+      const { top3 } = await readJsonBody(request);
+      const base = readState();
+      const ph = { ...base.podiumHistory };
+      const now = Date.now();
+      const MAX_GAP = 5 * 60 * 1000; // no acumular más de 5 min por tick
+      const elapsed = Math.min(Math.max(0, now - (ph._lastTick || now)), MAX_GAP);
+      const prevTop3 = Array.isArray(ph._prevTop3) ? ph._prevTop3 : [];
+      const names = (Array.isArray(top3) ? top3 : []).filter(Boolean).map(String);
+      names.forEach(name => {
+        const e = (ph[name] && typeof ph[name] === 'object') ? { ...ph[name] } : { totalMs: 0, entries: 0 };
+        e.totalMs = (e.totalMs || 0) + elapsed;
+        if (!prevTop3.includes(name)) e.entries = (e.entries || 0) + 1;
+        e.lastSeenAt = new Date(now).toISOString();
+        ph[name] = e;
+      });
+      ph._lastTick = now;
+      ph._prevTop3 = names;
+      const saved = writeState({ ...base, podiumHistory: ph });
+      sendJson(response, 200, { podiumHistory: saved.podiumHistory });
+      return;
+    }
+
     serveStatic(request, response);
   } catch (error) {
     console.error(error);
     sendJson(response, 500, { error: 'Internal server error' });
   }
 });
+
+ensureDataFile();
+migrateBase64Avatars();
 
 server.listen(port, '0.0.0.0', () => {
   console.log(`Quiniela server listening on ${port}`);

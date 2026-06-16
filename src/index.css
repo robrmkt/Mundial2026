@@ -3899,3 +3899,51 @@ img {
   .ticker-track { animation: none; }
   .match-ticker { overflow-x: auto; }
 }
+
+/* ===== V4 · Fase 7: insignias en la ficha ===== */
+.badge-shelf { display: flex; flex-direction: column; gap: 6px; padding: 0.4rem 0; width: 100%; }
+.badge-shelf-head { display: flex; align-items: center; justify-content: space-between; }
+.badge-shelf-title { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-secondary); font-weight: 700; }
+.badge-shelf-title em { font-style: normal; opacity: 0.6; }
+.badge-shelf-toggle { background: none; border: none; color: var(--blue); font-size: 0.72rem; font-weight: 700; cursor: pointer; }
+.badge-grid { display: flex; flex-wrap: wrap; gap: 5px; justify-content: center; }
+.badge-chip { font-size: 11px; font-weight: 700; padding: 3px 9px; border-radius: 999px; border: 1px solid; white-space: nowrap; cursor: default; }
+.badge-chip.rarity-legendary { background: var(--gold-soft); color: var(--gold); border-color: var(--gold-bright); }
+.badge-chip.rarity-epic { background: #efe7fd; color: #6b21a8; border-color: #c4a7f5; }
+.badge-chip.rarity-rare { background: var(--blue-soft); color: var(--blue); border-color: #9bb5f4; }
+.badge-chip.rarity-common { background: var(--surface-soft); color: var(--text-secondary); border-color: var(--border); }
+.badge-chip.rarity-meme { background: #fde9f3; color: #b83280; border-color: #f5a7d0; }
+
+/* ===== V4 · Fase 6: movimiento de ranking + Modo Leyenda ===== */
+.rank-move { font-size: 10px; font-weight: 800; display: inline-flex; align-items: center; gap: 1px; }
+.rank-move.up { color: var(--green); }
+.rank-move.down { color: var(--red); }
+.rank-move.flat { color: var(--text-faint); }
+.standings-move { display: block; text-align: center; margin-top: 2px; }
+.legend-banner {
+  grid-column: 1 / -1;
+  display: flex; align-items: center; gap: 8px;
+  padding: 8px 14px; border-radius: var(--radius-sm);
+  background: var(--gold-soft); color: #6b4e00;
+  border: 1px solid var(--gold-bright); font-size: 13px; font-weight: 600;
+}
+.legend-emoji { font-size: 18px; }
+.sticker-move { margin-left: 6px; font-size: 12px; }
+.sticker-podium-time {
+  display: flex; align-items: center; justify-content: center; gap: 6px;
+  font-size: 12px; color: rgba(255, 255, 255, 0.92);
+  background: rgba(0, 0, 0, 0.18); border-radius: 999px; padding: 4px 12px; margin: 0.3rem auto;
+}
+.sticker-podium-time strong { font-weight: 800; }
+.legend-tag { background: var(--gold-bright); color: #2a1f00; border-radius: 999px; padding: 1px 8px; font-weight: 800; font-size: 11px; }
+
+/* ===== V4 · Fase 8: compartir ficha ===== */
+.share-actions { display: flex; gap: 8px; justify-content: center; padding: 0.2rem 0 0.1rem; }
+.share-btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 7px 14px; border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.45); background: rgba(255, 255, 255, 0.16); color: #fff;
+  font-weight: 700; font-size: 12.5px; cursor: pointer;
+}
+.share-btn.ghost { background: transparent; }
+.share-btn:disabled { opacity: 0.6; cursor: default; }

@@ -1,7 +1,12 @@
 import { useEffect, useMemo, useRef } from 'react';
 import { X, Target, Crosshair, XCircle } from 'lucide-react';
 import { getPlayerProfile } from '../services/playerRoles';
+import { evaluateBadges } from '../services/achievements';
 import LuckButton from './LuckButton';
+import BadgeShelf from './BadgeShelf';
+import RankMovement from './RankMovement';
+import SharePlayerCardButton from './SharePlayerCardButton';
+import { formatPodiumTime } from '../services/podiumTime';
 
 function EfficiencyRing({ value }) {
   const eff = Number.isFinite(value) ? Math.min(100, Math.max(0, Math.round(value))) : 0;
@@ -30,7 +35,7 @@ function EfficiencyRing({ value }) {
   );
 }
 
-export default function PlayerCard({ player, matches, totalParticipants, todayKey, onClose }) {
+export default function PlayerCard({ player, matches, totalParticipants, todayKey, rankDelta, podiumMs = 0, isLegend = false, onClose }) {
   const dialogRef = useRef(null);
 
   // Modal accesible: enfoca al abrir, atrapa el Tab, y devuelve el foco al cerrar.
@@ -58,11 +63,16 @@ export default function PlayerCard({ player, matches, totalParticipants, todayKe
   }, [onClose]);
 
   const profile = useMemo(
-    () => getPlayerProfile(player, matches, totalParticipants, todayKey),
-    [player, matches, totalParticipants, todayKey]
+    () => getPlayerProfile(player, matches, totalParticipants, todayKey, { rankDelta, isLegend }),
+    [player, matches, totalParticipants, todayKey, rankDelta, isLegend]
   );
 
   const { role, recent, misses, today } = profile;
+
+  const badges = useMemo(
+    () => evaluateBadges(player, profile, { matches, totalParticipants, ctx: { rankDelta, podiumMs, isLegend } }),
+    [player, profile, matches, totalParticipants, rankDelta, podiumMs, isLegend]
+  );
 
   return (
     <div className="sticker-overlay" onClick={onClose}>
@@ -78,9 +88,12 @@ export default function PlayerCard({ player, matches, totalParticipants, todayKe
         <div className="sticker-foil" aria-hidden="true" />
         <div className="sticker-shine" aria-hidden="true" />
 
-        <button className="sticker-close" onClick={onClose} aria-label="Cerrar ficha"><X size={18} /></button>
+        <button className="sticker-close no-export" onClick={onClose} aria-label="Cerrar ficha"><X size={18} /></button>
 
-        <div className="sticker-rank">#{player.rank}</div>
+        <div className="sticker-rank">
+          #{player.rank}
+          <RankMovement delta={rankDelta} className="sticker-move" />
+        </div>
 
         <div className="sticker-photo">
           {player.photo ? (
@@ -139,9 +152,20 @@ export default function PlayerCard({ player, matches, totalParticipants, todayKe
           </div>
         </div>
 
-        <div className="sticker-actions">
+        {podiumMs > 0 && (
+          <div className="sticker-podium-time">
+            🏛️ Tiempo en podio: <strong>{formatPodiumTime(podiumMs)}</strong>
+            {isLegend && <span className="legend-tag">Leyenda</span>}
+          </div>
+        )}
+
+        <BadgeShelf badges={badges} />
+
+        <div className="sticker-actions no-export">
           <LuckButton targetName={player.name} />
         </div>
+
+        <SharePlayerCardButton cardRef={dialogRef} name={player.name} />
 
         <div className="sticker-footer">
           <span className="sticker-points-label">Puntos totales</span>

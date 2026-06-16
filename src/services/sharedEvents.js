@@ -139,6 +139,21 @@ export async function postRankingSnapshot(snapshot) {
   }
 }
 
+export async function postPodiumTick(top3) {
+  try {
+    const res = await fetch('/api/podium-tick', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ top3 })
+    });
+    if (!res.ok) throw new Error(`podium-tick ${res.status}`);
+    return res.json();
+  } catch (error) {
+    console.error('No pude actualizar el tiempo en podio:', error);
+    return null;
+  }
+}
+
 // ¿este evento lo lanzó este mismo cliente? (para no auto-animarse)
 export function isOwnEvent(event) {
   return event?.payload?.clientId && event.payload.clientId === getClientId();

@@ -3,6 +3,8 @@ import { Trophy, Medal } from 'lucide-react';
 import LivePulse from './LivePulse';
 import PlayerCard from './PlayerCard';
 import SupportMeter from './SupportMeter';
+import RankMovement from './RankMovement';
+import { podiumMsFor, formatPodiumTime } from '../services/podiumTime';
 
 // Pódium de los tres primeros lugares
 function Podium({ topThree, onSelect }) {
@@ -60,7 +62,7 @@ function Podium({ topThree, onSelect }) {
   );
 }
 
-export default function Dashboard({ standings, matches = [], chatMessages = [], support = {}, onSendMessage, onReaction }) {
+export default function Dashboard({ standings, matches = [], chatMessages = [], support = {}, movement = {}, podiumHistory = {}, legend = null, onSendMessage, onReaction }) {
   const topThree = standings.slice(0, 3);
   const [selected, setSelected] = useState(null);
 
@@ -73,6 +75,13 @@ export default function Dashboard({ standings, matches = [], chatMessages = [], 
   return (
     <div className="command-grid">
       <Podium topThree={topThree} onSelect={openCard} />
+
+      {legend && (
+        <div className="legend-banner" title="Mayor tiempo acumulado en el top 3">
+          <span className="legend-emoji">🏛️</span>
+          <span><strong>Leyenda del Podio:</strong> {legend.name} · {formatPodiumTime(legend.totalMs)} en el podio</span>
+        </div>
+      )}
 
       <LivePulse
         matches={matches}
@@ -120,6 +129,7 @@ export default function Dashboard({ standings, matches = [], chatMessages = [], 
                   >
                     <td className="standings-rank-cell">
                       <div className={`rank-badge rank-${p.rank <= 3 ? p.rank : 'rest'}`}>{p.rank}</div>
+                      <RankMovement delta={movement[p.name]} className="standings-move" />
                     </td>
                     <td>
                       <div className="standings-user-profile">
@@ -173,6 +183,9 @@ export default function Dashboard({ standings, matches = [], chatMessages = [], 
           matches={matches}
           totalParticipants={standings.length}
           todayKey={selected.todayKey}
+          rankDelta={movement[selected.player.name]}
+          podiumMs={podiumMsFor(podiumHistory, selected.player.name)}
+          isLegend={legend?.name === selected.player.name}
           onClose={() => setSelected(null)}
         />
       )}
