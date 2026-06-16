@@ -4206,10 +4206,10 @@ img {
 .sticker-move { margin-left: 6px; font-size: 12px; }
 .sticker-podium-time {
   display: flex; align-items: center; justify-content: center; gap: 6px;
-  font-size: 12px; color: rgba(255, 255, 255, 0.92);
-  background: rgba(0, 0, 0, 0.18); border-radius: 999px; padding: 4px 12px; margin: 0.3rem auto;
+  font-size: 12px; color: #334155;
+  background: #eef2f6; border: 1px solid #cbd5e1; border-radius: 999px; padding: 4px 12px; margin: 0.3rem auto;
 }
-.sticker-podium-time strong { font-weight: 800; }
+.sticker-podium-time strong { font-weight: 800; color: #101c2e; }
 .legend-tag { background: var(--gold-bright); color: #2a1f00; border-radius: 999px; padding: 1px 8px; font-weight: 800; font-size: 11px; }
 
 /* ===== V4 · Fase 8: compartir ficha ===== */
@@ -4468,6 +4468,21 @@ img {
 .player-sticker.is-exporting {
   transform: none !important;
   opacity: 1 !important;
+  box-shadow: none !important;
+}
+.player-sticker.is-exporting .sticker-photo img {
+  display: block !important;
+  opacity: 1 !important;
+  visibility: visible !important;
 }
 .player-sticker.is-exporting .sticker-shine,
 .player-sticker.is-exporting .sticker-foil { display: none !important; }
+.player-sticker.is-exporting .medal {
+  animation: none !important;
+  filter: none !important;
+  box-shadow: none !important;
+}
+.player-sticker.is-exporting .medal::after,
+.player-sticker.is-exporting .medal .medal-icon {
+  filter: none !important;
+}
