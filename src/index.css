@@ -3791,3 +3791,57 @@ img {
   color: #fff;
   border-color: var(--green);
 }
+
+/* ===== V4 · Fase 4: overlay global de eventos ===== */
+.global-event-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+.event-anim { display: flex; align-items: center; justify-content: center; }
+.event-anim-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 28px 44px;
+  border-radius: 22px;
+  background: rgba(16, 28, 46, 0.92);
+  color: #fff;
+  box-shadow: var(--shadow-pop);
+  text-align: center;
+  border: 2px solid rgba(255, 255, 255, 0.14);
+  max-width: 90vw;
+  animation: eventPop 0.45s cubic-bezier(.18, .89, .32, 1.28) both;
+}
+.event-anim-icon { filter: drop-shadow(0 2px 6px rgba(0, 0, 0, .4)); }
+.event-anim-big {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: clamp(2rem, 7vw, 4rem);
+  letter-spacing: 0.02em;
+  line-height: 1;
+}
+.event-anim-sub { font-size: clamp(0.95rem, 2.6vw, 1.25rem); opacity: 0.92; font-weight: 600; }
+
+.event-anim-mexico_goal .event-anim-card { background: linear-gradient(135deg, #0e7c4a, #0a5f39 55%, #d7282f); }
+.event-anim-goal .event-anim-card { background: linear-gradient(135deg, #1d4ed8, #101c2e); }
+.event-anim-leader_change .event-anim-card { background: linear-gradient(135deg, #c8930a, #f4b400); color: #2a1f00; border-color: rgba(255, 255, 255, 0.5); }
+.event-anim-exact_score .event-anim-card { background: linear-gradient(135deg, #0e7c4a, #c8930a); }
+.event-anim-red_card .event-anim-card { background: linear-gradient(135deg, #d7282f, #7c1014); }
+.event-anim-yellow_card .event-anim-card { background: linear-gradient(135deg, #f4b400, #b9850a); color: #2a1f00; }
+.event-anim-penalty .event-anim-card,
+.event-anim-penalty_missed .event-anim-card,
+.event-anim-var .event-anim-card { background: linear-gradient(135deg, #51627a, #101c2e); }
+
+@keyframes eventPop {
+  0% { transform: scale(0.6) translateY(10px); opacity: 0; }
+  100% { transform: scale(1) translateY(0); opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .event-anim-card { animation: none; }
+}

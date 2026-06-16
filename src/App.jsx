@@ -8,6 +8,7 @@ import Dashboard from './components/Dashboard';
 const AdminPanel = lazy(() => import('./components/AdminPanel'));
 import PredictionGrid from './components/PredictionGrid';
 import LiveMatches from './components/LiveMatches';
+import GlobalEventOverlay from './components/GlobalEventOverlay';
 import { fetchScoreboard, mergeScoreboard } from './services/liveData';
 import { celebrateGoal, celebrateMexicoGoal, celebratePodium, celebrateFinal, celebrateExact, celebrateReaction } from './services/celebrations';
 import { getSession, logout } from './services/auth';
@@ -170,6 +171,7 @@ export default function App() {
   const [activeTab, setActiveTab] = useState(tabFromHash);
   const [simActive, setSimActive] = useState(false);
   const [toasts, setToasts] = useState([]);
+  const [overlayQueue, setOverlayQueue] = useState([]);
   const [syncState, setSyncState] = useState({ status: 'idle', lastSync: null });
   const [session, setSession] = useState(getSession);
   const [, setSharedState] = useState({ status: 'loading', lastSync: null });
@@ -198,6 +200,17 @@ export default function App() {
     setTimeout(() => {
       setToasts(prev => prev.filter(t => t.id !== id));
     }, 5000);
+  }, []);
+
+  // Cola del overlay global de animaciones (gol, líder, exacto…).
+  const enqueueOverlay = useCallback((ev) => {
+    setOverlayQueue(q => [
+      ...q.slice(-7),
+      { ...ev, _id: `ov_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`, _t: Date.now() }
+    ]);
+  }, []);
+  const consumeOverlay = useCallback((id) => {
+    setOverlayQueue(q => q.filter(e => e._id !== id));
   }, []);
 
   const participantsRef = useRef(participants);
@@ -313,8 +326,14 @@ export default function App() {
         pushChatMessage('Sistema', `⚽ ¡Gol de ${goal.team}! Va ${goal.score} contra ${goal.rival} (${goal.minute}).`, true);
       });
       if (detectedGoals.length > 0) {
-        if (detectedGoals.some(goal => goal.team === 'México')) celebrateMexicoGoal();
+        const mxGoal = detectedGoals.find(goal => goal.team === 'México');
+        if (mxGoal) celebrateMexicoGoal();
         else celebrateGoal();
+        const lead = mxGoal || detectedGoals[0];
+        enqueueOverlay({
+          type: mxGoal ? 'mexico_goal' : 'goal',
+          payload: { team: lead.team, score: lead.score, minute: lead.minute }
+        });
       }
 
       // Partidos que terminaron mientras la página estaba abierta
@@ -333,6 +352,7 @@ export default function App() {
           celebrateExact();
           triggerToast('🎯 ¡Marcador exacto!', `${exactWinners.join(', ')} clavó el ${fin.homeScore}-${fin.awayScore} (+3 pts)`);
           pushChatMessage('Sistema', `🎯 ¡${exactWinners.join(' y ')} clavó el ${fin.homeScore}-${fin.awayScore}! +3 puntos.`, true);
+          enqueueOverlay({ type: 'exact_score', payload: { winners: exactWinners.join(', '), score: `${fin.homeScore}-${fin.awayScore}` } });
         } else {
           celebrateFinal();
         }
@@ -347,7 +367,7 @@ export default function App() {
     } finally {
       syncBusyRef.current = false;
     }
-  }, [pushChatMessage, setMatches, triggerToast]);
+  }, [pushChatMessage, setMatches, triggerToast, enqueueOverlay]);
 
   // Sincroniza al abrir y luego en automático (30s con partidos en vivo, 90s si no)
   const anyLive = matches.some(m => m.status === 'LIVE');
@@ -440,10 +460,11 @@ export default function App() {
       celebratePodium();
       triggerToast('👑 ¡Nuevo líder!', `${leader.name} toma la cima de la quiniela con ${leader.points} puntos.`);
       pushChatMessage('Sistema', `👑 ¡${leader.name} es el nuevo líder de la quiniela con ${leader.points} puntos!`, true);
+      enqueueOverlay({ type: 'leader_change', payload: { name: leader.name, points: leader.points } });
     }
     // Solo recordamos al líder cuando es indiscutido, para detectar el próximo cambio real
     if (undisputed) prevLeaderRef.current = leader.name;
-  }, [standings, triggerToast, pushChatMessage]);
+  }, [standings, triggerToast, pushChatMessage, enqueueOverlay]);
 
   // Simulate a chat message from coworkers (solo en simulación)
   const addRandomChatComment = useCallback((scoringTeam, opponentTeam) => {
@@ -581,6 +602,9 @@ export default function App() {
           </div>
         ))}
       </div>
+
+      {/* Overlay global de animaciones (gol, nuevo líder, marcador exacto…) */}
+      <GlobalEventOverlay queue={overlayQueue} onConsume={consumeOverlay} />
 
       {/* Navigation Header */}
       <header className="nav-header">

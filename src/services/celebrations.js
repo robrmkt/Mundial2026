@@ -1,11 +1,11 @@
-// Celebraciones visuales: confeti (canvas-confetti, cargado en index.html)
+// Celebraciones visuales: confeti (canvas-confetti vía npm, sin CDN externo)
 // y balones de fútbol que cruzan la pantalla.
+import confetti from 'canvas-confetti';
 
 const WC_COLORS = ['#0E7C4A', '#D7282F', '#1D4ED8', '#F4B400', '#ffffff'];
 
 function fireConfetti(options) {
-  if (typeof window.confetti !== 'function') return;
-  window.confetti({ colors: WC_COLORS, disableForReducedMotion: true, ...options });
+  confetti({ colors: WC_COLORS, disableForReducedMotion: true, ...options });
 }
 
 function spawnBalls(count = 6) {
