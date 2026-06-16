@@ -42,7 +42,11 @@ function rankParticipants(participants, playedMatches) {
     .map((p, idx) => ({ ...p, rank: idx + 1 }));
 }
 
-export function computePodiumAndMovement(matches = [], participants = [], nowTs = 0) {
+// liveTop3 = nombres del top-3 ACTUAL en pantalla (incluye el partido en vivo).
+// Se usa para el tramo abierto (último partido terminado → ahora), de modo que
+// quien está en el podio que se VE acumule tiempo, aunque su posición dependa de
+// un partido en curso. Los tramos históricos sí usan el ranking de solo terminados.
+export function computePodiumAndMovement(matches = [], participants = [], nowTs = 0, liveTop3 = null) {
   const empty = { podiumMs: {}, legend: null, movement: {} };
   if (!Array.isArray(participants) || participants.length === 0) return empty;
 
@@ -54,15 +58,21 @@ export function computePodiumAndMovement(matches = [], participants = [], nowTs 
 
   const podiumMs = {};
 
-  // Acumula tiempo en el podio segmento por segmento.
+  // Acumula tiempo en el podio segmento por segmento (tiempos acotados a "ahora").
   for (let i = 0; i < finished.length; i++) {
-    const played = finished.slice(0, i + 1);
-    const ranked = rankParticipants(participants, played);
-    const top3 = ranked.slice(0, 3).filter(p => p.points > 0); // 0 puntos no "pisa" el podio
-    const segStart = finished[i]._end;
-    const segEnd = (i + 1 < finished.length) ? finished[i + 1]._end : nowTs;
+    const isLast = i === finished.length - 1;
+    let top3names;
+    if (isLast && Array.isArray(liveTop3) && liveTop3.length > 0) {
+      // Tramo abierto: usa el podio que se ve en pantalla (en vivo).
+      top3names = liveTop3.slice(0, 3);
+    } else {
+      const ranked = rankParticipants(participants, finished.slice(0, i + 1));
+      top3names = ranked.slice(0, 3).filter(p => p.points > 0).map(p => p.name); // 0 pts no "pisa" el podio
+    }
+    const segStart = Math.min(finished[i]._end, nowTs);
+    const segEnd = isLast ? nowTs : Math.min(finished[i + 1]._end, nowTs);
     const dur = Math.max(0, segEnd - segStart);
-    if (dur > 0) top3.forEach(p => { podiumMs[p.name] = (podiumMs[p.name] || 0) + dur; });
+    if (dur > 0) top3names.forEach(n => { podiumMs[n] = (podiumMs[n] || 0) + dur; });
   }
 
   // Leyenda = mayor tiempo acumulado.

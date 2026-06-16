@@ -6,7 +6,7 @@ import LuckButton from './LuckButton';
 import BadgeShelf from './BadgeShelf';
 import RankMovement from './RankMovement';
 import SharePlayerCardButton from './SharePlayerCardButton';
-import { formatPodiumTime } from '../services/podiumTime';
+import PodiumClock from './PodiumClock';
 
 function EfficiencyRing({ value }) {
   const eff = Number.isFinite(value) ? Math.min(100, Math.max(0, Math.round(value))) : 0;
@@ -35,7 +35,7 @@ function EfficiencyRing({ value }) {
   );
 }
 
-export default function PlayerCard({ player, matches, totalParticipants, todayKey, rankDelta, podiumMs = 0, isLegend = false, onClose }) {
+export default function PlayerCard({ player, matches, totalParticipants, todayKey, rankDelta, podiumMs = 0, isLegend = false, accruingPodium = false, onClose }) {
   const dialogRef = useRef(null);
 
   // Modal accesible: enfoca al abrir, atrapa el Tab, y devuelve el foco al cerrar.
@@ -153,8 +153,9 @@ export default function PlayerCard({ player, matches, totalParticipants, todayKe
         </div>
 
         {podiumMs > 0 && (
-          <div className="sticker-podium-time">
-            🏛️ Tiempo en podio: <strong>{formatPodiumTime(podiumMs)}</strong>
+          <div className={`sticker-podium-time ${accruingPodium ? 'is-live' : ''}`}>
+            🏛️ Tiempo en podio: <strong><PodiumClock key={Math.round(podiumMs / 1000)} ms={podiumMs} accruing={accruingPodium} /></strong>
+            {accruingPodium && <span className="live-dot" title="En el podio ahora" />}
             {isLegend && <span className="legend-tag">Leyenda</span>}
           </div>
         )}

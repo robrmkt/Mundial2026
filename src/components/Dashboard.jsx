@@ -191,6 +191,7 @@ export default function Dashboard({ standings, matches = [], chatMessages = [], 
           rankDelta={movement[selected.player.name]}
           podiumMs={podiumMs[selected.player.name] || 0}
           isLegend={legend?.name === selected.player.name}
+          accruingPodium={standings.slice(0, 3).some(p => p.name === selected.player.name)}
           onClose={() => setSelected(null)}
         />
       )}

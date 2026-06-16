@@ -458,15 +458,17 @@ export default function App() {
 
   // ---- Movimiento de ranking + tiempo en podio (Modo Leyenda) ----
   // Cálculo RETROACTIVO desde el inicio del Mundial: tiempo real acumulado en el
-  // top-3 según los resultados (no ticks en vivo), y movimiento vs el último partido.
+  // top-3 según los resultados. El tramo abierto (último partido → ahora) se acredita
+  // al podio que se VE en pantalla (top-3 en vivo), para que el líder actual cuente.
+  const liveTop3 = useMemo(() => standings.slice(0, 3).map(p => p.name), [standings]);
   const { podiumMs, legend, movement } = useMemo(
-    () => computePodiumAndMovement(matches, participants, nowTs),
-    [matches, participants, nowTs]
+    () => computePodiumAndMovement(matches, participants, nowTs, liveTop3),
+    [matches, participants, nowTs, liveTop3]
   );
 
-  // Refresca el reloj cada 60 s para que el "tiempo en podio" siga avanzando.
+  // Refresca el reloj cada 15 s para que el "tiempo en podio" se sienta vivo.
   useEffect(() => {
-    const id = setInterval(() => setNowTs(Date.now()), 60000);
+    const id = setInterval(() => setNowTs(Date.now()), 15000);
     return () => clearInterval(id);
   }, []);
 
