@@ -4047,3 +4047,73 @@ img {
   padding: 0.05rem 0.4rem;
   white-space: nowrap;
 }
+
+/* ===== Pulso de la oficina: apoyo con balón (confeti) en vez de botones de texto ===== */
+.sup-controls { display: flex; align-items: center; gap: 8px; }
+
+.sup-ball {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  transition: transform 0.08s ease, border-color 0.15s ease, background 0.15s ease;
+}
+.sup-ball:hover { border-color: var(--green); background: var(--green-soft); }
+.sup-ball:active { transform: scale(0.8); }
+.sup-ball-emoji {
+  display: inline-block;
+  font-size: 23px;
+  line-height: 1;
+  animation: supBob 1.8s ease-in-out infinite;
+}
+@keyframes supBob {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  50% { transform: translateY(-3px) rotate(8deg); }
+}
+
+.sup-boo {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: var(--surface-soft);
+  cursor: pointer;
+  font-size: 17px;
+  line-height: 1;
+  transition: transform 0.1s ease, border-color 0.15s ease, background 0.15s ease;
+}
+.sup-boo:hover { border-color: #f2c2c4; background: var(--red-soft); }
+.sup-boo.thrown { animation: tomatazo 0.4s ease; }
+@keyframes tomatazo {
+  0% { transform: rotate(0) scale(1); }
+  35% { transform: rotate(-18deg) scale(1.15); }
+  70% { transform: rotate(14deg) scale(0.92); }
+  100% { transform: rotate(0) scale(1); }
+}
+
+/* "+1" flotante que sube al apretar el balón */
+.sup-plus {
+  position: fixed;
+  z-index: 350;
+  pointer-events: none;
+  transform: translate(-50%, 0);
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 15px;
+  text-shadow: 0 1px 3px rgba(255, 255, 255, 0.9);
+  animation: supPlus 0.75s ease-out forwards;
+}
+@keyframes supPlus {
+  0% { opacity: 1; transform: translate(-50%, 0) scale(0.7); }
+  100% { opacity: 0; transform: translate(-50%, -38px) scale(1.15); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sup-ball-emoji { animation: none; }
+}

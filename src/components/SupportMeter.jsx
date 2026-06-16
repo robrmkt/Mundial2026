@@ -2,7 +2,47 @@
 // reparto REAL según los pronósticos + el "cariño" de la oficina (taps de apoyo).
 // Apoyar/Buuu van a EQUIPOS, nunca a compañeros. Taps agrupados cada 500 ms.
 import { useEffect, useMemo, useRef, useState } from 'react';
+import confetti from 'canvas-confetti';
 import { postSupport, postBoo } from '../services/sharedEvents';
+
+const HOME_COLORS = ['#0E7C4A', '#ffffff', '#D7282F'];
+const AWAY_COLORS = ['#1D4ED8', '#ffffff', '#85B7EB'];
+
+// El apoyo se SIENTE: cada apretón al balón lanza confeti (regulado) + un "+1".
+let lastBurstAt = 0;
+function cheerBurst(el, colors) {
+  if (typeof confetti !== 'function' || !el) return;
+  const now = Date.now();
+  if (now - lastBurstAt < 130) return; // evita saturar con taps muy rápidos
+  lastBurstAt = now;
+  const r = el.getBoundingClientRect();
+  confetti({
+    particleCount: 22,
+    spread: 55,
+    startVelocity: 26,
+    scalar: 0.8,
+    ticks: 90,
+    colors,
+    disableForReducedMotion: true,
+    origin: {
+      x: (r.left + r.width / 2) / window.innerWidth,
+      y: (r.top + r.height / 2) / window.innerHeight
+    }
+  });
+}
+
+function floatPlusOne(el, color) {
+  if (!el) return;
+  const r = el.getBoundingClientRect();
+  const span = document.createElement('span');
+  span.className = 'sup-plus';
+  span.textContent = '+1';
+  span.style.left = `${r.left + r.width / 2}px`;
+  span.style.top = `${r.top}px`;
+  span.style.color = color;
+  document.body.appendChild(span);
+  setTimeout(() => span.remove(), 750);
+}
 
 function predictionSplit(standings, matchId) {
   let home = 0, draw = 0, away = 0, total = 0;
@@ -68,12 +108,15 @@ export default function SupportMeter({ matches = [], standings = [], support = {
   const officeAway = 100 - officeHome;
   const isLive = match.status === 'LIVE';
 
-  const tap = (side) => {
+  const tap = (side, el) => {
     if (pendingRef.current.matchId !== match.id) {
       pendingRef.current = { matchId: match.id, home: 0, away: 0 };
     }
     pendingRef.current[side] += 1;
     setLocalTaps(t => ({ ...t, [side]: t[side] + 1 }));
+    const colors = side === 'home' ? HOME_COLORS : AWAY_COLORS;
+    cheerBurst(el, colors);
+    floatPlusOne(el, side === 'home' ? 'var(--green)' : 'var(--blue)');
   };
   const boo = (side) => {
     postBoo({ matchId: match.id, team: side === 'home' ? match.homeTeam : match.awayTeam });
@@ -107,13 +150,41 @@ export default function SupportMeter({ matches = [], standings = [], support = {
       <div className="support-actions">
         <div className="support-team">
           <span className="support-team-name">{match.homeFlag} {match.homeTeam}</span>
-          <button className="sup-btn apoyar" onClick={() => tap('home')}>Apoyar</button>
-          <button className="sup-btn buuu" onClick={() => boo('home')}>Buuu</button>
+          <div className="sup-controls">
+            <button
+              className="sup-ball"
+              onClick={(e) => tap('home', e.currentTarget)}
+              aria-label={`Apoyar a ${match.homeTeam}`}
+              title="¡Aprieta el balón para apoyar!"
+            >
+              <span className="sup-ball-emoji">⚽</span>
+            </button>
+            <button
+              className="sup-boo"
+              onClick={(e) => { boo('home'); e.currentTarget.classList.remove('thrown'); void e.currentTarget.offsetWidth; e.currentTarget.classList.add('thrown'); }}
+              aria-label={`Abuchear a ${match.homeTeam}`}
+              title="Lanzar tomatazo"
+            >🍅</button>
+          </div>
         </div>
         <div className="support-team">
           <span className="support-team-name">{match.awayFlag} {match.awayTeam}</span>
-          <button className="sup-btn apoyar" onClick={() => tap('away')}>Apoyar</button>
-          <button className="sup-btn buuu" onClick={() => boo('away')}>Buuu</button>
+          <div className="sup-controls">
+            <button
+              className="sup-ball"
+              onClick={(e) => tap('away', e.currentTarget)}
+              aria-label={`Apoyar a ${match.awayTeam}`}
+              title="¡Aprieta el balón para apoyar!"
+            >
+              <span className="sup-ball-emoji">⚽</span>
+            </button>
+            <button
+              className="sup-boo"
+              onClick={(e) => { boo('away'); e.currentTarget.classList.remove('thrown'); void e.currentTarget.offsetWidth; e.currentTarget.classList.add('thrown'); }}
+              aria-label={`Abuchear a ${match.awayTeam}`}
+              title="Lanzar tomatazo"
+            >🍅</button>
+          </div>
         </div>
       </div>
     </div>
