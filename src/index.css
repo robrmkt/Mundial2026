@@ -3942,8 +3942,8 @@ img {
 .share-btn {
   display: inline-flex; align-items: center; gap: 6px;
   padding: 7px 14px; border-radius: 999px;
-  border: 1px solid rgba(255, 255, 255, 0.45); background: rgba(255, 255, 255, 0.16); color: #fff;
+  border: 1px solid var(--green); background: var(--green); color: #fff;
   font-weight: 700; font-size: 12.5px; cursor: pointer;
 }
-.share-btn.ghost { background: transparent; }
-.share-btn:disabled { opacity: 0.6; cursor: default; }
+.share-btn.ghost { background: var(--surface); color: var(--green); }
+.share-btn:disabled { opacity: 0.55; cursor: default; }
