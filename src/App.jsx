@@ -9,6 +9,7 @@ const AdminPanel = lazy(() => import('./components/AdminPanel'));
 import PredictionGrid from './components/PredictionGrid';
 import LiveMatches from './components/LiveMatches';
 import GlobalEventOverlay from './components/GlobalEventOverlay';
+import MatchTicker from './components/MatchTicker';
 import { fetchScoreboard, mergeScoreboard } from './services/liveData';
 import { celebrateGoal, celebrateMexicoGoal, celebratePodium, celebrateFinal, celebrateExact, celebrateReaction } from './services/celebrations';
 import { getSession, logout } from './services/auth';
@@ -164,6 +165,7 @@ export default function App() {
   const [matches, setMatches] = useLocalStorage('quiniela_matches', initialMatches);
   const [participants, setParticipantsState] = useState([]);
   const [documents, setDocumentsState] = useState([]);
+  const [support, setSupportState] = useState({});
   const [chatMessages, setChatMessages] = useLocalStorage('quiniela_chat', [
     { id: 1, user: 'Sistema', time: '12:00', text: '¡Bienvenidos a la Quiniela del Mundial 26! Que gane el mejor. 🏆' }
   ]);
@@ -231,8 +233,10 @@ export default function App() {
       const data = await fetchSharedState();
       const nextParticipants = Array.isArray(data.participants) ? data.participants : [];
       const nextDocuments = Array.isArray(data.documents) ? data.documents : [];
+      const nextSupport = data.support && typeof data.support === 'object' && !Array.isArray(data.support) ? data.support : {};
       setParticipantsState(nextParticipants);
       setDocumentsState(nextDocuments);
+      setSupportState(nextSupport);
       sharedDataRef.current = { participants: nextParticipants, documents: nextDocuments };
       setSharedState({ status: 'ok', lastSync: new Date() });
     } catch (error) {
@@ -681,6 +685,8 @@ export default function App() {
         </div>
       )}
 
+      <MatchTicker matches={matches} />
+
       {/* Main View Container */}
       <main className="main-content-area">
         {activeTab === 'dashboard' && (
@@ -688,6 +694,7 @@ export default function App() {
             standings={standings}
             matches={matches}
             chatMessages={chatMessages}
+            support={support}
             onSendMessage={handleManualChatMessage}
             onReaction={handleReaction}
           />

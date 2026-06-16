@@ -73,3 +73,18 @@ export function celebrateReaction(type) {
       break;
   }
 }
+
+// Suerte a un participante: lluvia de tréboles + confeti verde.
+export function celebrateLuck() {
+  fireConfetti({ particleCount: 50, spread: 70, origin: { y: 0.7 }, colors: ['#0E7C4A', '#7CFC00', '#ffffff'] });
+  for (let i = 0; i < 9; i++) {
+    const el = document.createElement('span');
+    el.className = 'goal-ball';
+    el.textContent = '🍀';
+    el.style.left = `${Math.random() * 90}vw`;
+    el.style.animationDelay = `${Math.random() * 0.6}s`;
+    el.style.fontSize = `${20 + Math.random() * 22}px`;
+    document.body.appendChild(el);
+    setTimeout(() => el.remove(), 3200);
+  }
+}

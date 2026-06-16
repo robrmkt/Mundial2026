@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef } from 'react';
 import { X, Target, Crosshair, XCircle } from 'lucide-react';
 import { getPlayerProfile } from '../services/playerRoles';
+import LuckButton from './LuckButton';
 
 function EfficiencyRing({ value }) {
   const eff = Number.isFinite(value) ? Math.min(100, Math.max(0, Math.round(value))) : 0;
@@ -136,6 +137,10 @@ export default function PlayerCard({ player, matches, totalParticipants, todayKe
               ))
             )}
           </div>
+        </div>
+
+        <div className="sticker-actions">
+          <LuckButton targetName={player.name} />
         </div>
 
         <div className="sticker-footer">

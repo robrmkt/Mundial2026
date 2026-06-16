@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Trophy, Medal } from 'lucide-react';
 import LivePulse from './LivePulse';
 import PlayerCard from './PlayerCard';
+import SupportMeter from './SupportMeter';
 
 // Pódium de los tres primeros lugares
 function Podium({ topThree, onSelect }) {
@@ -59,7 +60,7 @@ function Podium({ topThree, onSelect }) {
   );
 }
 
-export default function Dashboard({ standings, matches = [], chatMessages = [], onSendMessage, onReaction }) {
+export default function Dashboard({ standings, matches = [], chatMessages = [], support = {}, onSendMessage, onReaction }) {
   const topThree = standings.slice(0, 3);
   const [selected, setSelected] = useState(null);
 
@@ -79,6 +80,8 @@ export default function Dashboard({ standings, matches = [], chatMessages = [], 
         onSendMessage={onSendMessage}
         onReaction={onReaction}
       />
+
+      <SupportMeter matches={matches} standings={standings} support={support} />
 
       <div className="page-card standings-card">
         <div className="standings-table-header">

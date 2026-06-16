@@ -3845,3 +3845,57 @@ img {
 @media (prefers-reduced-motion: reduce) {
   .event-anim-card { animation: none; }
 }
+
+/* ===== V4 · Fase 5: ticker, suerte y pulso de la oficina ===== */
+.match-ticker {
+  display: flex; align-items: center; gap: 14px;
+  padding: 7px 16px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  font-size: 12.5px; font-weight: 600;
+  color: var(--text-secondary);
+  overflow: hidden; white-space: nowrap;
+}
+.ticker-item { display: inline-flex; align-items: center; gap: 6px; }
+.ticker-live { color: var(--live); font-weight: 700; }
+.ticker-next { color: var(--text-primary); }
+.ticker-marquee { flex: 1; overflow: hidden; }
+.ticker-track { display: inline-flex; gap: 28px; animation: tickerScroll 40s linear infinite; }
+.ticker-marquee:hover .ticker-track { animation-play-state: paused; }
+.ticker-rest { color: var(--text-faint); }
+@keyframes tickerScroll { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+
+.luck-btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 7px 14px; border-radius: 999px;
+  border: 1px solid var(--green); background: var(--green-soft); color: var(--green);
+  font-weight: 700; font-size: 13px; cursor: pointer;
+}
+.luck-btn:disabled { opacity: 0.6; cursor: default; }
+.luck-btn.compact { padding: 4px 9px; font-size: 12px; }
+.luck-count { background: var(--green); color: #fff; border-radius: 999px; padding: 0 7px; font-size: 11px; }
+.sticker-actions { display: flex; justify-content: center; padding: 0.4rem 0; }
+
+.support-meter { display: flex; flex-direction: column; gap: 10px; }
+.support-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; }
+.support-title { font-weight: 800; font-family: var(--font-display); font-size: 1.1rem; }
+.support-match { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; font-weight: 700; color: var(--text-secondary); }
+.support-match.is-live { color: var(--live); }
+.support-line { display: flex; flex-direction: column; gap: 4px; }
+.support-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-faint); font-weight: 700; }
+.support-pred { font-size: 13px; font-weight: 600; }
+.support-bar { display: flex; height: 26px; border-radius: 999px; overflow: hidden; background: var(--surface-soft); border: 1px solid var(--border); }
+.support-bar-home, .support-bar-away { display: flex; align-items: center; justify-content: center; color: #fff; font-size: 12px; font-weight: 700; transition: width 0.3s ease; }
+.support-bar-home { background: var(--green); }
+.support-bar-away { background: var(--blue); }
+.support-actions { display: flex; gap: 12px; flex-wrap: wrap; }
+.support-team { display: flex; align-items: center; gap: 8px; flex: 1 1 220px; }
+.support-team-name { flex: 1; font-weight: 700; font-size: 13px; }
+.sup-btn { padding: 5px 12px; border-radius: 8px; border: 1px solid var(--border); cursor: pointer; font-weight: 700; font-size: 12px; }
+.sup-btn.apoyar { background: var(--green-soft); color: var(--green); border-color: var(--green); }
+.sup-btn.buuu { background: var(--surface-soft); color: var(--text-secondary); }
+
+@media (prefers-reduced-motion: reduce) {
+  .ticker-track { animation: none; }
+  .match-ticker { overflow-x: auto; }
+}
