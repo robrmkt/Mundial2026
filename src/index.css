@@ -171,6 +171,32 @@ img {
   white-space: nowrap;
 }
 
+.visit-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.36rem;
+  color: var(--text-faint);
+  border: 1px solid var(--border);
+  background: rgba(245, 247, 250, 0.72);
+  border-radius: 999px;
+  padding: 0.28rem 0.58rem;
+  font-size: 0.68rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.visit-chip-live {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--green);
+  border: 1px solid #bfe3d0;
+}
+
 .nav-tabs {
   display: flex;
   gap: 0.25rem;
@@ -3068,6 +3094,48 @@ img {
   grid-column: 1 / -1;
 }
 
+.admin-visit-card {
+  background: linear-gradient(180deg, #ffffff, #f7fafc);
+}
+
+.admin-visit-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.65rem;
+}
+
+.admin-visit-grid div {
+  border: 1px solid var(--border);
+  background: var(--surface-soft);
+  border-radius: 9px;
+  padding: 0.65rem;
+}
+
+.admin-visit-grid strong {
+  display: block;
+  font-family: var(--font-display);
+  font-size: 1.35rem;
+  line-height: 1;
+  color: var(--text-primary);
+}
+
+.admin-visit-grid span {
+  display: block;
+  margin-top: 0.25rem;
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.admin-visit-note {
+  margin: 0.75rem 0 0;
+  font-size: 0.72rem;
+  line-height: 1.45;
+  color: var(--text-faint);
+}
+
 .admin-section-title {
   display: flex;
   align-items: center;
@@ -3602,6 +3670,10 @@ img {
     justify-content: space-between;
     margin-left: 0;
   }
+
+  .visit-chip {
+    margin-left: auto;
+  }
 }
 
 @media (max-width: 640px) {
@@ -3638,6 +3710,11 @@ img {
 
   .brand-badge {
     display: none;
+  }
+
+  .visit-chip {
+    font-size: 0.62rem;
+    padding: 0.24rem 0.46rem;
   }
 
   .nav-btn {

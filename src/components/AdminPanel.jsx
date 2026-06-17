@@ -167,6 +167,7 @@ export default function AdminPanel({
   onSyncNow,
   syncState,
   session,
+  visitStats,
   onLogout
 }) {
   const isSuper = session?.role === 'superadmin';
@@ -455,6 +456,36 @@ export default function AdminPanel({
 
       <div className="admin-grid-modern">
         <div className="admin-sidebar-section">
+          {visitStats && (
+            <div className="admin-card admin-visit-card">
+              <h2 className="admin-section-title">
+                <Users2 size={18} />
+                Actividad
+              </h2>
+              <div className="admin-visit-grid">
+                <div>
+                  <strong>{visitStats.totalVisits.toLocaleString('es-MX')}</strong>
+                  <span>visitas estimadas</span>
+                </div>
+                <div>
+                  <strong>{visitStats.activeClients}</strong>
+                  <span>activos ahora</span>
+                </div>
+                <div>
+                  <strong>{visitStats.trackedVisits.toLocaleString('es-MX')}</strong>
+                  <span>reales desde contador</span>
+                </div>
+                <div>
+                  <strong>{visitStats.uniqueClients.toLocaleString('es-MX')}</strong>
+                  <span>navegadores únicos</span>
+                </div>
+              </div>
+              <p className="admin-visit-note">
+                La base previa es estimada; desde hoy se cuenta con sesiones anónimas.
+              </p>
+            </div>
+          )}
+
           <div className="admin-card excel-uploader-card">
             <h2 className="admin-section-title">
               <Upload size={18} />

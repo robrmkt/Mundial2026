@@ -21,6 +21,7 @@ import {
   isOwnEvent
 } from './services/sharedEvents';
 import { computePodiumAndMovement } from './services/podiumReplay';
+import { pingVisitStats } from './services/visitStats';
 
 import initialMatches from './matches.json';
 
@@ -177,6 +178,7 @@ export default function App() {
   const [overlayQueue, setOverlayQueue] = useState([]);
   const [syncState, setSyncState] = useState({ status: 'idle', lastSync: null });
   const [session, setSession] = useState(getSession);
+  const [visitStats, setVisitStats] = useState(null);
   const [, setSharedState] = useState({ status: 'loading', lastSync: null });
   // Reloj lento (cada 60 s) para refrescar el "tiempo en podio" sin re-render por segundo.
   const [nowTs, setNowTs] = useState(() => Date.now());
@@ -472,6 +474,24 @@ export default function App() {
     return () => clearInterval(id);
   }, []);
 
+  useEffect(() => {
+    let cancelled = false;
+    const ping = async () => {
+      try {
+        const stats = await pingVisitStats();
+        if (!cancelled) setVisitStats(stats);
+      } catch (error) {
+        console.error('No pude actualizar visitas:', error);
+      }
+    };
+    ping();
+    const id = setInterval(ping, 30000);
+    return () => {
+      cancelled = true;
+      clearInterval(id);
+    };
+  }, []);
+
   // Celebración cuando cambia el líder del podio.
   // Solo si el líder tiene ventaja REAL (no empatado en puntos con el 2º),
   // así no se dispara por oscilaciones de desempate durante un partido en vivo.
@@ -644,6 +664,14 @@ export default function App() {
             <span className="brand-badge">Canadá · México · USA</span>
           </div>
 
+          {visitStats && (
+            <div className="visit-chip" title={`${visitStats.totalVisits} visitas estimadas · ${visitStats.activeClients} activos ahora`}>
+              <Users size={13} />
+              <span>{visitStats.totalVisits.toLocaleString('es-MX')}</span>
+              <span className="visit-chip-live">{visitStats.activeClients}</span>
+            </div>
+          )}
+
           <nav className="nav-tabs">
             <button
               className={`nav-btn ${activeTab === 'dashboard' ? 'active' : ''}`}
@@ -748,6 +776,7 @@ export default function App() {
                 onSyncNow={() => syncNow({ silent: false })}
                 syncState={syncState}
                 session={session}
+                visitStats={visitStats}
                 onLogout={handleLogout}
               />
             </Suspense>

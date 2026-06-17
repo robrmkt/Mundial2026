@@ -25,6 +25,13 @@ const defaultState = {
   leaderHistory: [],
   lastProcessedFeedEvents: {},
   userActivity: {},
+  visitStats: {
+    estimatedBaseline: 0,
+    totalVisits: 0,
+    uniqueClients: 0,
+    firstTrackedAt: null,
+    lastVisitAt: null
+  },
   updatedAt: null
 };
 
@@ -37,6 +44,9 @@ const LIMITS = {
   booWindowMs: 5 * 60 * 1000,   // los abucheos viven 5 minutos
   dedupeWindowMs: 60 * 1000     // mismo dedupeKey en <1 min = duplicado
 };
+
+const ACTIVE_WINDOW_MS = 2 * 60 * 1000;
+const DEFAULT_VISIT_BASELINE = Number(process.env.VISIT_BASELINE || 0);
 
 const contentTypes = {
   '.html': 'text/html; charset=utf-8',
@@ -81,6 +91,13 @@ function coerceState(parsed) {
     leaderHistory: asArray(p.leaderHistory),
     lastProcessedFeedEvents: asObject(p.lastProcessedFeedEvents),
     userActivity: asObject(p.userActivity),
+    visitStats: {
+      estimatedBaseline: Number(p.visitStats?.estimatedBaseline ?? DEFAULT_VISIT_BASELINE) || 0,
+      totalVisits: Number(p.visitStats?.totalVisits || 0),
+      uniqueClients: Number(p.visitStats?.uniqueClients || 0),
+      firstTrackedAt: p.visitStats?.firstTrackedAt || null,
+      lastVisitAt: p.visitStats?.lastVisitAt || null
+    },
     updatedAt: p.updatedAt || null
   };
 }
@@ -118,6 +135,54 @@ function writeState(nextState) {
 
 function makeId(prefix) {
   return `${prefix}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
+}
+
+function visitSummary(state) {
+  const now = Date.now();
+  const activity = asObject(state.userActivity);
+  const activeClients = Object.values(activity).filter(entry =>
+    now - toMs(entry?.lastSeenAt) <= ACTIVE_WINDOW_MS
+  ).length;
+  const stats = state.visitStats || {};
+  return {
+    estimatedBaseline: Number(stats.estimatedBaseline || 0),
+    trackedVisits: Number(stats.totalVisits || 0),
+    totalVisits: Number(stats.estimatedBaseline || 0) + Number(stats.totalVisits || 0),
+    uniqueClients: Number(stats.uniqueClients || 0),
+    activeClients,
+    firstTrackedAt: stats.firstTrackedAt || null,
+    lastVisitAt: stats.lastVisitAt || null,
+    serverTime: new Date().toISOString()
+  };
+}
+
+function recordVisit(raw = {}) {
+  const base = readState();
+  const nowIso = new Date().toISOString();
+  const clientId = String(raw.clientId || '').slice(0, 80) || makeId('anon');
+  const activity = { ...base.userActivity };
+  const previous = activity[clientId];
+  const isNewClient = !previous;
+  const isNewVisit = !previous || (Date.now() - toMs(previous.lastVisitAt || previous.lastSeenAt)) > 30 * 60 * 1000;
+
+  activity[clientId] = {
+    firstSeenAt: previous?.firstSeenAt || nowIso,
+    lastSeenAt: nowIso,
+    lastVisitAt: isNewVisit ? nowIso : (previous?.lastVisitAt || nowIso),
+    hits: Number(previous?.hits || 0) + 1
+  };
+
+  const visitStats = {
+    ...base.visitStats,
+    estimatedBaseline: Number(base.visitStats?.estimatedBaseline ?? DEFAULT_VISIT_BASELINE) || 0,
+    totalVisits: Number(base.visitStats?.totalVisits || 0) + (isNewVisit ? 1 : 0),
+    uniqueClients: Number(base.visitStats?.uniqueClients || 0) + (isNewClient ? 1 : 0),
+    firstTrackedAt: base.visitStats?.firstTrackedAt || nowIso,
+    lastVisitAt: nowIso
+  };
+
+  const saved = writeState({ ...base, userActivity: activity, visitStats });
+  return visitSummary(saved);
 }
 
 // ---- Fotos a disco (Fase 2): base64 -> archivo en el volumen /data/avatars ----
@@ -310,6 +375,21 @@ const server = createServer(async (request, response) => {
         const { state, event, deduped } = appendEvent(readState(), parsed.event || parsed);
         if (!deduped) writeState(state);
         sendJson(response, 200, { event, deduped, serverTime: new Date().toISOString() });
+        return;
+      }
+      sendJson(response, 405, { error: 'Method not allowed' });
+      return;
+    }
+
+    // ---- Visitas anónimas: contador histórico + usuarios activos ----
+    if (path === '/api/visits') {
+      if (request.method === 'GET') {
+        sendJson(response, 200, visitSummary(readState()));
+        return;
+      }
+      if (request.method === 'POST') {
+        const parsed = await readJsonBody(request);
+        sendJson(response, 200, recordVisit(parsed));
         return;
       }
       sendJson(response, 405, { error: 'Method not allowed' });
