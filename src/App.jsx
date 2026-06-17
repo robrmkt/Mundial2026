@@ -468,6 +468,28 @@ export default function App() {
     [matches, participants, nowTs, liveTop3]
   );
 
+  const displayVisitStats = useMemo(() => {
+    if (!visitStats) return null;
+    const startedMatches = matches.filter(match => {
+      if (match.status !== 'SCHEDULED') return true;
+      if (!match.kickoff) return false;
+      const kickoff = new Date(match.kickoff).getTime();
+      return Number.isFinite(kickoff) && kickoff <= nowTs;
+    }).length;
+    const participantCount = participants.length || 24;
+    const calculatedBaseline = 100 + (participantCount * Math.max(1, startedMatches));
+    const baseline = visitStats.estimatedBaseline > 0
+      ? visitStats.estimatedBaseline
+      : calculatedBaseline;
+
+    return {
+      ...visitStats,
+      estimatedBaseline: baseline,
+      totalVisits: baseline + visitStats.trackedVisits,
+      estimatedFormula: `100 enviados + ${participantCount} participantes × ${Math.max(1, startedMatches)} partidos iniciados`
+    };
+  }, [matches, nowTs, participants.length, visitStats]);
+
   // Refresca el reloj cada 15 s para que el "tiempo en podio" se sienta vivo.
   useEffect(() => {
     const id = setInterval(() => setNowTs(Date.now()), 15000);
@@ -664,11 +686,11 @@ export default function App() {
             <span className="brand-badge">Canadá · México · USA</span>
           </div>
 
-          {visitStats && (
-            <div className="visit-chip" title={`${visitStats.totalVisits} visitas estimadas · ${visitStats.activeClients} activos ahora`}>
+          {displayVisitStats && (
+            <div className="visit-chip" title={`${displayVisitStats.totalVisits} visitas estimadas · ${displayVisitStats.activeClients} activos ahora`}>
               <Users size={13} />
-              <span>{visitStats.totalVisits.toLocaleString('es-MX')}</span>
-              <span className="visit-chip-live">{visitStats.activeClients}</span>
+              <span>{displayVisitStats.totalVisits.toLocaleString('es-MX')}</span>
+              <span className="visit-chip-live">{displayVisitStats.activeClients}</span>
             </div>
           )}
 
@@ -776,7 +798,7 @@ export default function App() {
                 onSyncNow={() => syncNow({ silent: false })}
                 syncState={syncState}
                 session={session}
-                visitStats={visitStats}
+                visitStats={displayVisitStats}
                 onLogout={handleLogout}
               />
             </Suspense>

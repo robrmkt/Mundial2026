@@ -481,7 +481,7 @@ export default function AdminPanel({
                 </div>
               </div>
               <p className="admin-visit-note">
-                La base previa es estimada; desde hoy se cuenta con sesiones anónimas.
+                Base estimada: {visitStats.estimatedFormula || 'configurada en servidor'}. Desde hoy se suma el conteo real anónimo.
               </p>
             </div>
           )}
