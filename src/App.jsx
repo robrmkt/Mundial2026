@@ -12,6 +12,7 @@ import GlobalEventOverlay from './components/GlobalEventOverlay';
 import MatchTicker from './components/MatchTicker';
 import { fetchScoreboard, mergeScoreboard } from './services/liveData';
 import { celebrateGoal, celebrateMexicoGoal, celebratePodium, celebrateFinal, celebrateExact, celebrateReaction } from './services/celebrations';
+import { unlockSounds } from './services/sounds';
 import { getSession, logout } from './services/auth';
 import {
   fetchEventsSince,
@@ -26,7 +27,7 @@ import { pingVisitStats } from './services/visitStats';
 import initialMatches from './matches.json';
 
 // Emoji por tipo de porra (fallback visual; la lógica usa la clave, no el emoji).
-const REACTION_EMOJI = { confetti: '🎉', balls: '⚽', fire: '🔥', mexico: '🇲🇽', canada: '🇨🇦', usa: '🇺🇸', luck: '🍀', buzz: '🥁', clap: '👏' };
+const REACTION_EMOJI = { confetti: '🎉', balls: '⚽', fire: '🔥', mexico: '🇲🇽', canada: '🇨🇦', usa: '🇺🇸', luck: '🍀', buzz: '🥁', clap: '👏', faith: '🙏' };
 
 const DATA_VERSION = 'real-data-2026-06-15-v1';
 const DATA_VERSION_KEY = 'quiniela_data_version';
@@ -496,6 +497,22 @@ export default function App() {
     return () => clearInterval(id);
   }, []);
 
+  // Desbloquea el audio con la PRIMERA interacción del usuario (cualquier toque/clic),
+  // para que las porras (propias y las de otros) puedan sonar en iPhone/Safari.
+  useEffect(() => {
+    const onFirst = () => {
+      unlockSounds();
+      window.removeEventListener('pointerdown', onFirst);
+      window.removeEventListener('keydown', onFirst);
+    };
+    window.addEventListener('pointerdown', onFirst, { once: true });
+    window.addEventListener('keydown', onFirst, { once: true });
+    return () => {
+      window.removeEventListener('pointerdown', onFirst);
+      window.removeEventListener('keydown', onFirst);
+    };
+  }, []);
+
   useEffect(() => {
     let cancelled = false;
     const ping = async () => {
@@ -624,6 +641,7 @@ export default function App() {
   // Porra lanzada desde el muro: anima local, lo deja en el muro y lo emite al
   // bus para que TODOS los navegadores lo vean (Fase 1).
   const handleReaction = useCallback((type) => {
+    unlockSounds(); // desbloquea el audio con esta interacción directa (iPhone/Safari)
     celebrateReaction(type);
     pushChatMessage('Tú', `lanzó una porra ${REACTION_EMOJI[type] || '🎉'}`, true);
     postEvent({ type: 'reaction', payload: { reaction: type, user: 'Alguien' } });

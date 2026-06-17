@@ -1,6 +1,7 @@
 // Celebraciones visuales: confeti (canvas-confetti vía npm, sin CDN externo)
 // y balones de fútbol que cruzan la pantalla.
 import confetti from 'canvas-confetti';
+import { playReactionSound } from './sounds';
 
 const WC_COLORS = ['#0E7C4A', '#D7282F', '#1D4ED8', '#F4B400', '#ffffff'];
 
@@ -26,13 +27,33 @@ function spawnBalls(count = 6) {
   spawnEmojiRain(['⚽'], count);
 }
 
-// Porras temáticas por país: confeti + lluvia de íconos típicos.
+// Cada porra tiene su propio tema (colores de confeti + lluvia de íconos),
+// para que ninguna se quede solo con confeti.
 const THEMES = {
   mexico: { colors: ['#0E7C4A', '#ffffff', '#D7282F'], emojis: ['🇲🇽', '🌮', '🌶️', '🪅', '🤠', '🌵', '🎉'] },
   canada: { colors: ['#FF0000', '#ffffff'], emojis: ['🇨🇦', '🍁', '🏒', '🐻', '🦫'] },
   usa: { colors: ['#3C3B6E', '#B22234', '#ffffff'], emojis: ['🇺🇸', '🦅', '⭐', '🗽', '🍔'] },
-  fire: { colors: ['#D7282F', '#F4B400', '#ff7a18'], emojis: ['🔥', '🔥', '🔥', '🌋'] }
+  fire: { colors: ['#D7282F', '#F4B400', '#ff7a18'], emojis: ['🔥', '🔥', '🔥', '🌋'] },
+  clap: { colors: ['#F4B400', '#ffffff', '#0E7C4A'], emojis: ['👏', '🙌', '🎉', '⭐'] },
+  confetti: { colors: ['#0E7C4A', '#D7282F', '#1D4ED8', '#F4B400', '#ffffff'], emojis: ['🎉', '🎊', '✨'] },
+  balls: { colors: ['#ffffff', '#0E7C4A', '#1D4ED8'], emojis: ['⚽', '🥅', '🏟️'] },
+  buzz: { colors: ['#111827', '#F4B400', '#ffffff'], emojis: ['🥁', '💥', '📣'] },
+  luck: { colors: ['#0E7C4A', '#7CFC00', '#ffffff'], emojis: ['🍀', '✨', '🤞'] },
+  faith: { colors: ['#0E7C4A', '#ffffff', '#D7282F'], emojis: ['🙏', '🇲🇽', '📿', '🕯️', '✨'] }
 };
+
+// Celebración genérica basada en el tema (confeti + lluvia de emojis).
+function celebrateThemed(type, { count = 12, particleCount = 80, spread = 90 } = {}) {
+  const th = THEMES[type] || THEMES.confetti;
+  fireConfetti({ particleCount, spread, origin: { y: 0.82 }, colors: th.colors });
+  spawnEmojiRain(th.emojis, count);
+}
+
+// "Tengo fe": lluvia de fe + México y confeti tricolor.
+function celebrateFaith() {
+  fireConfetti({ particleCount: 85, spread: 95, origin: { y: 0.82 }, colors: ['#0E7C4A', '#ffffff', '#D7282F'] });
+  spawnEmojiRain(['🙏', '🇲🇽', '📿', '🕯️', '✨'], 14);
+}
 
 // Zumbido tipo MSN: sacude la página + golpe de tambor (WebAudio, sin archivo).
 let audioCtx = null;
@@ -98,37 +119,36 @@ export function celebratePodium() {
   spawnBalls(10);
 }
 
-// Porras que lanzan los usuarios desde el muro. Cada tipo tiene su look.
+// Porras que lanzan los usuarios desde el muro. Cada tipo tiene su look + sonido.
 export function celebrateReaction(type) {
+  // Sonido por porra (silencioso si el audio está bloqueado; nunca rompe la app).
+  // 'buzz' suena vía playDrum() dentro de buzzPage() para no duplicar el golpe.
+  if (type !== 'buzz') {
+    try { playReactionSound(type); } catch { /* sin audio */ }
+  }
+
   switch (type) {
-    case 'mexico':
-    case 'canada':
-    case 'usa': {
-      const th = THEMES[type];
-      fireConfetti({ particleCount: 80, spread: 90, origin: { y: 0.8 }, colors: th.colors });
-      spawnEmojiRain(th.emojis, 12);
+    case 'faith':
+      celebrateFaith();
       break;
-    }
-    case 'fire':
-      fireConfetti({ particleCount: 70, spread: 60, origin: { y: 0.85 }, colors: THEMES.fire.colors });
-      spawnEmojiRain(THEMES.fire.emojis, 12);
+    case 'buzz':
+      buzzPage(); // shake + "pum" sintético (playDrum)
+      celebrateThemed('buzz', { count: 10, particleCount: 60, spread: 80 });
       break;
     case 'balls':
-      spawnBalls(9);
-      fireConfetti({ particleCount: 40, spread: 70, origin: { y: 0.8 } });
-      break;
-    case 'clap':
-      fireConfetti({ particleCount: 70, spread: 100, origin: { y: 0.85 }, colors: ['#F4B400', '#ffffff', '#0E7C4A'] });
+      celebrateThemed('balls', { count: 9 });
       break;
     case 'luck':
       celebrateLuck();
       break;
-    case 'buzz':
-      buzzPage();
-      break;
+    case 'mexico':
+    case 'canada':
+    case 'usa':
+    case 'fire':
+    case 'clap':
     case 'confetti':
     default:
-      celebrateGoal();
+      celebrateThemed(THEMES[type] ? type : 'confetti');
       break;
   }
 }

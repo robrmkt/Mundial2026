@@ -12,7 +12,8 @@ const REACTIONS = [
   { key: 'usa', flag: 'us', label: 'USA' },
   { key: 'luck', emoji: '🍀', label: 'Suerte' },
   { key: 'buzz', emoji: '🥁', label: 'Zumbido' },
-  { key: 'clap', emoji: '👏', label: 'Aplausos' }
+  { key: 'clap', emoji: '👏', label: 'Aplausos' },
+  { key: 'faith', emoji: '🙏', label: 'Tengo fe' }
 ];
 
 function ReactionIcon({ reaction }) {
