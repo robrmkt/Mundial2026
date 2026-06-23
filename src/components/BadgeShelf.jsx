@@ -9,7 +9,7 @@ export default function BadgeShelf({ badges = [] }) {
   const [showAll, setShowAll] = useState(false);
   const [selected, setSelected] = useState(null);
   if (!badges.length) return null;
-  const hasFeaturedBadge = badges.some(b => b.id === 'almanaque_de_grays');
+  const hasFeaturedBadge = badges.some(b => ['almanaque_de_grays', 'pato_merlin'].includes(b.id));
   const shown = showAll ? badges : topBadges(badges, 6);
 
   return (

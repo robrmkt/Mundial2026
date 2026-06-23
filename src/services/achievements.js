@@ -113,7 +113,7 @@ export const BADGES = [
   { id: 'hielera_fc', title: 'Hielera FC 🧃', rarity: 'meme', desc: 'Último y sin puntos recientes.' },
   { id: 'apenas_calentando', title: 'Apenas calentando 🔥', rarity: 'common', desc: 'Poco avance inicial.' },
   { id: 'historia_de_superacion', title: 'Historia de superación 📖', rarity: 'meme', desc: 'Abajo, pero mejorando.' },
-  { id: 'rey_del_sotano', title: 'Rey del Sótano 🕳️', rarity: 'meme', desc: 'Top 3 del sótano. Abajo, pero con corona.' },
+  { id: 'pato_merlin', title: 'La Magia del Pato Merlín 🦆', rarity: 'legendary', desc: 'Últimos cinco lugares. Magia incomprendida.' },
 
   // --- Interacción (datos de fases 5-6; vía ctx) ---
   { id: 'alma_de_estadio', title: 'Alma de estadio 🏟️', rarity: 'epic', desc: 'Más interacciones totales.' },
@@ -228,7 +228,7 @@ const BADGE_FLAVOR = {
   hielera_fc: 'Último y sin puntos recientes. Frío, frío… que traigan la hielera.',
   apenas_calentando: 'Poquito avance todavía. Apenas está entrando en calor.',
   historia_de_superacion: 'Abajo, pero mejorando jornada a jornada. Documental en proceso.',
-  rey_del_sotano: 'Pertenece al selecto Top 3 del sótano: zona fría, poca luz y mucha dignidad. No está perdiendo; está administrando el suspenso desde abajo.',
+  pato_merlin: 'Tu estrategia va más allá de nuestra comprensión humana. No estás perdiendo, estás acumulando energía cósmica para el próximo Mundial. Últimos cinco lugares de la tabla general: la verdadera magia no es atinarle al marcador, sino fallarle a absolutamente todo. Haz lo tuyo, Pato Merlín.',
   // Interacción
   alma_de_estadio: 'El que más mueve la fiesta. Pura alma de estadio en la oficina.',
   treboles_para_ti: 'La oficina le mandó suerte. Que los tréboles le rindan.',
@@ -251,7 +251,8 @@ function splitTitle(title) {
 
 // Cada insignia se enriquece con icono (emoji), etiqueta limpia y flavor creativo.
 const BADGE_ASSETS = {
-  almanaque_de_grays: '/grays-sports-almanac.webp'
+  almanaque_de_grays: '/grays-sports-almanac.webp',
+  pato_merlin: '/pato-merlin.webp'
 };
 
 const BADGE_BY_ID = Object.fromEntries(BADGES.map(b => {
@@ -333,7 +334,7 @@ export function evaluateBadges(player, profile, { matches = [], totalParticipant
   const inTop3 = rank >= 1 && rank <= 3;
   const inTop12 = rank >= 1 && rank <= 12;
   const isLast = totalParticipants && rank === totalParticipants;
-  const inBottom3 = totalParticipants >= 3 && rank >= totalParticipants - 2;
+  const inBottom5 = totalParticipants >= 5 && rank >= totalParticipants - 4;
   const lead = ctx.leaderMargin; // ventaja del 1º sobre el 2º (si se provee)
 
   // Precisión
@@ -389,7 +390,7 @@ export function evaluateBadges(player, profile, { matches = [], totalParticipant
   add('apenas_calentando', played > 0 && played <= 2);
   add('todavia_cree', rank > 12 && (profile.today?.points || 0) > 0);
   add('la_epica_empieza_abajo', isLast && played > 0);
-  add('rey_del_sotano', played > 0 && inBottom3);
+  add('pato_merlin', played > 0 && inBottom5);
 
   // Movimiento (requiere rankDelta en ctx)
   const delta = ctx.rankDelta;
@@ -468,7 +469,7 @@ export function evaluateBadges(player, profile, { matches = [], totalParticipant
 
 // Las N insignias más destacadas (mayor rareza primero) para la ficha.
 export function topBadges(badges, n = 5) {
-  const holy = badges.find(b => b.id === 'almanaque_de_grays');
-  if (holy) return [holy];
+  const featured = badges.find(b => ['almanaque_de_grays', 'pato_merlin'].includes(b.id));
+  if (featured) return [featured];
   return badges.slice(0, n);
 }
