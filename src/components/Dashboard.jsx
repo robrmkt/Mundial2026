@@ -11,52 +11,11 @@ const PODIUM_REACTIONS = [
   { key: 'salt', icon: '🧂', label: 'Arde' }
 ];
 
-const REACTION_EFFECTS = {
-  bank: {
-    particles: ['🔥', '🔥', '✨', '🚒'],
-    phrases: ['¡Anda de racha! 🔥', '¡Traigan los bomberos! 🚒', 'Reporten este hack 👁️👄👁️']
-  },
-  suspect: {
-    particles: ['👀', '👁️', '👀', '🖥️'],
-    phrases: ['Mmmm... sospechoso 👀', '¿Viajó al futuro? ⏳', 'Revisión de VAR por favor 🖥️', 'Almanaque detected 📘']
-  },
-  salt: {
-    particles: ['🧂', '·', '·', '💀'],
-    phrases: ['¡No le atines a nada hoy! 🧂', 'Activando la maldición... 💀', 'Cruzazuleada en 3, 2, 1... 🚂', '¡Que falle el próximo! 🤫', 'Te rezo para que la fallen 🕯️']
-  }
-};
-
-function buildPodiumEffect(type) {
-  const config = REACTION_EFFECTS[type] || REACTION_EFFECTS.bank;
-  const phrase = config.phrases[Math.floor(Math.random() * config.phrases.length)];
-  const particles = Array.from({ length: type === 'salt' ? 18 : 14 }, (_, index) => ({
-    id: `${Date.now()}_${index}_${Math.random().toString(36).slice(2, 6)}`,
-    icon: config.particles[index % config.particles.length],
-    left: 10 + Math.random() * 80,
-    delay: Math.random() * 0.18,
-    drift: Math.round((Math.random() - 0.5) * 56),
-    midDrift: 0,
-    size: 15 + Math.round(Math.random() * 11)
-  })).map(p => ({ ...p, midDrift: Math.round(p.drift / 2) }));
-  return { id: Date.now(), type, phrase, particles };
-}
-
 // Pódium de los tres primeros lugares
 function Podium({ topThree, onSelect, legend, reactions = {}, onReact }) {
   const [first, second, third] = topThree;
-  const [effects, setEffects] = useState({});
 
   const triggerReaction = (playerName, reaction) => {
-    const effect = buildPodiumEffect(reaction);
-    setEffects(prev => ({ ...prev, [playerName]: effect }));
-    window.setTimeout(() => {
-      setEffects(prev => {
-        if (prev[playerName]?.id !== effect.id) return prev;
-        const next = { ...prev };
-        delete next[playerName];
-        return next;
-      });
-    }, 1250);
     onReact?.(playerName, reaction);
   };
 
@@ -72,12 +31,11 @@ function Podium({ topThree, onSelect, legend, reactions = {}, onReact }) {
     }
 
     const playerReactions = reactions[player.name] || {};
-    const effect = effects[player.name];
 
     return (
       <div className={`podium-step ${meta.cls}`}>
         <div
-          className={`podium-card ${effect ? `effect-${effect.type}` : ''}`}
+          className="podium-card"
           onClick={() => onSelect(player)}
           onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); onSelect(player); } }}
           title={`Ver ficha de ${player.name}`}
@@ -88,27 +46,6 @@ function Podium({ topThree, onSelect, legend, reactions = {}, onReact }) {
             <div className="podium-avatar has-photo"><img src={player.photo} alt={player.name} /></div>
           ) : (
             <div className="podium-avatar">{player.avatar}</div>
-          )}
-          {effect && (
-            <div className={`podium-effect-layer effect-${effect.type}`} aria-hidden="true">
-              {effect.type === 'salt' && <span className="podium-salt-shaker">🧂</span>}
-              <span className="podium-effect-phrase">{effect.phrase}</span>
-              {effect.particles.map(p => (
-                <span
-                  key={p.id}
-                  className="podium-effect-particle"
-                  style={{
-                    left: `${p.left}%`,
-                    '--delay': `${p.delay}s`,
-                    '--drift': `${p.drift}px`,
-                    '--mid-drift': `${p.midDrift}px`,
-                    '--size': `${p.size}px`
-                  }}
-                >
-                  {p.icon}
-                </span>
-              ))}
-            </div>
           )}
           <span className="podium-medal">{meta.medal}</span>
           <span className="podium-name">{player.name}</span>

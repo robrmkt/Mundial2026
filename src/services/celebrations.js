@@ -210,3 +210,77 @@ export function celebrateLuck() {
     setTimeout(() => el.remove(), 3200);
   }
 }
+
+const PODIUM_REACTION_THEMES = {
+  bank: {
+    colors: ['#D7282F', '#F4B400', '#ff7a18'],
+    emojis: ['🔥', '🔥', '🚒', '✨'],
+    phrases: ['¡Anda de racha! 🔥', '¡Traigan los bomberos! 🚒', 'Reporten este hack 👁️👄👁️']
+  },
+  suspect: {
+    colors: ['#1D4ED8', '#111827', '#ffffff'],
+    emojis: ['👀', '👁️', '🖥️', '⏳', '📘'],
+    phrases: ['Mmmm... sospechoso 👀', '¿Viajó al futuro? ⏳', 'Revisión de VAR por favor 🖥️', 'Almanaque detected 📘']
+  },
+  salt: {
+    colors: ['#9ca3af', '#f8fafc', '#111827'],
+    emojis: ['🧂', '🧂', '💀', '🚂', '🕯️'],
+    phrases: ['¡No le atines a nada hoy! 🧂', 'Activando la maldición... 💀', 'Cruzazuleada en 3, 2, 1... 🚂', '¡Que falle el próximo! 🤫', 'Te rezo para que la fallen 🕯️']
+  }
+};
+
+function spawnPodiumPhrase(text, type, index) {
+  const el = document.createElement('span');
+  el.className = `podium-burst-phrase podium-burst-${type}`;
+  el.textContent = text;
+  el.style.left = `${8 + Math.random() * 76}vw`;
+  el.style.top = `${14 + Math.random() * 64}vh`;
+  el.style.setProperty('--burst-rot', `${Math.random() * 14 - 7}deg`);
+  el.style.animationDelay = `${index * 0.055 + Math.random() * 0.08}s`;
+  document.body.appendChild(el);
+  setTimeout(() => el.remove(), 1900);
+}
+
+function spawnPodiumEmoji(icon, type, index) {
+  const el = document.createElement('span');
+  el.className = `podium-burst-emoji podium-burst-${type}`;
+  el.textContent = icon;
+  el.style.left = `${Math.random() * 92}vw`;
+  el.style.top = type === 'salt' ? `${-6 + Math.random() * 8}vh` : `${62 + Math.random() * 24}vh`;
+  el.style.fontSize = `${22 + Math.random() * 30}px`;
+  el.style.setProperty('--burst-drift', `${Math.round((Math.random() - 0.5) * 130)}px`);
+  el.style.animationDelay = `${Math.random() * 0.4 + index * 0.012}s`;
+  document.body.appendChild(el);
+  setTimeout(() => el.remove(), 2800);
+}
+
+function spawnSaltShaker() {
+  const el = document.createElement('span');
+  el.className = 'podium-burst-shaker';
+  el.textContent = '🧂';
+  document.body.appendChild(el);
+  setTimeout(() => el.remove(), 1500);
+}
+
+export function celebratePodiumReaction(type) {
+  const theme = PODIUM_REACTION_THEMES[type] || PODIUM_REACTION_THEMES.bank;
+  const isCompact = typeof window !== 'undefined' && window.matchMedia?.('(max-width: 760px)').matches;
+  try { playReactionSound(type === 'bank' ? 'fire' : type === 'salt' ? 'boo' : 'clap'); } catch { /* sin audio */ }
+  fireConfetti({
+    particleCount: isCompact ? 38 : 58,
+    spread: type === 'salt' ? 65 : 88,
+    startVelocity: type === 'salt' ? 18 : 28,
+    scalar: type === 'salt' ? 0.75 : 0.9,
+    origin: { y: type === 'salt' ? 0.16 : 0.82 },
+    colors: theme.colors
+  });
+  if (type === 'salt') spawnSaltShaker();
+  const phraseCount = isCompact ? 5 : 8;
+  const emojiCount = isCompact ? 14 : 24;
+  for (let i = 0; i < phraseCount; i++) {
+    spawnPodiumPhrase(theme.phrases[i % theme.phrases.length], type, i);
+  }
+  for (let i = 0; i < emojiCount; i++) {
+    spawnPodiumEmoji(theme.emojis[i % theme.emojis.length], type, i);
+  }
+}

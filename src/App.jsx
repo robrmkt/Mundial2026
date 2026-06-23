@@ -11,7 +11,7 @@ import LiveMatches from './components/LiveMatches';
 import GlobalEventOverlay from './components/GlobalEventOverlay';
 import MatchTicker from './components/MatchTicker';
 import { fetchScoreboard, mergeScoreboard } from './services/liveData';
-import { celebrateGoal, celebrateMexicoGoal, celebratePodium, celebrateFinal, celebrateExact, celebrateReaction } from './services/celebrations';
+import { celebrateGoal, celebrateMexicoGoal, celebratePodium, celebrateFinal, celebrateExact, celebrateReaction, celebratePodiumReaction } from './services/celebrations';
 import { unlockSounds } from './services/sounds';
 import { getSession, logout } from './services/auth';
 import {
@@ -437,6 +437,7 @@ export default function App() {
       case 'podium_reaction':
         if (p.target && p.reaction) {
           const copy = PODIUM_REACTION_COPY[p.reaction] || 'reaccionó al podio de';
+          celebratePodiumReaction(p.reaction);
           pushChatMessage('Oficina', `${copy} ${p.target}.`, true);
           setPodiumReactions(prev => {
             const bucket = prev[p.target] || {};
@@ -688,6 +689,7 @@ export default function App() {
   const handlePodiumReaction = useCallback(async (target, reaction) => {
     unlockSounds();
     const copy = PODIUM_REACTION_COPY[reaction] || 'reaccionaste al podio de';
+    celebratePodiumReaction(reaction);
     setPodiumReactions(prev => {
       const bucket = prev[target] || {};
       return {
