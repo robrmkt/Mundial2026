@@ -1,25 +1,78 @@
 import { useEffect, useRef } from 'react';
-import { celebrateMexicoGoal } from '../services/celebrations';
+import { celebrateMexicoHype } from '../services/celebrations';
 
-const TYPES = ['mexico_hype', 'mexico_faith', 'mexico_today', 'mexico_countdown'];
-const MIN_GAP = 90_000;
+// Tipos de overlay permitidos según el contexto de México.
+const TYPES_BY_MODE = {
+  tomorrow: ['mexico_tomorrow', 'mexico_hype', 'mexico_faith', 'mexico_countdown'],
+  today: ['mexico_today', 'mexico_hype', 'mexico_faith', 'mexico_countdown'],
+  live: ['mexico_live', 'mexico_hype', 'mexico_faith']
+};
+
+// Copys por (modo, tipo): el mismo tipo cambia de subtítulo según el momento.
+const COPY_BY_MODE = {
+  tomorrow: {
+    mexico_tomorrow: { big: 'MAÑANA JUEGA MÉXICO', sub: 'La fe ya está calentando' },
+    mexico_hype: { big: '¿Y SI SÍ?', sub: 'México está en modo fe' },
+    mexico_faith: { big: '99% FE', sub: '1% probabilidad' },
+    mexico_countdown: { big: 'SE VIENE MÉXICO', sub: 'Que empiece la ilusión' }
+  },
+  today: {
+    mexico_today: { big: 'HOY JUEGA MÉXICO', sub: 'Se vale ilusionarse' },
+    mexico_hype: { big: '¿Y SI SÍ?', sub: 'Hoy amanecimos con fe' },
+    mexico_faith: { big: '99% FE', sub: '1% probabilidad' },
+    mexico_countdown: { big: 'MODO MÉXICO', sub: 'Cada vez falta menos' }
+  },
+  live: {
+    mexico_live: { big: 'VAMOS MÉXICO', sub: 'La oficina está con todo' },
+    mexico_hype: { big: '¿Y SI SÍ?', sub: 'Todavía hay fe' },
+    mexico_faith: { big: '99% FE', sub: 'El 1% que haga su parte' }
+  }
+};
+
+// Frecuencia por modo: primer overlay, repetición y mínimo entre overlays.
+const FREQ_BY_MODE = {
+  tomorrow: { first: [5000, 8000], repeat: [4 * 60_000, 8 * 60_000], minGap: 90_000 },
+  today: { first: [4000, 7000], repeat: [2 * 60_000, 5 * 60_000], minGap: 75_000 },
+  live: { first: [3000, 6000], repeat: [90_000, 3 * 60_000], minGap: 60_000 }
+};
+
+function getLocalDateKey(date = new Date()) {
+  return [
+    date.getFullYear(),
+    String(date.getMonth() + 1).padStart(2, '0'),
+    String(date.getDate()).padStart(2, '0')
+  ].join('-');
+}
+
+function addDays(date, days) {
+  const next = new Date(date);
+  next.setDate(next.getDate() + days);
+  return next;
+}
 
 function isMexicoMatch(match) {
   return ['México', 'Mexico'].includes(match?.homeTeam) || ['México', 'Mexico'].includes(match?.awayTeam);
 }
 
+// Contexto de México por FECHA LOCAL del navegador (no por diferencia de horas).
 function getMexicoMatchContext(matches) {
-  const now = Date.now();
+  const now = new Date();
+  const todayKey = getLocalDateKey(now);
+  const tomorrowKey = getLocalDateKey(addDays(now, 1));
+
   const mexicoMatches = matches.filter(isMexicoMatch);
+
   const live = mexicoMatches.find(m => m.status === 'LIVE');
   if (live) return { mode: 'live', match: live };
+
   const next = mexicoMatches
     .filter(m => m.status === 'SCHEDULED' && m.kickoff)
     .sort((a, b) => new Date(a.kickoff) - new Date(b.kickoff))[0];
   if (!next) return { mode: 'none', match: null };
-  const diffMs = new Date(next.kickoff).getTime() - now;
-  const hours = diffMs / 3600000;
-  if (hours <= 24 && hours > 0) return { mode: 'soon', match: next };
+
+  const kickoffKey = getLocalDateKey(new Date(next.kickoff));
+  if (kickoffKey === todayKey) return { mode: 'today', match: next };
+  if (kickoffKey === tomorrowKey) return { mode: 'tomorrow', match: next };
   return { mode: 'future', match: next };
 }
 
@@ -27,43 +80,58 @@ function rand(min, max) {
   return min + Math.floor(Math.random() * (max - min));
 }
 
+function getRandomType(mode) {
+  const list = TYPES_BY_MODE[mode] || [];
+  if (!list.length) return null;
+  return list[Math.floor(Math.random() * list.length)];
+}
+
 function reducedMotion() {
   return typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
 }
 
 export default function useMexicoHype({ matches, activeTab, enqueueOverlay }) {
+  // El mínimo entre overlays se conserva aunque cambie el modo (today -> live).
   const lastShownRef = useRef(0);
 
   useEffect(() => {
     if (activeTab === 'admin' || reducedMotion()) return undefined;
-    const ctx = getMexicoMatchContext(matches);
-    if (ctx.mode === 'none' || ctx.mode === 'future') return undefined;
 
+    const ctx = getMexicoMatchContext(matches);
+    // Solo hay alertas automáticas si México juega hoy, mañana o está en vivo.
+    if (!FREQ_BY_MODE[ctx.mode]) return undefined;
+
+    const freq = FREQ_BY_MODE[ctx.mode];
     let cancelled = false;
     let timer;
 
     const schedule = (initial = false) => {
-      const delay = initial
-        ? rand(5000, 8000)
-        : ctx.mode === 'live'
-          ? rand(2 * 60_000, 5 * 60_000)
-          : rand(3 * 60_000, 7 * 60_000);
+      const [lo, hi] = initial ? freq.first : freq.repeat;
       timer = setTimeout(() => {
-        if (cancelled || document.hidden) { schedule(false); return; }
+        if (cancelled) return;
+        // Si la pestaña está oculta, no encolamos: reintentamos más tarde.
+        if (document.hidden) { schedule(false); return; }
+
         const now = Date.now();
-        if (now - lastShownRef.current >= MIN_GAP) {
-          const type = TYPES[Math.floor(Math.random() * TYPES.length)];
-          enqueueOverlay({
-            type,
-            payload: { homeTeam: ctx.match?.homeTeam, awayTeam: ctx.match?.awayTeam },
-            _id: `mx_${now}_${Math.random().toString(36).slice(2, 7)}`,
-            _t: now
-          });
-          celebrateMexicoGoal();
-          lastShownRef.current = now;
+        if (now - lastShownRef.current >= freq.minGap) {
+          const type = getRandomType(ctx.mode);
+          if (type) {
+            const copy = COPY_BY_MODE[ctx.mode]?.[type] || {};
+            enqueueOverlay({
+              type,
+              payload: {
+                ...copy,
+                mode: ctx.mode,
+                homeTeam: ctx.match?.homeTeam,
+                awayTeam: ctx.match?.awayTeam
+              }
+            });
+            celebrateMexicoHype();
+            lastShownRef.current = now;
+          }
         }
         schedule(false);
-      }, delay);
+      }, rand(lo, hi));
     };
 
     schedule(true);

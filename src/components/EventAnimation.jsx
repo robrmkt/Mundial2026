@@ -19,14 +19,20 @@ const COPY = {
   fulltime: (p) => ({ big: 'FINAL', sub: p.text || '' }),
   mexico_hype: () => ({ big: '¿Y SI SÍ?', sub: 'México está en modo fe' }),
   mexico_faith: () => ({ big: '99% FE', sub: '1% probabilidad' }),
+  mexico_tomorrow: () => ({ big: 'MAÑANA JUEGA MÉXICO', sub: 'La fe ya está calentando' }),
   mexico_today: () => ({ big: 'HOY JUEGA MÉXICO', sub: 'Se vale ilusionarse' }),
+  mexico_live: () => ({ big: 'VAMOS MÉXICO', sub: 'La oficina está con todo' }),
   mexico_countdown: () => ({ big: 'MODO MÉXICO', sub: 'Cada vez falta menos' }),
   boo: () => ({ big: 'BUUU', sub: 'La oficina mete presión' })
 };
 
 export default function EventAnimation({ event }) {
+  const payload = event.payload || {};
   const build = COPY[event.type] || (() => ({ big: '', sub: '' }));
-  const { big, sub } = build(event.payload || {});
+  const base = build(payload);
+  // El copy contextual del hook (payload.big/sub) tiene prioridad sobre el default.
+  const big = payload.big || base.big;
+  const sub = payload.sub != null ? payload.sub : base.sub;
   return (
     <div className={`event-anim event-anim-${event.type}`} role="status">
       <div className="event-anim-card">

@@ -5,7 +5,7 @@ import { TYPE_EMOJI } from '../assets/manifest';
 import FlagIcon from './FlagIcon';
 
 export default function EventIcon({ type, size = 28, className = '' }) {
-  if (['mexico_goal', 'mexico_hype', 'mexico_faith', 'mexico_today', 'mexico_countdown'].includes(type)) {
+  if (['mexico_goal', 'mexico_hype', 'mexico_faith', 'mexico_tomorrow', 'mexico_today', 'mexico_live', 'mexico_countdown'].includes(type)) {
     return (
       <span className={`event-icon event-icon-flag ${className}`} style={{ width: size, height: Math.round(size * 0.68) }}>
         <FlagIcon countryCode="mx" label="México" squared />

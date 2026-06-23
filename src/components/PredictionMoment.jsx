@@ -188,32 +188,51 @@ export default function PredictionMoment({ matches, participants, preferredMatch
 
       <div className="prediction-moment-layout">
         <div className="prediction-moment-left">
-          <div className="prediction-match-card">
-            <div className="prediction-match-teams">
-              <span><FlagIcon team={selectedMatch.homeTeam} label={selectedMatch.homeTeam} squared /> {selectedMatch.homeTeam}</span>
-              <strong>{selectedMatch.status === 'SCHEDULED' ? 'VS' : `${selectedMatch.homeScore} - ${selectedMatch.awayScore}`}</strong>
-              <span>{selectedMatch.awayTeam} <FlagIcon team={selectedMatch.awayTeam} label={selectedMatch.awayTeam} squared /></span>
-            </div>
-            <div className="prediction-match-meta">
-              <Clock size={13} />
-              <span>{formatWhen(selectedMatch)}</span>
-            </div>
-            {countdown && (
-              <div className="countdown prediction-countdown">
-                {countdown.days > 0 && <span className="cd-unit"><strong>{countdown.days}</strong>d</span>}
-                <span className="cd-unit"><strong>{pad(countdown.hours)}</strong>h</span>
-                <span className="cd-unit"><strong>{pad(countdown.minutes)}</strong>m</span>
-                <span className="cd-unit"><strong>{pad(countdown.seconds)}</strong>s</span>
+          <div className={`prediction-match-card status-${selectedMatch.status.toLowerCase()}`}>
+            <div className="pmc-inner">
+              <div className="pmc-teams">
+                <div className="pmc-team home">
+                  <span className="pmc-team-name">{selectedMatch.homeTeam}</span>
+                  <FlagIcon team={selectedMatch.homeTeam} label={selectedMatch.homeTeam} />
+                </div>
+                <div className="pmc-center">
+                  {selectedMatch.status === 'SCHEDULED'
+                    ? <span className="pmc-vs">VS</span>
+                    : <strong className="pmc-score">{selectedMatch.homeScore}<i>-</i>{selectedMatch.awayScore}</strong>}
+                </div>
+                <div className="pmc-team away">
+                  <FlagIcon team={selectedMatch.awayTeam} label={selectedMatch.awayTeam} />
+                  <span className="pmc-team-name">{selectedMatch.awayTeam}</span>
+                </div>
               </div>
-            )}
-            <span className="prediction-loaded">{items.length} de {participants.length} participantes con pronóstico</span>
-            {split && (
-              <div className="prediction-outcome-split">
-                <span>{selectedMatch.homeTeam.slice(0, 3).toUpperCase()} {split.homePct}%</span>
-                <span>Empate {split.drawPct}%</span>
-                <span>{selectedMatch.awayTeam.slice(0, 3).toUpperCase()} {split.awayPct}%</span>
+
+              <div className="pmc-when">
+                <Clock size={12} />
+                <span>{formatWhen(selectedMatch)}</span>
               </div>
-            )}
+
+              {countdown && (
+                <div className="pmc-clock">
+                  {countdown.days > 0 && (
+                    <span className="pmc-clock-unit"><strong>{pad(countdown.days)}</strong><i>D</i></span>
+                  )}
+                  <span className="pmc-clock-unit"><strong>{pad(countdown.hours)}</strong><i>H</i></span>
+                  <span className="pmc-clock-unit"><strong>{pad(countdown.minutes)}</strong><i>M</i></span>
+                  <span className="pmc-clock-unit"><strong>{pad(countdown.seconds)}</strong><i>S</i></span>
+                </div>
+              )}
+
+              <div className="pmc-foot">
+                <span className="pmc-loaded">{items.length} de {participants.length} pronósticos</span>
+                {split && (
+                  <div className="pmc-split">
+                    <span className="pmc-split-home">{selectedMatch.homeTeam.slice(0, 3).toUpperCase()} {split.homePct}%</span>
+                    <span className="pmc-split-draw">Empate {split.drawPct}%</span>
+                    <span className="pmc-split-away">{selectedMatch.awayTeam.slice(0, 3).toUpperCase()} {split.awayPct}%</span>
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
 
           <div className="prediction-score-groups">

@@ -102,6 +102,13 @@ export function celebrateMexicoGoal() {
   setTimeout(() => fireConfetti({ particleCount: 70, spread: 100, origin: { y: 0.6 }, colors: mx }), 400);
 }
 
+// Hype/alerta previa de México: confeti tricolor + lluvia de fe (sin balones,
+// para que NO se confunda con un gol real).
+export function celebrateMexicoHype() {
+  fireConfetti({ particleCount: 90, spread: 95, origin: { y: 0.82 }, colors: ['#0E7C4A', '#ffffff', '#D7282F'] });
+  spawnEmojiRain(['🙏', '✨', '⚽', '🏟️', '🇲🇽'], 14);
+}
+
 // Final de partido: ráfaga discreta, sin balones
 export function celebrateFinal() {
   fireConfetti({ particleCount: 40, spread: 55, origin: { y: 0.85 }, scalar: 0.8 });
@@ -142,6 +149,9 @@ export function celebrateReaction(type) {
     case 'luck':
       celebrateLuck();
       break;
+    case 'boo':
+      celebrateBoo();
+      break;
     case 'mexico':
     case 'canada':
     case 'usa':
@@ -152,6 +162,34 @@ export function celebrateReaction(type) {
       celebrateThemed(THEMES[type] ? type : 'confetti');
       break;
   }
+}
+
+// Abucheo (porra 👻): el protagonista son los textos "buuu" flotando;
+// los fantasmas quedan como acompañamiento, con un confeti morado muy leve.
+const BOO_WORDS = ['¡buuu!', 'buuu', '¡buuuu!', 'BUUU'];
+const BOO_GHOSTS = ['👻', '😤', '💨', '🙃'];
+
+function spawnBooLayer(items, { className, count, min, max, life }) {
+  for (let i = 0; i < count; i++) {
+    const el = document.createElement('span');
+    el.className = className;
+    el.textContent = items[Math.floor(Math.random() * items.length)];
+    el.style.left = `${8 + Math.random() * 80}vw`;
+    el.style.fontSize = `${min + Math.random() * (max - min)}px`;
+    el.style.setProperty('--boo-rot', `${Math.random() * 24 - 12}deg`);
+    el.style.animationDelay = `${Math.random() * 0.45}s`;
+    document.body.appendChild(el);
+    setTimeout(() => el.remove(), life);
+  }
+}
+
+export function celebrateBoo() {
+  // Protagonista: las palabras "buuu".
+  spawnBooLayer(BOO_WORDS, { className: 'boo-word', count: 8, min: 24, max: 44, life: 2200 });
+  // Acompañamiento: fantasmas más chicos.
+  spawnBooLayer(BOO_GHOSTS, { className: 'boo-ghost', count: 5, min: 18, max: 30, life: 2400 });
+  // Confeti morado muy leve.
+  fireConfetti({ particleCount: 28, spread: 75, startVelocity: 22, scalar: 0.8, origin: { y: 0.82 }, colors: ['#6b21a8', '#a78bfa', '#c4b5fd'] });
 }
 
 // Suerte a un participante: lluvia de tréboles + confeti verde.
