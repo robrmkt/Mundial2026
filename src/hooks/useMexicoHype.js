@@ -86,6 +86,23 @@ function getRandomType(mode) {
   return list[Math.floor(Math.random() * list.length)];
 }
 
+// Pool de banners (imágenes en /public). Temático cuando aplica, aleatorio si no.
+const BANNER_IDS = ['fe', 'ysisi'];
+const BANNER_BY_TYPE = { mexico_faith: 'fe', mexico_hype: 'ysisi' };
+const BANNER_SRCS = [
+  '/mexico-hype-desktop.webp', '/mexico-hype-mobile.webp',
+  '/mexico-ysisi-desktop.webp', '/mexico-ysisi-mobile.webp'
+];
+
+function pickBanner(type) {
+  return BANNER_BY_TYPE[type] || BANNER_IDS[Math.floor(Math.random() * BANNER_IDS.length)];
+}
+
+function preloadBanners() {
+  if (typeof window === 'undefined' || typeof Image === 'undefined') return;
+  BANNER_SRCS.forEach(src => { const img = new Image(); img.src = src; });
+}
+
 function reducedMotion() {
   return typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
 }
@@ -101,6 +118,7 @@ export default function useMexicoHype({ matches, activeTab, enqueueOverlay }) {
     // Solo hay alertas automáticas si México juega hoy, mañana o está en vivo.
     if (!FREQ_BY_MODE[ctx.mode]) return undefined;
 
+    preloadBanners(); // que el banner aparezca al instante junto al confeti
     const freq = FREQ_BY_MODE[ctx.mode];
     let cancelled = false;
     let timer;
@@ -122,6 +140,7 @@ export default function useMexicoHype({ matches, activeTab, enqueueOverlay }) {
               payload: {
                 ...copy,
                 mode: ctx.mode,
+                banner: pickBanner(type),
                 homeTeam: ctx.match?.homeTeam,
                 awayTeam: ctx.match?.awayTeam
               }

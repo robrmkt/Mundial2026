@@ -17,12 +17,12 @@ const DURATION = {
   leader_change: 4200,
   exact_score: 3600,
   red_card: 3000,
-  mexico_tomorrow: 3400,
-  mexico_hype: 3200,
-  mexico_faith: 3400,
-  mexico_today: 3600,
-  mexico_countdown: 3000,
-  mexico_live: 3000
+  mexico_tomorrow: 4600,
+  mexico_hype: 4600,
+  mexico_faith: 4600,
+  mexico_today: 4600,
+  mexico_countdown: 4600,
+  mexico_live: 4600
 };
 const DEFAULT_DURATION = 2800;
 const MIN_GAP = 5000;    // como máximo un overlay grande cada 5 s

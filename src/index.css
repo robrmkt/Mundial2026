@@ -5034,6 +5034,43 @@ img {
 }
 .event-anim-sub { font-size: clamp(0.95rem, 2.6vw, 1.25rem); opacity: 0.92; font-weight: 600; }
 
+/* Banner de hype de México: imagen (desktop/móvil) + titular limpio. */
+.event-anim-mx-banner {
+  flex-direction: column;
+  gap: 14px;
+  animation: eventPop 0.45s cubic-bezier(.18, .89, .32, 1.28) both;
+}
+.mx-banner-headline {
+  font-family: var(--font-display);
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-size: clamp(1.3rem, 5vw, 2.4rem);
+  color: #fff;
+  background: rgba(16, 28, 46, 0.86);
+  padding: 0.45rem 1.2rem;
+  border-radius: 999px;
+  box-shadow: var(--shadow-pop);
+  border-top: 3px solid #0e7c4a;
+  border-bottom: 3px solid #d7282f;
+  text-align: center;
+}
+.mx-banner-pic { display: block; line-height: 0; }
+.mx-banner-img {
+  display: block;
+  width: auto;
+  height: auto;
+  max-width: min(760px, 88vw);
+  max-height: 70vh;
+  border-radius: 18px;
+  border: 3px solid rgba(255, 255, 255, 0.9);
+  box-shadow: var(--shadow-pop);
+}
+@media (max-width: 760px) {
+  .mx-banner-img { max-width: 88vw; max-height: 74vh; border-radius: 16px; }
+  .mx-banner-headline { font-size: clamp(1.1rem, 6vw, 1.8rem); }
+}
+
 .event-anim-mexico_goal .event-anim-card { background: linear-gradient(135deg, #0e7c4a, #0a5f39 55%, #d7282f); }
 .event-anim-mexico_hype .event-anim-card,
 .event-anim-mexico_faith .event-anim-card,

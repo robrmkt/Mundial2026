@@ -26,8 +26,37 @@ const COPY = {
   boo: () => ({ big: 'BUUU', sub: 'La oficina mete presión' })
 };
 
+// Alertas de hype de México: se muestran como BANNER (imagen) + confeti, no como
+// tarjeta de texto. (mexico_goal NO entra aquí: ese sí es el festejo de gol.)
+const MX_HYPE_TYPES = ['mexico_hype', 'mexico_faith', 'mexico_tomorrow', 'mexico_today', 'mexico_live', 'mexico_countdown'];
+const MX_HEADLINE = {
+  tomorrow: 'MAÑANA JUEGA MÉXICO',
+  today: 'HOY JUEGA MÉXICO',
+  live: 'MÉXICO EN VIVO'
+};
+// Catálogo de banners. El hook elige cuál (payload.banner); aquí solo se renderiza.
+const MX_BANNERS = {
+  fe: { desktop: '/mexico-hype-desktop.webp', mobile: '/mexico-hype-mobile.webp', alt: '99% de fe · 1% de probabilidad · ¡Vamos México!' },
+  ysisi: { desktop: '/mexico-ysisi-desktop.webp', mobile: '/mexico-ysisi-mobile.webp', alt: '¿Y si sí? · ¡Vamos México!' }
+};
+
 export default function EventAnimation({ event }) {
   const payload = event.payload || {};
+
+  if (MX_HYPE_TYPES.includes(event.type)) {
+    const headline = MX_HEADLINE[payload.mode] || '';
+    const banner = MX_BANNERS[payload.banner] || MX_BANNERS.ysisi;
+    return (
+      <div className="event-anim event-anim-mx-banner" role="status">
+        {headline && <div className="mx-banner-headline">{headline}</div>}
+        <picture className="mx-banner-pic">
+          <source media="(max-width: 760px)" srcSet={banner.mobile} />
+          <img className="mx-banner-img" src={banner.desktop} alt={banner.alt} />
+        </picture>
+      </div>
+    );
+  }
+
   const build = COPY[event.type] || (() => ({ big: '', sub: '' }));
   const base = build(payload);
   // El copy contextual del hook (payload.big/sub) tiene prioridad sobre el default.

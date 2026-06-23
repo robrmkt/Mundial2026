@@ -105,8 +105,12 @@ export function celebrateMexicoGoal() {
 // Hype/alerta previa de México: confeti tricolor + lluvia de fe (sin balones,
 // para que NO se confunda con un gol real).
 export function celebrateMexicoHype() {
-  fireConfetti({ particleCount: 90, spread: 95, origin: { y: 0.82 }, colors: ['#0E7C4A', '#ffffff', '#D7282F'] });
-  spawnEmojiRain(['🙏', '✨', '⚽', '🏟️', '🇲🇽'], 14);
+  const mx = ['#0E7C4A', '#ffffff', '#D7282F'];
+  const isCompact = typeof window !== 'undefined' && window.matchMedia?.('(max-width: 760px)').matches;
+  fireConfetti({ particleCount: isCompact ? 72 : 110, spread: 95, origin: { y: 0.84 }, colors: mx });
+  fireConfetti({ particleCount: isCompact ? 36 : 58, angle: 60, spread: 66, origin: { x: 0, y: 0.72 }, colors: mx });
+  fireConfetti({ particleCount: isCompact ? 36 : 58, angle: 120, spread: 66, origin: { x: 1, y: 0.72 }, colors: mx });
+  spawnEmojiRain(['🙏', '✨', '🏟️', '🇲🇽'], isCompact ? 8 : 12);
 }
 
 // Final de partido: ráfaga discreta, sin balones
