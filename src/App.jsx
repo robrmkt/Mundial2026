@@ -17,6 +17,7 @@ import { getSession, logout } from './services/auth';
 import {
   fetchEventsSince,
   postEvent,
+  postPodiumReaction,
   hasSeenEvent,
   markEventSeen,
   isOwnEvent
@@ -29,6 +30,11 @@ import initialMatches from './matches.json';
 
 // Emoji por tipo de porra (fallback visual; la lógica usa la clave, no el emoji).
 const REACTION_EMOJI = { confetti: '🎉', balls: '⚽', fire: '🔥', mexico: '🇲🇽', canada: '🇨🇦', usa: '🇺🇸', luck: '🍀', buzz: '🥁', clap: '👏', faith: '🙏', boo: '👻' };
+const PODIUM_REACTION_COPY = {
+  bank: '🔥 bancó el podio de',
+  suspect: '👀 sospecha de',
+  salt: '🧂 le ardió ver a'
+};
 
 const DATA_VERSION = 'real-data-2026-06-15-v1';
 const DATA_VERSION_KEY = 'quiniela_data_version';
@@ -170,6 +176,7 @@ export default function App() {
   const [participants, setParticipantsState] = useState([]);
   const [documents, setDocumentsState] = useState([]);
   const [support, setSupportState] = useState({});
+  const [podiumReactions, setPodiumReactions] = useState({});
   const [chatMessages, setChatMessages] = useLocalStorage('quiniela_chat', [
     { id: 1, user: 'Sistema', time: '12:00', text: '¡Bienvenidos a la Quiniela del Mundial 26! Que gane el mejor. 🏆' }
   ]);
@@ -243,9 +250,11 @@ export default function App() {
       const nextParticipants = Array.isArray(data.participants) ? data.participants : [];
       const nextDocuments = Array.isArray(data.documents) ? data.documents : [];
       const nextSupport = data.support && typeof data.support === 'object' && !Array.isArray(data.support) ? data.support : {};
+      const nextPodiumReactions = data.podiumReactions && typeof data.podiumReactions === 'object' && !Array.isArray(data.podiumReactions) ? data.podiumReactions : {};
       setParticipantsState(nextParticipants);
       setDocumentsState(nextDocuments);
       setSupportState(nextSupport);
+      setPodiumReactions(nextPodiumReactions);
       sharedDataRef.current = { participants: nextParticipants, documents: nextDocuments };
       setSharedState({ status: 'ok', lastSync: new Date() });
     } catch (error) {
@@ -424,6 +433,23 @@ export default function App() {
         break;
       case 'boo':
         if (p.team) pushChatMessage('Oficina', `👻 La oficina abuchea a ${p.team}.`, true);
+        break;
+      case 'podium_reaction':
+        if (p.target && p.reaction) {
+          const copy = PODIUM_REACTION_COPY[p.reaction] || 'reaccionó al podio de';
+          pushChatMessage('Oficina', `${copy} ${p.target}.`, true);
+          setPodiumReactions(prev => {
+            const bucket = prev[p.target] || {};
+            return {
+              ...prev,
+              [p.target]: {
+                ...bucket,
+                [p.reaction]: Number(bucket[p.reaction] || 0) + 1,
+                lastReactedAt: new Date().toISOString()
+              }
+            };
+          });
+        }
         break;
       default:
         break;
@@ -659,10 +685,29 @@ export default function App() {
     postEvent({ type: 'reaction', payload: { reaction: type, user: 'Alguien' } });
   }, [pushChatMessage]);
 
+  const handlePodiumReaction = useCallback(async (target, reaction) => {
+    unlockSounds();
+    const copy = PODIUM_REACTION_COPY[reaction] || 'reaccionaste al podio de';
+    setPodiumReactions(prev => {
+      const bucket = prev[target] || {};
+      return {
+        ...prev,
+        [target]: {
+          ...bucket,
+          [reaction]: Number(bucket[reaction] || 0) + 1,
+          lastReactedAt: new Date().toISOString()
+        }
+      };
+    });
+    pushChatMessage('Tú', `${copy} ${target}.`, true);
+    await postPodiumReaction({ target, reaction });
+  }, [pushChatMessage]);
+
   const handleReset = () => {
     setMatches(initialMatches);
     setParticipantsState([]);
     setDocumentsState([]);
+    setPodiumReactions({});
     sharedDataRef.current = { participants: [], documents: [] };
     persistSharedData({ participants: [], documents: [] });
     setChatMessages([
@@ -794,11 +839,13 @@ export default function App() {
             matches={matches}
             chatMessages={chatMessages}
             support={support}
+            podiumReactions={podiumReactions}
             movement={movement}
             podiumMs={podiumMs}
             legend={legend}
             onSendMessage={handleManualChatMessage}
             onReaction={handleReaction}
+            onPodiumReaction={handlePodiumReaction}
             onOpenPredictionsForMatch={openPredictionsForMatch}
           />
         )}

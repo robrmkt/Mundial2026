@@ -5,8 +5,14 @@ import PlayerCard from './PlayerCard';
 import RankMovement from './RankMovement';
 import { formatPodiumTime } from '../services/podiumTime';
 
+const PODIUM_REACTIONS = [
+  { key: 'bank', icon: '🔥', label: 'Banco' },
+  { key: 'suspect', icon: '👀', label: 'Sospechoso' },
+  { key: 'salt', icon: '🧂', label: 'Arde' }
+];
+
 // Pódium de los tres primeros lugares
-function Podium({ topThree, onSelect, legend }) {
+function Podium({ topThree, onSelect, legend, reactions = {}, onReact }) {
   const [first, second, third] = topThree;
 
   const renderStep = (player, place) => {
@@ -20,13 +26,17 @@ function Podium({ topThree, onSelect, legend }) {
       return <div className={`podium-step ${meta.cls} empty`}><div className="podium-block">{meta.label}</div></div>;
     }
 
+    const playerReactions = reactions[player.name] || {};
+
     return (
       <div className={`podium-step ${meta.cls}`}>
-        <button
-          type="button"
+        <div
           className="podium-card"
           onClick={() => onSelect(player)}
+          onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); onSelect(player); } }}
           title={`Ver ficha de ${player.name}`}
+          role="button"
+          tabIndex={0}
         >
           {player.photo ? (
             <div className="podium-avatar has-photo"><img src={player.photo} alt={player.name} /></div>
@@ -45,7 +55,25 @@ function Podium({ topThree, onSelect, legend }) {
               🏛️ Leyenda · {formatPodiumTime(legend.totalMs)}
             </span>
           )}
-        </button>
+          <div className="podium-reactions" aria-label={`Reacciones al podio de ${player.name}`}>
+            {PODIUM_REACTIONS.map(r => (
+              <button
+                key={r.key}
+                type="button"
+                className={`podium-reaction-btn reaction-${r.key}`}
+                onClick={(event) => {
+                  event.stopPropagation();
+                  onReact?.(player.name, r.key);
+                }}
+                title={`${r.label} a ${player.name}`}
+                aria-label={`${r.label} a ${player.name}`}
+              >
+                <span aria-hidden="true">{r.icon}</span>
+                <small>{Number(playerReactions[r.key] || 0)}</small>
+              </button>
+            ))}
+          </div>
+        </div>
         <div className="podium-block">{meta.label}</div>
       </div>
     );
@@ -55,7 +83,7 @@ function Podium({ topThree, onSelect, legend }) {
     <section className="podium-section">
       <div className="podium-heading">
         <h2><Trophy size={22} className="trophy-gold" /> Líderes de la Oficina</h2>
-        <p>Copa Mundial FIFA 26 · Canadá · México · Estados Unidos</p>
+        <p>Copa Mundial FIFA 26 · Termómetro del podio abierto</p>
       </div>
       <div className="podium-row">
         {renderStep(second, 2)}
@@ -66,7 +94,7 @@ function Podium({ topThree, onSelect, legend }) {
   );
 }
 
-export default function Dashboard({ standings, matches = [], chatMessages = [], support = {}, movement = {}, podiumMs = {}, legend = null, onSendMessage, onReaction, onOpenPredictionsForMatch }) {
+export default function Dashboard({ standings, matches = [], chatMessages = [], support = {}, podiumReactions = {}, movement = {}, podiumMs = {}, legend = null, onSendMessage, onReaction, onPodiumReaction, onOpenPredictionsForMatch }) {
   const topThree = standings.slice(0, 3);
   const [selected, setSelected] = useState(null);
 
@@ -78,7 +106,7 @@ export default function Dashboard({ standings, matches = [], chatMessages = [], 
 
   return (
     <div className="command-grid">
-      <Podium topThree={topThree} onSelect={openCard} legend={legend} />
+      <Podium topThree={topThree} onSelect={openCard} legend={legend} reactions={podiumReactions} onReact={onPodiumReaction} />
 
       <LivePulse
         matches={matches}

@@ -20,6 +20,7 @@ const defaultState = {
   luckWishes: [],
   boos: [],
   support: {},
+  podiumReactions: {},
   rankingSnapshots: [],
   podiumHistory: {},
   leaderHistory: [],
@@ -86,6 +87,7 @@ function coerceState(parsed) {
     luckWishes: asArray(p.luckWishes),
     boos: asArray(p.boos),
     support: asObject(p.support),
+    podiumReactions: asObject(p.podiumReactions),
     rankingSnapshots: asArray(p.rankingSnapshots),
     podiumHistory: asObject(p.podiumHistory),
     leaderHistory: asArray(p.leaderHistory),
@@ -431,6 +433,34 @@ const server = createServer(async (request, response) => {
       };
       const saved = writeState({ ...base, support: { ...base.support, [key]: nextBucket } });
       sendJson(response, 200, { matchId: key, support: saved.support[key] });
+      return;
+    }
+
+    // ---- Termómetro del podio: reacciones históricas por persona ----
+    if (path === '/api/podium-reaction' && request.method === 'POST') {
+      const { target, reaction, clientId } = await readJsonBody(request);
+      const safeTarget = String(target || '').slice(0, 120);
+      const safeReaction = String(reaction || '');
+      const allowed = new Set(['bank', 'suspect', 'salt']);
+      if (!safeTarget || !allowed.has(safeReaction)) {
+        sendJson(response, 400, { error: 'Invalid podium reaction' });
+        return;
+      }
+      const base = readState();
+      const bucket = asObject(base.podiumReactions[safeTarget]);
+      const count = Math.max(0, Number(bucket[safeReaction] || 0)) + 1;
+      const nextBucket = { ...bucket, [safeReaction]: count, lastReactedAt: new Date().toISOString() };
+      const withReaction = {
+        ...base,
+        podiumReactions: { ...base.podiumReactions, [safeTarget]: nextBucket }
+      };
+      const { state, event } = appendEvent(withReaction, {
+        type: 'podium_reaction',
+        dedupeKey: `podium|${safeTarget}|${safeReaction}|${String(clientId || '')}|${Math.floor(Date.now() / 3000)}`,
+        payload: { target: safeTarget, reaction: safeReaction }
+      });
+      const saved = writeState(state);
+      sendJson(response, 200, { target: safeTarget, reactions: saved.podiumReactions[safeTarget], event });
       return;
     }
 

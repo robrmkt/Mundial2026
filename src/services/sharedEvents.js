@@ -124,6 +124,21 @@ export async function postSupport({ matchId, side, amount = 1 }) {
   }
 }
 
+export async function postPodiumReaction({ target, reaction }) {
+  try {
+    const res = await fetch('/api/podium-reaction', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ target, reaction, clientId: getClientId() })
+    });
+    if (!res.ok) throw new Error(`podium-reaction ${res.status}`);
+    return res.json();
+  } catch (error) {
+    console.error('No pude reaccionar al podio:', error);
+    return null;
+  }
+}
+
 export async function postRankingSnapshot(snapshot) {
   try {
     const res = await fetch('/api/ranking-snapshot', {
