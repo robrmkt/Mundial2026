@@ -9,6 +9,7 @@ export default function BadgeShelf({ badges = [] }) {
   const [showAll, setShowAll] = useState(false);
   const [selected, setSelected] = useState(null);
   if (!badges.length) return null;
+  const hasFeaturedBadge = badges.some(b => b.id === 'almanaque_de_grays');
   const shown = showAll ? badges : topBadges(badges, 6);
 
   return (
@@ -17,7 +18,7 @@ export default function BadgeShelf({ badges = [] }) {
         <span className="badge-shelf-title">Insignias <em>{badges.length}</em></span>
         {badges.length > 6 && (
           <button type="button" className="badge-shelf-toggle no-export" onClick={() => setShowAll(s => !s)}>
-            {showAll ? 'Ver menos' : 'Ver todas'}
+            {showAll ? 'Ver menos' : (hasFeaturedBadge ? 'Ver más' : 'Ver todas')}
           </button>
         )}
       </div>
@@ -26,12 +27,16 @@ export default function BadgeShelf({ badges = [] }) {
           <button
             key={b.id}
             type="button"
-            className={`medal rarity-${b.rarity}`}
+            className={`medal rarity-${b.rarity} badge-${b.id} ${b.asset ? 'has-asset' : ''}`}
             title={b.label}
             aria-label={`${b.label} — ver por qué`}
             onClick={() => setSelected(b)}
           >
-            <span className="medal-icon" aria-hidden="true">{b.icon}</span>
+            {b.asset ? (
+              <img className="medal-asset" src={b.asset} alt="" aria-hidden="true" />
+            ) : (
+              <span className="medal-icon" aria-hidden="true">{b.icon}</span>
+            )}
           </button>
         ))}
       </div>

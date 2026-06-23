@@ -5218,6 +5218,18 @@ img {
 }
 .medal:hover, .medal:focus-visible { transform: translateY(-2px) scale(1.07); outline: none; }
 .medal .medal-icon { position: relative; z-index: 1; filter: drop-shadow(0 1px 1px rgba(0, 0, 0, .25)); }
+.medal.has-asset {
+  overflow: hidden;
+  background: #151515;
+}
+.medal.has-asset .medal-asset {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transform: scale(1.08);
+}
 .medal.big { width: 86px; height: 86px; font-size: 40px; border-width: 4px; }
 
 .medal.rarity-legendary { background: radial-gradient(circle at 35% 28%, #fff6cf, #f4b400 55%, #b9850a); border-color: #ffe9a8; box-shadow: 0 0 16px rgba(244, 180, 0, .6), inset 0 2px 5px rgba(255, 255, 255, .6); animation: medalShimmer 2.6s ease-in-out infinite; }
@@ -5225,6 +5237,68 @@ img {
 .medal.rarity-rare { background: radial-gradient(circle at 35% 28%, #dbeafe, #2563eb 60%, #1e40af); border-color: #bfdbfe; box-shadow: 0 0 11px rgba(37, 99, 235, .45), inset 0 2px 5px rgba(255, 255, 255, .5); }
 .medal.rarity-common { background: radial-gradient(circle at 35% 28%, #ffffff, #cbd5e1 60%, #94a3b8); border-color: #e2e8f0; }
 .medal.rarity-meme { background: radial-gradient(circle at 35% 28%, #fde0ef, #ec4899 60%, #be185d); border-color: #fbcfe8; box-shadow: 0 0 11px rgba(236, 72, 153, .45), inset 0 2px 5px rgba(255, 255, 255, .5); }
+.medal.badge-almanaque_de_grays {
+  width: 72px;
+  height: 72px;
+  border-radius: 14px;
+  border-color: #fff3a9;
+  box-shadow:
+    0 0 0 3px rgba(213, 40, 47, .18),
+    0 0 22px rgba(244, 180, 0, .75),
+    0 7px 15px rgba(16, 28, 46, .28);
+}
+.medal.badge-almanaque_de_grays::before {
+  content: '7+';
+  position: absolute;
+  top: -7px;
+  right: -7px;
+  z-index: 2;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: #f4d03f;
+  color: #101c2e;
+  border: 2px solid #fff8d6;
+  font-family: var(--font-display);
+  font-size: 0.72rem;
+  font-weight: 900;
+  box-shadow: 0 3px 8px rgba(16, 28, 46, .3);
+}
+.medal.badge-almanaque_de_grays::after {
+  inset: 0;
+  border-radius: 12px;
+  background: linear-gradient(135deg, rgba(255, 255, 255, .45), transparent 42%, rgba(255, 237, 145, .28));
+}
+.medal.big.badge-almanaque_de_grays {
+  width: 126px;
+  height: 156px;
+  border-radius: 18px;
+}
+.medal.big.badge-almanaque_de_grays::after { border-radius: 16px; }
+.medal.badge-rey_del_sotano {
+  background: radial-gradient(circle at 35% 28%, #fef3c7, #8b5cf6 56%, #2f174f);
+  border-color: #fde68a;
+  box-shadow:
+    0 0 12px rgba(139, 92, 246, .46),
+    inset 0 2px 5px rgba(255, 255, 255, .5);
+}
+.medal.badge-rey_del_sotano::before {
+  content: 'B3';
+  position: absolute;
+  bottom: -5px;
+  right: -5px;
+  z-index: 2;
+  border-radius: 999px;
+  background: #111827;
+  color: #fde68a;
+  border: 1px solid rgba(253, 230, 138, .85);
+  padding: 1px 5px;
+  font-size: 0.58rem;
+  font-weight: 900;
+  letter-spacing: 0.02em;
+}
 @keyframes medalShimmer { 0%, 100% { filter: brightness(1); } 50% { filter: brightness(1.2); } }
 
 .badge-detail-overlay {

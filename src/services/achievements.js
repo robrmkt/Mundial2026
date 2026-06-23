@@ -74,6 +74,7 @@ export const BADGES = [
   { id: 'no_adivina_calcula', title: 'No adivina, calcula 🧮', rarity: 'rare', desc: 'Muchos aciertos de resultado.' },
   { id: 'le_susurro_al_balon', title: 'Le susurró al balón ⚽', rarity: 'epic', desc: 'Exacto en un partido de muchos goles.' },
   { id: 'tiro_quirurgico', title: 'Tiro quirúrgico 🎯', rarity: 'rare', desc: 'Exacto en un partido cerrado.' },
+  { id: 'almanaque_de_grays', title: 'Almanaque de Grays 📕', rarity: 'legendary', desc: '7+ marcadores exactos. Sospechamos viaje temporal.' },
 
   // --- Rachas ---
   { id: 'tres_al_hilo', title: 'Tres al hilo 🧵', rarity: 'rare', desc: '3 partidos seguidos sumando.' },
@@ -112,6 +113,7 @@ export const BADGES = [
   { id: 'hielera_fc', title: 'Hielera FC 🧃', rarity: 'meme', desc: 'Último y sin puntos recientes.' },
   { id: 'apenas_calentando', title: 'Apenas calentando 🔥', rarity: 'common', desc: 'Poco avance inicial.' },
   { id: 'historia_de_superacion', title: 'Historia de superación 📖', rarity: 'meme', desc: 'Abajo, pero mejorando.' },
+  { id: 'rey_del_sotano', title: 'Rey del Sótano 🕳️', rarity: 'meme', desc: 'Top 3 del sótano. Abajo, pero con corona.' },
 
   // --- Interacción (datos de fases 5-6; vía ctx) ---
   { id: 'alma_de_estadio', title: 'Alma de estadio 🏟️', rarity: 'epic', desc: 'Más interacciones totales.' },
@@ -190,6 +192,7 @@ const BADGE_FLAVOR = {
   no_adivina_calcula: 'Acumula aciertos sin despeinarse. Pura matemática.',
   le_susurro_al_balon: 'Exacto en un partido de muchos goles. Le habla bonito al balón.',
   tiro_quirurgico: 'Exacto en un partido cerradito. Disparo de precisión absoluta.',
+  almanaque_de_grays: 'No tenemos pruebas, pero tampoco dudas de que viajó al futuro, tomó notas y regresó fingiendo sorpresa. Siete exactos o más: esto ya no es quiniela, es archivo clasificado.',
   // Rachas
   tres_al_hilo: 'Tres jornadas seguidas sumando. Agarró ritmo de campeón.',
   racha_caliente: 'Viene tan caliente que quema el teclado. No falla.',
@@ -225,6 +228,7 @@ const BADGE_FLAVOR = {
   hielera_fc: 'Último y sin puntos recientes. Frío, frío… que traigan la hielera.',
   apenas_calentando: 'Poquito avance todavía. Apenas está entrando en calor.',
   historia_de_superacion: 'Abajo, pero mejorando jornada a jornada. Documental en proceso.',
+  rey_del_sotano: 'Pertenece al selecto Top 3 del sótano: zona fría, poca luz y mucha dignidad. No está perdiendo; está administrando el suspenso desde abajo.',
   // Interacción
   alma_de_estadio: 'El que más mueve la fiesta. Pura alma de estadio en la oficina.',
   treboles_para_ti: 'La oficina le mandó suerte. Que los tréboles le rindan.',
@@ -246,9 +250,13 @@ function splitTitle(title) {
 }
 
 // Cada insignia se enriquece con icono (emoji), etiqueta limpia y flavor creativo.
+const BADGE_ASSETS = {
+  almanaque_de_grays: '/grays-sports-almanac.webp'
+};
+
 const BADGE_BY_ID = Object.fromEntries(BADGES.map(b => {
   const { label, icon } = splitTitle(b.title);
-  return [b.id, { ...b, label, icon, flavor: BADGE_FLAVOR[b.id] || b.desc }];
+  return [b.id, { ...b, label, icon, asset: BADGE_ASSETS[b.id], flavor: BADGE_FLAVOR[b.id] || b.desc }];
 }));
 
 function parseScore(str) {
@@ -325,6 +333,7 @@ export function evaluateBadges(player, profile, { matches = [], totalParticipant
   const inTop3 = rank >= 1 && rank <= 3;
   const inTop12 = rank >= 1 && rank <= 12;
   const isLast = totalParticipants && rank === totalParticipants;
+  const inBottom3 = totalParticipants >= 3 && rank >= totalParticipants - 2;
   const lead = ctx.leaderMargin; // ventaja del 1º sobre el 2º (si se provee)
 
   // Precisión
@@ -332,6 +341,7 @@ export function evaluateBadges(player, profile, { matches = [], totalParticipant
   add('brujo_del_marcador', exactHits >= 2);
   add('cirujano_del_marcador', exactHits >= 3);
   add('bola_de_cristal', exactHits >= 5);
+  add('almanaque_de_grays', exactHits >= 7);
   add('profeta_del_2_1', pf.has21);
   add('uno_a_cero_sufrido', pf.has10);
   add('dos_cero_de_manual', pf.has20);
@@ -379,6 +389,7 @@ export function evaluateBadges(player, profile, { matches = [], totalParticipant
   add('apenas_calentando', played > 0 && played <= 2);
   add('todavia_cree', rank > 12 && (profile.today?.points || 0) > 0);
   add('la_epica_empieza_abajo', isLast && played > 0);
+  add('rey_del_sotano', played > 0 && inBottom3);
 
   // Movimiento (requiere rankDelta en ctx)
   const delta = ctx.rankDelta;
@@ -457,5 +468,7 @@ export function evaluateBadges(player, profile, { matches = [], totalParticipant
 
 // Las N insignias más destacadas (mayor rareza primero) para la ficha.
 export function topBadges(badges, n = 5) {
+  const holy = badges.find(b => b.id === 'almanaque_de_grays');
+  if (holy) return [holy];
   return badges.slice(0, n);
 }
