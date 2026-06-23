@@ -16,7 +16,12 @@ const COPY = {
   penalty: () => ({ big: 'PENAL', sub: '' }),
   penalty_missed: () => ({ big: '¡LO FALLÓ!', sub: '' }),
   var: () => ({ big: 'REVISA EL VAR', sub: '' }),
-  fulltime: (p) => ({ big: 'FINAL', sub: p.text || '' })
+  fulltime: (p) => ({ big: 'FINAL', sub: p.text || '' }),
+  mexico_hype: () => ({ big: '¿Y SI SÍ?', sub: 'México está en modo fe' }),
+  mexico_faith: () => ({ big: '99% FE', sub: '1% probabilidad' }),
+  mexico_today: () => ({ big: 'HOY JUEGA MÉXICO', sub: 'Se vale ilusionarse' }),
+  mexico_countdown: () => ({ big: 'MODO MÉXICO', sub: 'Cada vez falta menos' }),
+  boo: () => ({ big: 'BUUU', sub: 'La oficina mete presión' })
 };
 
 export default function EventAnimation({ event }) {

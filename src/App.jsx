@@ -23,11 +23,12 @@ import {
 } from './services/sharedEvents';
 import { computePodiumAndMovement } from './services/podiumReplay';
 import { pingVisitStats } from './services/visitStats';
+import useMexicoHype from './hooks/useMexicoHype';
 
 import initialMatches from './matches.json';
 
 // Emoji por tipo de porra (fallback visual; la lógica usa la clave, no el emoji).
-const REACTION_EMOJI = { confetti: '🎉', balls: '⚽', fire: '🔥', mexico: '🇲🇽', canada: '🇨🇦', usa: '🇺🇸', luck: '🍀', buzz: '🥁', clap: '👏', faith: '🙏' };
+const REACTION_EMOJI = { confetti: '🎉', balls: '⚽', fire: '🔥', mexico: '🇲🇽', canada: '🇨🇦', usa: '🇺🇸', luck: '🍀', buzz: '🥁', clap: '👏', faith: '🙏', boo: '👻' };
 
 const DATA_VERSION = 'real-data-2026-06-15-v1';
 const DATA_VERSION_KEY = 'quiniela_data_version';
@@ -221,6 +222,8 @@ export default function App() {
     setOverlayQueue(q => q.filter(e => e._id !== id));
   }, []);
 
+  useMexicoHype({ matches, activeTab, enqueueOverlay });
+
   const participantsRef = useRef(participants);
   useEffect(() => {
     participantsRef.current = participants;
@@ -304,10 +307,19 @@ export default function App() {
     return () => window.removeEventListener('hashchange', onHashChange);
   }, []);
 
-  const goToTab = (tab) => {
+  const goToTab = useCallback((tab) => {
     setActiveTab(tab);
     window.history.replaceState(null, '', HASH_BY_TAB[tab] || '#tabla');
-  };
+  }, []);
+
+  const openPredictionsForMatch = useCallback((matchId) => {
+    try {
+      window.sessionStorage.setItem('preferred_prediction_match_id', String(matchId));
+    } catch {
+      /* sessionStorage no disponible: solo abrimos la pestaña */
+    }
+    goToTab('predictions');
+  }, [goToTab]);
 
   const pushChatMessage = useCallback((user, text, highlight = false) => {
     setChatMessages(prev => [
@@ -787,14 +799,18 @@ export default function App() {
             legend={legend}
             onSendMessage={handleManualChatMessage}
             onReaction={handleReaction}
+            onOpenPredictionsForMatch={openPredictionsForMatch}
           />
         )}
         {activeTab === 'predictions' && (
           <div className="page-card">
             <h2 className="section-title">
               <Users size={20} />
-              Matriz Comparativa de Pronósticos
+              Pronósticos
             </h2>
+            <p className="prediction-page-subtitle">
+              Consulta qué marcador apostó la oficina para el partido actual o el siguiente.
+            </p>
             <PredictionGrid matches={matches} participants={participants} />
           </div>
         )}

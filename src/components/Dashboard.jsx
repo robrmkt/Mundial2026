@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { Trophy, Medal } from 'lucide-react';
 import LivePulse from './LivePulse';
 import PlayerCard from './PlayerCard';
-import SupportMeter from './SupportMeter';
 import RankMovement from './RankMovement';
 import { formatPodiumTime } from '../services/podiumTime';
 
@@ -67,7 +66,7 @@ function Podium({ topThree, onSelect, legend }) {
   );
 }
 
-export default function Dashboard({ standings, matches = [], chatMessages = [], support = {}, movement = {}, podiumMs = {}, legend = null, onSendMessage, onReaction }) {
+export default function Dashboard({ standings, matches = [], chatMessages = [], support = {}, movement = {}, podiumMs = {}, legend = null, onSendMessage, onReaction, onOpenPredictionsForMatch }) {
   const topThree = standings.slice(0, 3);
   const [selected, setSelected] = useState(null);
 
@@ -83,14 +82,15 @@ export default function Dashboard({ standings, matches = [], chatMessages = [], 
 
       <LivePulse
         matches={matches}
+        participants={standings}
+        support={support}
         chatMessages={chatMessages}
         onSendMessage={onSendMessage}
         onReaction={onReaction}
+        onOpenPredictionsForMatch={onOpenPredictionsForMatch}
       />
 
       <div className="command-right">
-        <SupportMeter matches={matches} standings={standings} support={support} />
-
         <div className="page-card standings-card">
         <div className="standings-table-header">
           <h3 className="section-title">

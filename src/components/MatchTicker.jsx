@@ -2,6 +2,7 @@
 // destacado, y el resto recorre (marquee con pausa al hover; en móvil scroll).
 // Respeta prefers-reduced-motion (sin auto-scroll).
 import { useMemo } from 'react';
+import FlagIcon from './FlagIcon';
 
 function fmtWhen(iso) {
   try {
@@ -31,12 +32,12 @@ export default function MatchTicker({ matches = [] }) {
     <div className="match-ticker" aria-label="Partidos del Mundial">
       {live.map(m => (
         <span key={m.id} className="ticker-item ticker-live">
-          <span className="live-dot" /> EN VIVO · {m.homeFlag} {m.homeTeam} {m.homeScore}-{m.awayScore} {m.awayTeam} {m.awayFlag} {m.displayClock || `${m.minute}'`}
+          <span className="live-dot" /> EN VIVO · <FlagIcon team={m.homeTeam} label={m.homeTeam} /> {m.homeTeam} {m.homeScore}-{m.awayScore} {m.awayTeam} <FlagIcon team={m.awayTeam} label={m.awayTeam} /> {m.displayClock || `${m.minute}'`}
         </span>
       ))}
       {next && (
         <span className="ticker-item ticker-next">
-          PRÓXIMO · {next.homeFlag} {next.homeTeam} vs {next.awayTeam} {next.awayFlag} · {fmtWhen(next.kickoff)}
+          PRÓXIMO · <FlagIcon team={next.homeTeam} label={next.homeTeam} /> {next.homeTeam} vs {next.awayTeam} <FlagIcon team={next.awayTeam} label={next.awayTeam} /> · {fmtWhen(next.kickoff)}
         </span>
       )}
       {rest.length > 0 && (
@@ -44,7 +45,7 @@ export default function MatchTicker({ matches = [] }) {
           <div className="ticker-track">
             {[...rest, ...rest].map((m, i) => (
               <span key={`${m.id}-${i}`} className="ticker-item ticker-rest">
-                {m.homeFlag} {m.homeTeam} vs {m.awayTeam} {m.awayFlag} · {fmtWhen(m.kickoff)}
+                <FlagIcon team={m.homeTeam} label={m.homeTeam} /> {m.homeTeam} vs {m.awayTeam} <FlagIcon team={m.awayTeam} label={m.awayTeam} /> · {fmtWhen(m.kickoff)}
               </span>
             ))}
           </div>

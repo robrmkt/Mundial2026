@@ -7,9 +7,20 @@ import EventAnimation from './EventAnimation';
 const PRIORITY = {
   mexico_goal: 1, goal: 2, red_card: 3, penalty: 4, penalty_missed: 4,
   leader_change: 5, exact_score: 6, fulltime: 6, podium_change: 7, var: 7,
-  yellow_card: 8, luck: 9, boo: 10, reaction: 11
+  yellow_card: 8, luck: 9, boo: 10, reaction: 11,
+  mexico_hype: 12, mexico_faith: 12, mexico_today: 12, mexico_countdown: 12
 };
-const DURATION = { mexico_goal: 4200, goal: 3500, leader_change: 4200, exact_score: 3600, red_card: 3000 };
+const DURATION = {
+  mexico_goal: 4200,
+  goal: 3500,
+  leader_change: 4200,
+  exact_score: 3600,
+  red_card: 3000,
+  mexico_hype: 3200,
+  mexico_faith: 3400,
+  mexico_today: 3600,
+  mexico_countdown: 3000
+};
 const DEFAULT_DURATION = 2800;
 const MIN_GAP = 5000;    // como máximo un overlay grande cada 5 s
 const STALE_MS = 30000;  // un evento que esperó >30 s ya no se anima

@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Activity, MessageCircle, Send, Clock, Radio } from 'lucide-react';
 import { fetchMatchSummary } from '../services/liveData';
+import MatchPulse from './MatchPulse';
+import FlagIcon from './FlagIcon';
 
 // Porras que cualquiera puede lanzar; ya se comparten en vivo con todos (Fase 1).
 const REACTIONS = [
@@ -13,7 +15,8 @@ const REACTIONS = [
   { key: 'luck', emoji: '🍀', label: 'Suerte' },
   { key: 'buzz', emoji: '🥁', label: 'Zumbido' },
   { key: 'clap', emoji: '👏', label: 'Aplausos' },
-  { key: 'faith', emoji: '🙏', label: 'Tengo fe' }
+  { key: 'faith', emoji: '🙏', label: 'Tengo fe' },
+  { key: 'boo', emoji: '👻', label: 'Buuu' }
 ];
 
 function ReactionIcon({ reaction }) {
@@ -54,7 +57,7 @@ function useCountdown(targetIso) {
   };
 }
 
-function NextMatch({ match }) {
+function NextMatch({ match, participants, support, onOpenPredictionsForMatch }) {
   const cd = useCountdown(match?.kickoff);
   if (!match) {
     return <div className="pulse-empty">No hay más partidos programados por ahora.</div>;
@@ -63,9 +66,9 @@ function NextMatch({ match }) {
     <div className="next-match">
       <span className="next-match-label"><Clock size={13} /> Próximo partido</span>
       <div className="next-match-teams">
-        <span>{match.homeFlag} {match.homeTeam}</span>
+        <span><FlagIcon team={match.homeTeam} label={match.homeTeam} /> {match.homeTeam}</span>
         <span className="next-match-vs">vs</span>
-        <span>{match.awayTeam} {match.awayFlag}</span>
+        <span>{match.awayTeam} <FlagIcon team={match.awayTeam} label={match.awayTeam} /></span>
       </div>
       {cd ? (
         <div className="countdown">
@@ -78,11 +81,17 @@ function NextMatch({ match }) {
         <div className="next-match-soon">¡Está por comenzar!</div>
       )}
       <span className="next-match-date">{match.date}</span>
+      <MatchPulse
+        match={match}
+        participants={participants}
+        support={support}
+        onOpenPredictionsForMatch={onOpenPredictionsForMatch}
+      />
     </div>
   );
 }
 
-function LiveTimeline({ liveMatch }) {
+function LiveTimeline({ liveMatch, participants, support, onOpenPredictionsForMatch }) {
   const [timeline, setTimeline] = useState([]);
   const [loading, setLoading] = useState(true);
   const [fetchedAt, setFetchedAt] = useState(null);
@@ -122,14 +131,20 @@ function LiveTimeline({ liveMatch }) {
   return (
     <div className="pulse-live">
       <div className="pulse-live-score">
-        <span className="pulse-live-team">{liveMatch.homeFlag} {liveMatch.homeTeam}</span>
+        <span className="pulse-live-team"><FlagIcon team={liveMatch.homeTeam} label={liveMatch.homeTeam} /> {liveMatch.homeTeam}</span>
         <strong>{liveMatch.homeScore} - {liveMatch.awayScore}</strong>
-        <span className="pulse-live-team">{liveMatch.awayTeam} {liveMatch.awayFlag}</span>
+        <span className="pulse-live-team">{liveMatch.awayTeam} <FlagIcon team={liveMatch.awayTeam} label={liveMatch.awayTeam} /></span>
         <span className="pulse-live-min">
           <span className="live-dot" />
           {liveMatch.isHalftime ? 'MT' : (liveMatch.displayClock || `${liveMatch.minute}'`)}
         </span>
       </div>
+      <MatchPulse
+        match={liveMatch}
+        participants={participants}
+        support={support}
+        onOpenPredictionsForMatch={onOpenPredictionsForMatch}
+      />
       {loading ? (
         <div className="pulse-empty">Cargando cronología…</div>
       ) : timeline.length === 0 ? (
@@ -198,7 +213,7 @@ function Wall({ chatMessages, onSendMessage }) {
   );
 }
 
-export default function LivePulse({ matches, chatMessages, onSendMessage, onReaction }) {
+export default function LivePulse({ matches, participants = [], support = {}, chatMessages, onSendMessage, onReaction, onOpenPredictionsForMatch }) {
   const liveMatches = useMemo(() => matches.filter(m => m.status === 'LIVE'), [matches]);
   // El próximo partido = el SCHEDULED más cercano por hora de inicio.
   // (ESPN marca LIVE/FINISHED en cuanto arranca, así que SCHEDULED ya implica futuro.)
@@ -209,7 +224,7 @@ export default function LivePulse({ matches, chatMessages, onSendMessage, onReac
   }, [matches]);
 
   const hasLive = liveMatches.length > 0;
-  const [tab, setTab] = useState(hasLive ? 'vivo' : 'muro');
+  const [tab, setTab] = useState('vivo');
   const [liveIdx, setLiveIdx] = useState(0);
   const safeIdx = Math.min(liveIdx, Math.max(0, liveMatches.length - 1));
 
@@ -250,14 +265,29 @@ export default function LivePulse({ matches, chatMessages, onSendMessage, onReac
                       onClick={() => setLiveIdx(i)}
                       title={`${m.homeTeam} vs ${m.awayTeam}`}
                     >
-                      <span className="live-dot" />{m.homeFlag} {m.homeScore}-{m.awayScore} {m.awayFlag}
+                      <span className="live-dot" />
+                      <FlagIcon team={m.homeTeam} label={m.homeTeam} />
+                      {m.homeScore}-{m.awayScore}
+                      <FlagIcon team={m.awayTeam} label={m.awayTeam} />
                     </button>
                   ))}
                 </div>
               )}
-              <LiveTimeline liveMatch={liveMatches[safeIdx]} />
+              <LiveTimeline
+                liveMatch={liveMatches[safeIdx]}
+                participants={participants}
+                support={support}
+                onOpenPredictionsForMatch={onOpenPredictionsForMatch}
+              />
             </>
-          ) : <NextMatch match={nextMatch} />
+          ) : (
+            <NextMatch
+              match={nextMatch}
+              participants={participants}
+              support={support}
+              onOpenPredictionsForMatch={onOpenPredictionsForMatch}
+            />
+          )
         ) : (
           <Wall chatMessages={chatMessages} onSendMessage={onSendMessage} />
         )}

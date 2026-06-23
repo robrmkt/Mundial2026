@@ -39,7 +39,8 @@ const THEMES = {
   balls: { colors: ['#ffffff', '#0E7C4A', '#1D4ED8'], emojis: ['⚽', '🥅', '🏟️'] },
   buzz: { colors: ['#111827', '#F4B400', '#ffffff'], emojis: ['🥁', '💥', '📣'] },
   luck: { colors: ['#0E7C4A', '#7CFC00', '#ffffff'], emojis: ['🍀', '✨', '🤞'] },
-  faith: { colors: ['#0E7C4A', '#ffffff', '#D7282F'], emojis: ['🙏', '🇲🇽', '📿', '🕯️', '✨'] }
+  faith: { colors: ['#0E7C4A', '#ffffff', '#D7282F'], emojis: ['🙏', '🇲🇽', '📿', '🕯️', '✨'] },
+  boo: { colors: ['#6b21a8', '#ffffff', '#c4b5fd'], emojis: ['👻', '😤', '💨', '🙃'] }
 };
 
 // Celebración genérica basada en el tema (confeti + lluvia de emojis).
