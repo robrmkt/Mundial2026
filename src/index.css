@@ -4201,11 +4201,35 @@ img {
 }
 
 .participants-scroll-list {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem;
+  align-content: start;
+  max-height: 62vh;
+  overflow-y: auto;
+  padding-right: 0.2rem;
+}
+
+/* Encabezado de Participantes: título + acción en una fila */
+.participants-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.7rem;
+}
+
+/* Columna principal del admin: revisión + participantes apilados */
+.admin-main-section {
   display: flex;
   flex-direction: column;
-  gap: 0.4rem;
-  max-height: 330px;
-  overflow-y: auto;
+  gap: 1.1rem;
+  min-width: 0;
+}
+
+@media (max-width: 900px) {
+  .participants-scroll-list { grid-template-columns: 1fr; }
 }
 
 .participant-admin-item {
@@ -4266,19 +4290,19 @@ img {
 }
 
 .admin-export-all-btn {
-  width: 100%;
   border: 1px solid var(--green);
-  background: var(--green);
-  color: #fff;
+  background: var(--green-soft);
+  color: var(--green);
   border-radius: 9px;
-  padding: 0.62rem 0.8rem;
+  padding: 0.42rem 0.8rem;
   font-weight: 800;
+  font-size: 0.8rem;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 0.45rem;
+  gap: 0.4rem;
   cursor: pointer;
-  margin-bottom: 0.75rem;
+  flex-shrink: 0;
 }
 .admin-export-all-btn:disabled {
   opacity: 0.5;

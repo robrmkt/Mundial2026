@@ -546,20 +546,118 @@ export default function AdminPanel({
             )}
           </div>
 
+        </div>
+
+        <div className="admin-main-section">
+          <div className="admin-card document-review-card">
+            <div className="scoreboard-manager-header">
+              <h2 className="admin-section-title">
+                <Pencil size={18} />
+                Revisión y edición
+              </h2>
+              <span className={`review-confidence-badge ${review.confidence}`}>
+                {review.usedAI ? 'Leído con IA' : review.confidence === 'high' ? 'Listo' : review.sourceFileName ? 'Revisar' : 'Sin documento'}
+              </span>
+            </div>
+
+            {review.sourceFileName ? (
+              <>
+                <div className="review-file-strip">
+                  <FileText size={17} />
+                  <span>{review.sourceFileName}</span>
+                </div>
+
+                {review.warnings.length > 0 && (
+                  <div className="review-warning-list">
+                    {review.warnings.map(warning => (
+                      <div key={warning} className="review-warning-item">
+                        <AlertCircle size={14} />
+                        {warning}
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                <label className="review-field-label">
+                  ¿Quién envió esta quiniela?
+                  <input
+                    className="review-name-input"
+                    value={review.participantName}
+                    onChange={(event) => setReview(prev => ({ ...prev, participantName: event.target.value }))}
+                    placeholder="Escribe el nombre del colaborador"
+                  />
+                </label>
+
+                <div className="review-table-header">
+                  <span>{reviewedPredictions.length} pronósticos</span>
+                  <button className="review-save-btn" onClick={saveReview}>
+                    <Save size={15} /> Guardar
+                  </button>
+                </div>
+
+                <div className="prediction-review-list">
+                  {reviewedPredictions.length === 0 ? (
+                    <div className="empty-matches-state">
+                      No hay pronósticos legibles. Prueba con otro formato o guarda tu API key de OpenAI para usar la lectura con IA.
+                    </div>
+                  ) : (
+                    reviewedPredictions.map(({ match, matchId, prediction }) => (
+                      <div key={matchId} className="prediction-review-row">
+                        <div className="review-match-copy">
+                          <span className="admin-match-id">#{match.id}</span>
+                          <strong>{match.homeFlag} {match.homeTeam}</strong>
+                          <span>vs</span>
+                          <strong>{match.awayTeam} {match.awayFlag}</strong>
+                        </div>
+                        <div className="review-score-editor">
+                          <input
+                            type="number"
+                            min="0"
+                            className="admin-score-input"
+                            value={prediction.homeScore}
+                            onChange={(event) => updatePrediction(matchId, 'homeScore', event.target.value)}
+                          />
+                          <span className="admin-score-sep">-</span>
+                          <input
+                            type="number"
+                            min="0"
+                            className="admin-score-input"
+                            value={prediction.awayScore}
+                            onChange={(event) => updatePrediction(matchId, 'awayScore', event.target.value)}
+                          />
+                          <button className="participant-admin-delete-btn" onClick={() => removePrediction(matchId)} title="Quitar pronóstico">
+                            <Trash2 size={13} />
+                          </button>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </>
+            ) : (
+              <div className="review-empty-state">
+                <CheckCircle2 size={22} />
+                <p>Sin documento. Sube una quiniela o toca el lápiz de un participante para editar.</p>
+              </div>
+            )}
+          </div>
+
           <div className="admin-card participants-card">
-            <h2 className="admin-section-title">
-              <Users2 size={18} />
-              Participantes ({participants.length})
-            </h2>
-            <button
-              type="button"
-              className="admin-export-all-btn"
-              onClick={() => exportAllQuinielas(participants, matches)}
-              disabled={participants.length === 0}
-            >
-              <Download size={14} />
-              Descargar todo
-            </button>
+            <div className="participants-card-head">
+              <h2 className="admin-section-title">
+                <Users2 size={18} />
+                Participantes ({participants.length})
+              </h2>
+              <button
+                type="button"
+                className="admin-export-all-btn"
+                onClick={() => exportAllQuinielas(participants, matches)}
+                disabled={participants.length === 0}
+              >
+                <Download size={14} />
+                Descargar todo
+              </button>
+            </div>
             <form onSubmit={addParticipant} className="participant-add-form">
               <input
                 type="text"
@@ -652,102 +750,6 @@ export default function AdminPanel({
                 </div>
               ))}
             </div>
-          </div>
-        </div>
-
-        <div className="admin-main-section">
-          <div className="admin-card document-review-card">
-            <div className="scoreboard-manager-header">
-              <h2 className="admin-section-title">
-                <Pencil size={18} />
-                Revisión y edición
-              </h2>
-              <span className={`review-confidence-badge ${review.confidence}`}>
-                {review.usedAI ? 'Leído con IA' : review.confidence === 'high' ? 'Listo' : review.sourceFileName ? 'Revisar' : 'Sin documento'}
-              </span>
-            </div>
-
-            {review.sourceFileName ? (
-              <>
-                <div className="review-file-strip">
-                  <FileText size={17} />
-                  <span>{review.sourceFileName}</span>
-                </div>
-
-                {review.warnings.length > 0 && (
-                  <div className="review-warning-list">
-                    {review.warnings.map(warning => (
-                      <div key={warning} className="review-warning-item">
-                        <AlertCircle size={14} />
-                        {warning}
-                      </div>
-                    ))}
-                  </div>
-                )}
-
-                <label className="review-field-label">
-                  ¿Quién envió esta quiniela?
-                  <input
-                    className="review-name-input"
-                    value={review.participantName}
-                    onChange={(event) => setReview(prev => ({ ...prev, participantName: event.target.value }))}
-                    placeholder="Escribe el nombre del colaborador"
-                  />
-                </label>
-
-                <div className="review-table-header">
-                  <span>{reviewedPredictions.length} pronósticos</span>
-                  <button className="review-save-btn" onClick={saveReview}>
-                    <Save size={15} /> Guardar
-                  </button>
-                </div>
-
-                <div className="prediction-review-list">
-                  {reviewedPredictions.length === 0 ? (
-                    <div className="empty-matches-state">
-                      No hay pronósticos legibles. Prueba con otro formato o guarda tu API key de OpenAI para usar la lectura con IA.
-                    </div>
-                  ) : (
-                    reviewedPredictions.map(({ match, matchId, prediction }) => (
-                      <div key={matchId} className="prediction-review-row">
-                        <div className="review-match-copy">
-                          <span className="admin-match-id">#{match.id}</span>
-                          <strong>{match.homeFlag} {match.homeTeam}</strong>
-                          <span>vs</span>
-                          <strong>{match.awayTeam} {match.awayFlag}</strong>
-                        </div>
-                        <div className="review-score-editor">
-                          <input
-                            type="number"
-                            min="0"
-                            className="admin-score-input"
-                            value={prediction.homeScore}
-                            onChange={(event) => updatePrediction(matchId, 'homeScore', event.target.value)}
-                          />
-                          <span className="admin-score-sep">-</span>
-                          <input
-                            type="number"
-                            min="0"
-                            className="admin-score-input"
-                            value={prediction.awayScore}
-                            onChange={(event) => updatePrediction(matchId, 'awayScore', event.target.value)}
-                          />
-                          <button className="participant-admin-delete-btn" onClick={() => removePrediction(matchId)} title="Quitar pronóstico">
-                            <Trash2 size={13} />
-                          </button>
-                        </div>
-                      </div>
-                    ))
-                  )}
-                </div>
-              </>
-            ) : (
-              <div className="review-empty-state">
-                <CheckCircle2 size={38} />
-                <h3>Sin documento en revisión</h3>
-                <p>Sube una quiniela o pulsa el lápiz junto a un participante para editar sus pronósticos.</p>
-              </div>
-            )}
           </div>
         </div>
 
