@@ -5812,3 +5812,107 @@ img {
 .player-sticker.is-exporting .medal .medal-icon {
   filter: none !important;
 }
+
+/* ===== Derbi interno BZ vs UP ===== */
+.rivalry-bar-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 0.85rem 1rem 0.9rem;
+  margin-bottom: 0.9rem;
+}
+.rivalry-bar-title {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: 0.65rem;
+}
+.rivalry-bar-main {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+.rivalry-shield-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding: 4px;
+  border-radius: 10px;
+  transition: transform 0.15s;
+  flex-shrink: 0;
+}
+.rivalry-shield-btn:hover { transform: scale(1.08); }
+.rivalry-shield-btn.shake { animation: rivalryShake 0.5s ease; }
+@keyframes rivalryShake {
+  0%,100% { transform: rotate(0deg) scale(1); }
+  20% { transform: rotate(-10deg) scale(1.15); }
+  40% { transform: rotate(8deg) scale(1.12); }
+  60% { transform: rotate(-6deg) scale(1.1); }
+  80% { transform: rotate(4deg) scale(1.05); }
+}
+.rivalry-shield-img { width: 38px; height: 38px; object-fit: contain; }
+.rivalry-team-label {
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+}
+.rivalry-team-label.bz { color: #C0161D; }
+.rivalry-team-label.up { color: #1D4ED8; }
+
+.rivalry-bar-center {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+.rivalry-pct-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.rivalry-pct {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  width: 28px;
+  text-align: center;
+  flex-shrink: 0;
+}
+.rivalry-pct.leads { color: var(--text); }
+.rivalry-track {
+  flex: 1;
+  height: 8px;
+  border-radius: 99px;
+  background: var(--surface-soft);
+  overflow: hidden;
+  display: flex;
+}
+.rivalry-fill { height: 100%; transition: width 0.6s ease; }
+.bz-fill { background: #D7282F; border-radius: 99px 0 0 99px; }
+.up-fill { background: #2563EB; border-radius: 0 99px 99px 0; }
+.rivalry-headline {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.rivalry-avg-row {
+  font-size: 0.67rem;
+  color: var(--text-muted);
+}
+.rivalry-avg-row strong { color: var(--text); }
+
+@media (max-width: 480px) {
+  .rivalry-shield-img { width: 32px; height: 32px; }
+  .rivalry-bar-main { gap: 0.5rem; }
+  .rivalry-headline { font-size: 0.67rem; }
+}

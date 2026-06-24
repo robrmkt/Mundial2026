@@ -4,6 +4,7 @@ import LivePulse from './LivePulse';
 import PlayerCard from './PlayerCard';
 import RankMovement from './RankMovement';
 import TeamBadge from './TeamBadge';
+import TeamRivalryBar from './TeamRivalryBar';
 import { formatPodiumTime } from '../services/podiumTime';
 
 const PODIUM_REACTIONS = [
@@ -127,6 +128,7 @@ export default function Dashboard({ standings, matches = [], chatMessages = [], 
       />
 
       <div className="command-right">
+        <TeamRivalryBar standings={standings} />
         <div className="page-card standings-card">
         <div className="standings-table-header">
           <h3 className="section-title">
