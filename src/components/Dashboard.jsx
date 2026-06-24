@@ -3,6 +3,7 @@ import { Trophy, Medal } from 'lucide-react';
 import LivePulse from './LivePulse';
 import PlayerCard from './PlayerCard';
 import RankMovement from './RankMovement';
+import TeamBadge from './TeamBadge';
 import { formatPodiumTime } from '../services/podiumTime';
 
 const PODIUM_REACTIONS = [
@@ -42,11 +43,14 @@ function Podium({ topThree, onSelect, legend, reactions = {}, onReact }) {
           role="button"
           tabIndex={0}
         >
-          {player.photo ? (
-            <div className="podium-avatar has-photo"><img src={player.photo} alt={player.name} /></div>
-          ) : (
-            <div className="podium-avatar">{player.avatar}</div>
-          )}
+          <div className="avatar-team-wrap">
+            {player.photo ? (
+              <div className="podium-avatar has-photo"><img src={player.photo} alt={player.name} /></div>
+            ) : (
+              <div className="podium-avatar">{player.avatar}</div>
+            )}
+            <TeamBadge team={player.team} className="on-avatar" />
+          </div>
           <span className="podium-medal">{meta.medal}</span>
           <span className="podium-name">{player.name}</span>
           <span className="podium-points">{player.points} <small>PTS</small></span>
@@ -164,11 +168,14 @@ export default function Dashboard({ standings, matches = [], chatMessages = [], 
                     </td>
                     <td>
                       <div className="standings-user-profile">
-                        {p.photo ? (
-                          <div className="standings-avatar has-photo"><img src={p.photo} alt={p.name} /></div>
-                        ) : (
-                          <div className="standings-avatar">{p.avatar}</div>
-                        )}
+                        <div className="avatar-team-wrap">
+                          {p.photo ? (
+                            <div className="standings-avatar has-photo"><img src={p.photo} alt={p.name} /></div>
+                          ) : (
+                            <div className="standings-avatar">{p.avatar}</div>
+                          )}
+                          <TeamBadge team={p.team} className="on-avatar" />
+                        </div>
                         <div className="standings-name-wrapper">
                           <span className="standings-user-name">{p.name}</span>
                           <span className="standings-tags">

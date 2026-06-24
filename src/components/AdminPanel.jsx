@@ -23,6 +23,7 @@ import * as XLSX from 'xlsx';
 import { analyzeTextWithOpenAI, extractPdfText, getOpenAiKey, setOpenAiKey } from '../services/aiReader';
 import { resizeImageToDataUrl } from '../services/photos';
 import { exportAllQuinielas, exportParticipantQuiniela } from '../services/quinielaExport';
+import TeamBadge, { TEAMS } from './TeamBadge';
 
 const emptyReview = {
   participantName: '',
@@ -401,6 +402,16 @@ export default function AdminPanel({
     }));
   };
 
+  // Catalogar equipo interno (Team BZ / Team UP) por participante.
+  const setTeam = (participantName, team) => {
+    setParticipants(prev => prev.map(p => {
+      if (p.name !== participantName) return p;
+      const next = { ...p };
+      if (team) next.team = team; else delete next.team;
+      return next;
+    }));
+  };
+
   const removeDocument = (id) => {
     setDocuments(prev => prev.filter(document => document.id !== id));
   };
@@ -566,17 +577,32 @@ export default function AdminPanel({
               {participants.map(participant => (
                 <div key={participant.name} className="participant-admin-item">
                   <div className="participant-admin-info">
-                    {participant.photo ? (
-                      <div className="participant-admin-avatar has-photo"><img src={participant.photo} alt={participant.name} /></div>
-                    ) : (
-                      <div className="participant-admin-avatar">{participant.avatar}</div>
-                    )}
+                    <div className="avatar-team-wrap">
+                      {participant.photo ? (
+                        <div className="participant-admin-avatar has-photo"><img src={participant.photo} alt={participant.name} /></div>
+                      ) : (
+                        <div className="participant-admin-avatar">{participant.avatar}</div>
+                      )}
+                      <TeamBadge team={participant.team} className="on-avatar" />
+                    </div>
                     <div className="participant-admin-copy">
                       <span className="participant-admin-name">{participant.name}</span>
                       <span className="participant-admin-meta">{Object.keys(participant.predictions || {}).length} pronósticos</span>
                     </div>
                   </div>
                   <div className="participant-admin-actions">
+                    <select
+                      className="participant-admin-team-select"
+                      value={participant.team || ''}
+                      onChange={(event) => setTeam(participant.name, event.target.value)}
+                      title={`Equipo de ${participant.name}`}
+                      aria-label={`Equipo de ${participant.name}`}
+                    >
+                      <option value="">Sin equipo</option>
+                      {Object.entries(TEAMS).map(([key, t]) => (
+                        <option key={key} value={key}>{t.label}</option>
+                      ))}
+                    </select>
                     <label
                       className="participant-admin-photo-btn"
                       title={participant.photo ? `Cambiar foto de ${participant.name}` : `Subir foto de ${participant.name}`}

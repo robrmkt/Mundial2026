@@ -7,6 +7,7 @@ import BadgeShelf from './BadgeShelf';
 import RankMovement from './RankMovement';
 import SharePlayerCardButton from './SharePlayerCardButton';
 import PodiumClock from './PodiumClock';
+import TeamBadge from './TeamBadge';
 
 function EfficiencyRing({ value }) {
   const eff = Number.isFinite(value) ? Math.min(100, Math.max(0, Math.round(value))) : 0;
@@ -102,6 +103,7 @@ export default function PlayerCard({ player, matches, totalParticipants, todayKe
             <div className="sticker-photo-fallback">{player.avatar}</div>
           )}
           <div className="sticker-role-emoji" title={role.title}>{role.emoji}</div>
+          <TeamBadge team={player.team} className="sticker-team" />
         </div>
 
         <div className="sticker-identity">

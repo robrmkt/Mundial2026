@@ -5225,17 +5225,50 @@ img {
 }
 
 .event-anim-mexico_goal .event-anim-card { background: linear-gradient(135deg, #0e7c4a, #0a5f39 55%, #d7282f); }
-.event-anim-mexico_hype .event-anim-card,
-.event-anim-mexico_faith .event-anim-card,
-.event-anim-mexico_tomorrow .event-anim-card,
-.event-anim-mexico_today .event-anim-card,
-.event-anim-mexico_live .event-anim-card,
-.event-anim-mexico_countdown .event-anim-card {
-  background: linear-gradient(135deg, #0e7c4a 0 34%, #ffffff 34% 66%, #d7282f 66%);
-  color: #101c2e;
-  border-color: rgba(16, 28, 46, 0.16);
-}
+/* Los tipos de hype de México se estilizan ahora vía .event-anim-mx-banner (banner). */
 .event-anim-goal .event-anim-card { background: linear-gradient(135deg, #1d4ed8, #101c2e); }
+
+/* ===== Escudo de equipo interno (Team BZ / Team UP) junto a la foto ===== */
+.avatar-team-wrap { position: relative; display: inline-flex; flex-shrink: 0; }
+.team-badge { display: inline-block; object-fit: contain; }
+.team-badge.on-avatar {
+  position: absolute;
+  right: -3px;
+  bottom: -3px;
+  width: 46%;
+  height: 46%;
+  min-width: 16px;
+  min-height: 16px;
+  max-width: 26px;
+  max-height: 26px;
+  border-radius: 50%;
+  background: var(--surface);
+  box-shadow: 0 1px 3px rgba(16, 28, 46, 0.28);
+  padding: 1px;
+}
+.team-badge.sticker-team {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: 0 2px 6px rgba(16, 28, 46, 0.3);
+  padding: 2px;
+  z-index: 3;
+}
+.participant-admin-team-select {
+  border: 1px solid var(--border);
+  background: var(--surface);
+  border-radius: 8px;
+  font-size: 0.74rem;
+  font-weight: 700;
+  color: var(--text-secondary);
+  padding: 0.32rem 0.4rem;
+  cursor: pointer;
+}
+.participant-admin-team-select:focus { outline: none; border-color: var(--blue); }
 .event-anim-leader_change .event-anim-card { background: linear-gradient(135deg, #c8930a, #f4b400); color: #2a1f00; border-color: rgba(255, 255, 255, 0.5); }
 .event-anim-exact_score .event-anim-card { background: linear-gradient(135deg, #0e7c4a, #c8930a); }
 .event-anim-red_card .event-anim-card { background: linear-gradient(135deg, #d7282f, #7c1014); }
