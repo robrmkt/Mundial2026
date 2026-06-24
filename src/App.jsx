@@ -7,6 +7,7 @@ import Dashboard from './components/Dashboard';
 // así el bundle inicial que descargan todos los participantes es mucho más ligero.
 const AdminPanel = lazy(() => import('./components/AdminPanel'));
 import PredictionGrid from './components/PredictionGrid';
+import PhasePredictionForm from './components/PhasePredictionForm';
 import LiveMatches from './components/LiveMatches';
 import GlobalEventOverlay from './components/GlobalEventOverlay';
 import MatchTicker from './components/MatchTicker';
@@ -134,14 +135,16 @@ const TAB_HASHES = {
   '#tabla': 'dashboard',
   '#pronosticos': 'predictions',
   '#partidos': 'matches',
-  '#admin': 'admin'
+  '#admin': 'admin',
+  '#fase2': 'fase2'
 };
 
 const HASH_BY_TAB = {
   dashboard: '#tabla',
   predictions: '#pronosticos',
   matches: '#partidos',
-  admin: '#admin'
+  admin: '#admin',
+  fase2: '#fase2'
 };
 
 function tabFromHash() {
@@ -865,6 +868,12 @@ export default function App() {
         )}
         {activeTab === 'matches' && (
           <LiveMatches matches={matches} />
+        )}
+        {activeTab === 'fase2' && (
+          <PhasePredictionForm
+            matches={matches}
+            onClose={() => goToTab('dashboard')}
+          />
         )}
         {activeTab === 'admin' && (
           session ? (

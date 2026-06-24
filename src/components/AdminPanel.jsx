@@ -231,7 +231,7 @@ export default function AdminPanel({
         />
       )}
       {activeSection === 'extension' && (
-        <AdminPredictionExtension participants={participants} />
+        <AdminPredictionExtension participants={participants} matches={matches} />
       )}
       {activeSection === 'notifications' && (
         <NotificationCenter isSuper={isSuper} session={session} />

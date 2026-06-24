@@ -16,6 +16,35 @@ export async function savePredictionWindow(window) {
   return res.json();
 }
 
+export async function deletePredictionWindow(id) {
+  const res = await fetch(`/api/prediction-windows/${id}`, { method: 'DELETE' });
+  if (!res.ok) throw new Error('Error al eliminar ventana');
+  return res.json();
+}
+
+export async function fetchPhaseSubmissions(windowId) {
+  const url = windowId ? `/api/phase-submissions?windowId=${encodeURIComponent(windowId)}` : '/api/phase-submissions';
+  const res = await fetch(url);
+  if (!res.ok) throw new Error('Error al obtener submissions');
+  return res.json();
+}
+
+export async function savePhaseSubmission({ email, windowId, participantName, predictions }) {
+  const res = await fetch('/api/phase-submissions', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email, windowId, participantName, predictions })
+  });
+  if (!res.ok) throw new Error('Error al guardar pronósticos');
+  return res.json();
+}
+
+export async function deletePhaseSubmission(id) {
+  const res = await fetch(`/api/phase-submissions/${id}`, { method: 'DELETE' });
+  if (!res.ok) throw new Error('Error al eliminar');
+  return res.json();
+}
+
 export function getWindowStatus(window) {
   if (!window) return 'none';
   const now = Date.now();

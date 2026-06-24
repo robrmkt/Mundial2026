@@ -90,6 +90,7 @@ const defaultState = {
     lastVisitAt: null
   },
   predictionWindows: [],
+  phaseSubmissions: [],
   notificationSettings: defaultNotificationSettings,
   notificationLog: [],
   updatedAt: null
@@ -160,6 +161,7 @@ function coerceState(parsed) {
       lastVisitAt: p.visitStats?.lastVisitAt || null
     },
     predictionWindows: asArray(p.predictionWindows),
+    phaseSubmissions: asArray(p.phaseSubmissions),
     notificationSettings: coerceNotificationSettings(p.notificationSettings),
     notificationLog: asArray(p.notificationLog).slice(-200),
     updatedAt: p.updatedAt || null
@@ -776,6 +778,49 @@ const server = createServer(async (request, response) => {
       wins[idx] = updated;
       writeState({ ...base, predictionWindows: wins });
       sendJson(response, 200, { window: updated });
+      return;
+    }
+    if (path.startsWith('/api/prediction-windows/') && request.method === 'DELETE') {
+      const id = path.replace('/api/prediction-windows/', '');
+      const base = readState();
+      const wins = asArray(base.predictionWindows).filter(w => w.id !== id);
+      writeState({ ...base, predictionWindows: wins });
+      sendJson(response, 200, { ok: true });
+      return;
+    }
+
+    // Phase submissions (quinielas de segunda fase)
+    if (path === '/api/phase-submissions') {
+      if (request.method === 'GET') {
+        const { searchParams } = new URL(request.url, 'http://localhost');
+        const windowId = searchParams.get('windowId');
+        let subs = asArray(readState().phaseSubmissions);
+        if (windowId) subs = subs.filter(s => s.windowId === windowId);
+        sendJson(response, 200, { submissions: subs });
+        return;
+      }
+      if (request.method === 'POST') {
+        const parsed = await readJsonBody(request);
+        if (!parsed.email || !parsed.windowId || !parsed.predictions) {
+          sendJson(response, 400, { error: 'email, windowId y predictions son requeridos' }); return;
+        }
+        const base = readState();
+        const subs = asArray(base.phaseSubmissions);
+        const existing = subs.findIndex(s => s.email === parsed.email.toLowerCase() && s.windowId === parsed.windowId);
+        const entry = { id: existing >= 0 ? subs[existing].id : makeId('sub'), ...parsed, email: parsed.email.toLowerCase(), updatedAt: new Date().toISOString(), createdAt: existing >= 0 ? subs[existing].createdAt : new Date().toISOString() };
+        if (existing >= 0) subs[existing] = entry; else subs.push(entry);
+        writeState({ ...base, phaseSubmissions: subs });
+        sendJson(response, 200, { submission: entry, updated: existing >= 0 });
+        return;
+      }
+      sendJson(response, 405, { error: 'Method not allowed' }); return;
+    }
+    if (path.startsWith('/api/phase-submissions/') && request.method === 'DELETE') {
+      const id = path.replace('/api/phase-submissions/', '');
+      const base = readState();
+      const subs = asArray(base.phaseSubmissions).filter(s => s.id !== id);
+      writeState({ ...base, phaseSubmissions: subs });
+      sendJson(response, 200, { ok: true });
       return;
     }
 

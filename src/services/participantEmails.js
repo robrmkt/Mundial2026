@@ -42,3 +42,8 @@ export function getRosterEntry(name) {
   const n = normalize(name);
   return PARTICIPANT_EMAIL_ROSTER.find(r => normalize(r.name) === n) || null;
 }
+
+export function getRosterEntryByEmail(email) {
+  const e = normalizeEmail(email);
+  return PARTICIPANT_EMAIL_ROSTER.find(r => normalizeEmail(r.email) === e) || null;
+}
