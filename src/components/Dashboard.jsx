@@ -168,14 +168,12 @@ export default function Dashboard({ standings, matches = [], chatMessages = [], 
                     </td>
                     <td>
                       <div className="standings-user-profile">
-                        <div className="avatar-team-wrap">
-                          {p.photo ? (
-                            <div className="standings-avatar has-photo"><img src={p.photo} alt={p.name} /></div>
-                          ) : (
-                            <div className="standings-avatar">{p.avatar}</div>
-                          )}
-                          <TeamBadge team={p.team} className="on-avatar" />
-                        </div>
+                        <TeamBadge team={p.team} className="standings-between" />
+                        {p.photo ? (
+                          <div className="standings-avatar has-photo"><img src={p.photo} alt={p.name} /></div>
+                        ) : (
+                          <div className="standings-avatar">{p.avatar}</div>
+                        )}
                         <div className="standings-name-wrapper">
                           <span className="standings-user-name">{p.name}</span>
                           <span className="standings-tags">

@@ -5257,18 +5257,29 @@ img {
 .team-badge { display: inline-block; object-fit: contain; }
 .team-badge.on-avatar {
   position: absolute;
-  right: -3px;
-  bottom: -3px;
-  width: 46%;
-  height: 46%;
-  min-width: 16px;
-  min-height: 16px;
-  max-width: 26px;
-  max-height: 26px;
+  right: -4px;
+  bottom: -4px;
+  width: 48%;
+  height: 48%;
+  min-width: 20px;
+  min-height: 20px;
+  max-width: 34px;
+  max-height: 34px;
   border-radius: 50%;
   background: var(--surface);
-  box-shadow: 0 1px 3px rgba(16, 28, 46, 0.28);
-  padding: 1px;
+  box-shadow: 0 1px 4px rgba(16, 28, 46, 0.32);
+  padding: 2px;
+}
+.team-badge.standings-between {
+  width: 28px;
+  height: 28px;
+  flex-shrink: 0;
+  align-self: center;
+  margin-right: 6px;
+  border-radius: 50%;
+  background: var(--surface-soft);
+  box-shadow: 0 1px 3px rgba(16, 28, 46, 0.18);
+  padding: 2px;
 }
 .team-badge.sticker-team {
   position: absolute;
