@@ -13,6 +13,62 @@ const port = Number(process.env.PORT) || 4173;
 // Estado compartido ampliado (V4). Cada colección nueva es opcional y arranca
 // vacía: NUNCA debe pisar `participants`/`documents` existentes. La fuente de la
 // verdad es este archivo; sin volumen persistente en Railway se borra al redeploy.
+const defaultNotificationSettings = {
+  enabled: false,
+  mode: 'off', // off | test | production
+  testRecipient: 'roberto.tejeda@bacherzoppi.com',
+  replyTo: '',
+  updatedAt: null,
+  updatedBy: null,
+  templates: {
+    exactScore: {
+      enabled: true,
+      label: 'Marcador exacto',
+      trigger: 'Cuando un participante acierta marcador exacto',
+      subject: '🎯 Marcador exacto en la quiniela',
+      previewText: 'Acertaste un marcador exacto y sumaste puntos.',
+      audience: 'participant',
+      cooldownMinutes: 10
+    },
+    podiumEnter: {
+      enabled: true,
+      label: 'Entrada al podio',
+      trigger: 'Cuando un participante entra al Top 3',
+      subject: '🏆 Entraste al podio de la quiniela',
+      previewText: 'Ya estás entre los primeros lugares.',
+      audience: 'participant',
+      cooldownMinutes: 30
+    },
+    phaseOpen: {
+      enabled: false,
+      label: 'Nueva fase disponible',
+      trigger: 'Cuando se abre una ventana de pronóstico',
+      subject: '⚽ Ya puedes completar la siguiente fase',
+      previewText: 'La nueva ronda de pronósticos ya está disponible.',
+      audience: 'allParticipants',
+      cooldownMinutes: 0
+    },
+    phaseReminder: {
+      enabled: false,
+      label: 'Recordatorio de cierre',
+      trigger: 'Antes de que cierre una ventana o partido',
+      subject: '⏰ Últimas horas para enviar tus pronósticos',
+      previewText: 'Recuerda completar tu quiniela antes del cierre.',
+      audience: 'pendingParticipants',
+      cooldownMinutes: 0
+    },
+    phaseConfirmation: {
+      enabled: true,
+      label: 'Confirmación de envío',
+      trigger: 'Cuando un participante envía una nueva fase',
+      subject: '✅ Recibimos tus pronósticos',
+      previewText: 'Tu quiniela de la siguiente fase fue registrada.',
+      audience: 'participant',
+      cooldownMinutes: 0
+    }
+  }
+};
+
 const defaultState = {
   participants: [],
   documents: [],
@@ -33,6 +89,9 @@ const defaultState = {
     firstTrackedAt: null,
     lastVisitAt: null
   },
+  predictionWindows: [],
+  notificationSettings: defaultNotificationSettings,
+  notificationLog: [],
   updatedAt: null
 };
 
@@ -100,7 +159,37 @@ function coerceState(parsed) {
       firstTrackedAt: p.visitStats?.firstTrackedAt || null,
       lastVisitAt: p.visitStats?.lastVisitAt || null
     },
+    predictionWindows: asArray(p.predictionWindows),
+    notificationSettings: coerceNotificationSettings(p.notificationSettings),
+    notificationLog: asArray(p.notificationLog).slice(-200),
     updatedAt: p.updatedAt || null
+  };
+}
+
+function coerceNotificationSettings(raw) {
+  const r = isObject(raw) ? raw : {};
+  const defaults = defaultNotificationSettings;
+  const templates = {};
+  for (const [key, def] of Object.entries(defaults.templates)) {
+    const t = isObject(r.templates?.[key]) ? r.templates[key] : {};
+    templates[key] = {
+      enabled: typeof t.enabled === 'boolean' ? t.enabled : def.enabled,
+      label: t.label || def.label,
+      trigger: t.trigger || def.trigger,
+      subject: t.subject || def.subject,
+      previewText: t.previewText || def.previewText,
+      audience: t.audience || def.audience,
+      cooldownMinutes: Number(t.cooldownMinutes ?? def.cooldownMinutes)
+    };
+  }
+  return {
+    enabled: typeof r.enabled === 'boolean' ? r.enabled : false,
+    mode: ['off','test','production'].includes(r.mode) ? r.mode : 'off',
+    testRecipient: r.testRecipient || defaults.testRecipient,
+    replyTo: r.replyTo || '',
+    updatedAt: r.updatedAt || null,
+    updatedBy: r.updatedBy || null,
+    templates
   };
 }
 
@@ -123,8 +212,46 @@ function pruneState(state) {
     luckWishes: state.luckWishes.filter(w => now - toMs(w.createdAt) <= LIMITS.luckWindowMs),
     boos: state.boos.filter(b => now - toMs(b.createdAt) <= LIMITS.booWindowMs),
     rankingSnapshots: state.rankingSnapshots.slice(-LIMITS.rankingSnapshots),
-    leaderHistory: state.leaderHistory.slice(-LIMITS.leaderHistory)
+    leaderHistory: state.leaderHistory.slice(-LIMITS.leaderHistory),
+    notificationLog: asArray(state.notificationLog).slice(-200)
   };
+}
+
+function isValidAdminAction(request) {
+  const expected = process.env.ADMIN_ACTION_TOKEN;
+  if (!expected) return false;
+  const received = request.headers['x-admin-action-token'];
+  return received === expected;
+}
+
+async function sendEmail({ to, subject, html, text }) {
+  const apiKey = process.env.RESEND_API_KEY;
+  if (!apiKey) return { error: 'provider_missing' };
+  try {
+    const { Resend } = await import('resend');
+    const resend = new Resend(apiKey);
+    const from = process.env.MAIL_FROM || 'Quiniela Mundial 2026 <noreply@example.com>';
+    const result = await resend.emails.send({ from, to, subject, html: html || text, text: text || '' });
+    return { ok: true, id: result.data?.id };
+  } catch (e) {
+    return { error: e.message || 'send_failed' };
+  }
+}
+
+function appendNotificationLog(state, entry) {
+  const log = [...asArray(state.notificationLog), entry].slice(-200);
+  return { ...state, notificationLog: log };
+}
+
+function renderTemplate(template, data) {
+  let subject = template.subject || '';
+  let body = template.body || '';
+  for (const [k, v] of Object.entries(data || {})) {
+    const re = new RegExp(`{{${k}}}`, 'g');
+    subject = subject.replace(re, v);
+    body = body.replace(re, v);
+  }
+  return { subject, body };
 }
 
 function writeState(nextState) {
@@ -524,6 +651,131 @@ const server = createServer(async (request, response) => {
       ph._prevTop3 = names;
       const saved = writeState({ ...base, podiumHistory: ph });
       sendJson(response, 200, { podiumHistory: saved.podiumHistory });
+      return;
+    }
+
+    // ---- Configuración de notificaciones (GET público, PUT requiere token) ----
+    if (path === '/api/notification-settings') {
+      if (request.method === 'GET') {
+        const s = readState();
+        sendJson(response, 200, s.notificationSettings || defaultNotificationSettings);
+        return;
+      }
+      if (request.method === 'PUT') {
+        if (!isValidAdminAction(request)) { sendJson(response, 403, { error: 'Forbidden' }); return; }
+        const parsed = await readJsonBody(request);
+        const base = readState();
+        const merged = coerceNotificationSettings({ ...base.notificationSettings, ...parsed, updatedAt: new Date().toISOString() });
+        const saved = writeState({ ...base, notificationSettings: merged });
+        sendJson(response, 200, saved.notificationSettings);
+        return;
+      }
+      sendJson(response, 405, { error: 'Method not allowed' }); return;
+    }
+
+    // ---- Historial de notificaciones ----
+    if (path === '/api/notification-log' && request.method === 'GET') {
+      const s = readState();
+      sendJson(response, 200, { log: asArray(s.notificationLog).slice(-100) });
+      return;
+    }
+
+    // ---- Envío de prueba manual ----
+    if (path === '/api/notifications/test' && request.method === 'POST') {
+      if (!isValidAdminAction(request)) { sendJson(response, 403, { error: 'Forbidden' }); return; }
+      const { templateKey, testRecipient, sampleData } = await readJsonBody(request);
+      const base = readState();
+      const settings = base.notificationSettings;
+      const template = settings.templates?.[templateKey];
+      if (!template) { sendJson(response, 400, { error: 'Unknown template' }); return; }
+      const to = testRecipient || settings.testRecipient;
+      const subject = `[PRUEBA] ${template.subject}`;
+      const text = `Participante: ${sampleData?.participantName || 'Roberto'}\n\n${template.previewText}`;
+      const result = await sendEmail({ to, subject, text });
+      const logEntry = {
+        id: makeId('notif'),
+        type: templateKey,
+        mode: 'test',
+        status: result.ok ? 'sent' : 'error',
+        to,
+        subject,
+        error: result.error || '',
+        createdAt: new Date().toISOString()
+      };
+      writeState(appendNotificationLog(base, logEntry));
+      sendJson(response, 200, { logEntry, result });
+      return;
+    }
+
+    // ---- Trigger de notificación real (desde el frontend, deduplicado) ----
+    if (path === '/api/notifications/trigger' && request.method === 'POST') {
+      const { type, recipientEmail, participantName, dedupeKey, data } = await readJsonBody(request);
+      const base = readState();
+      const settings = base.notificationSettings;
+      if (!settings.enabled || settings.mode === 'off') {
+        const logEntry = { id: makeId('notif'), type: type || 'unknown', mode: 'off', status: 'skipped', to: recipientEmail || '', subject: '', error: 'notifications_disabled', createdAt: new Date().toISOString() };
+        writeState(appendNotificationLog(base, logEntry));
+        sendJson(response, 200, { skipped: true, reason: 'notifications_disabled' });
+        return;
+      }
+      const template = settings.templates?.[type];
+      if (!template?.enabled) {
+        sendJson(response, 200, { skipped: true, reason: 'template_disabled' });
+        return;
+      }
+      // Dedupe check
+      if (dedupeKey) {
+        const recent = asArray(base.notificationLog).find(l => l.dedupeKey === dedupeKey && l.status === 'sent');
+        if (recent) { sendJson(response, 200, { skipped: true, reason: 'duplicate' }); return; }
+      }
+      const to = settings.mode === 'test' ? settings.testRecipient : recipientEmail;
+      const subject = settings.mode === 'test' ? `[PRUEBA] ${template.subject}` : template.subject;
+      const text = `Hola, ${participantName || ''}.\n\n${template.previewText}`;
+      const result = await sendEmail({ to, subject, text });
+      const logEntry = {
+        id: makeId('notif'),
+        type,
+        mode: settings.mode,
+        status: result.ok ? 'sent' : (result.error === 'provider_missing' ? 'skipped' : 'error'),
+        to,
+        originalRecipient: recipientEmail || '',
+        subject,
+        dedupeKey: dedupeKey || '',
+        error: result.error || '',
+        createdAt: new Date().toISOString()
+      };
+      writeState(appendNotificationLog(base, logEntry));
+      sendJson(response, 200, { logEntry, result });
+      return;
+    }
+
+    // ---- Ventanas de pronóstico ----
+    if (path === '/api/prediction-windows') {
+      if (request.method === 'GET') {
+        sendJson(response, 200, { windows: asArray(readState().predictionWindows) });
+        return;
+      }
+      if (request.method === 'POST') {
+        const parsed = await readJsonBody(request);
+        const base = readState();
+        const win = { id: makeId('win'), status: 'draft', matchIds: [], closeRule: '24h_before_match', ...parsed, createdAt: new Date().toISOString() };
+        const saved = writeState({ ...base, predictionWindows: [...asArray(base.predictionWindows), win] });
+        sendJson(response, 200, { window: win, total: saved.predictionWindows.length });
+        return;
+      }
+      sendJson(response, 405, { error: 'Method not allowed' }); return;
+    }
+    if (path.startsWith('/api/prediction-windows/') && request.method === 'PUT') {
+      const id = path.replace('/api/prediction-windows/', '');
+      const parsed = await readJsonBody(request);
+      const base = readState();
+      const wins = asArray(base.predictionWindows);
+      const idx = wins.findIndex(w => w.id === id);
+      if (idx === -1) { sendJson(response, 404, { error: 'Window not found' }); return; }
+      const updated = { ...wins[idx], ...parsed, id, updatedAt: new Date().toISOString() };
+      wins[idx] = updated;
+      writeState({ ...base, predictionWindows: wins });
+      sendJson(response, 200, { window: updated });
       return;
     }
 
