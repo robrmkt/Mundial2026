@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { Calendar, Download } from 'lucide-react';
 import PredictionMoment from './PredictionMoment';
+import PredictionWindowCard from './PredictionWindowCard';
 import FlagIcon from './FlagIcon';
 import { exportParticipantQuiniela } from '../services/quinielaExport';
 
@@ -41,6 +42,7 @@ export default function PredictionGrid({ matches, participants }) {
 
   return (
     <div className="prediction-grid-wrapper">
+      <PredictionWindowCard />
       <PredictionMoment
         matches={matches}
         participants={participants}
