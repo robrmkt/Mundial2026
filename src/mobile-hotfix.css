@@ -1,0 +1,153 @@
+/* ============================================================
+   HOTFIX Tabla General movil
+   Evita scroll horizontal y deja visibles: Pos - Participante - Puntos
+   Importado despues de index.css para ganar prioridad.
+   ============================================================ */
+
+@media (max-width: 760px) {
+  .standings-card {
+    overflow: hidden;
+  }
+
+  .standings-table-container {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: hidden !important;
+    margin-top: 0.55rem;
+  }
+
+  .standings-table {
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+    table-layout: fixed !important;
+  }
+
+  .standings-table th:nth-child(3),
+  .standings-table th:nth-child(4),
+  .standings-table th:nth-child(5),
+  .standings-table th:nth-child(6),
+  .standings-table td:nth-child(3),
+  .standings-table td:nth-child(4),
+  .standings-table td:nth-child(5),
+  .standings-table td:nth-child(6) {
+    display: none !important;
+  }
+
+  .standings-table th:nth-child(1),
+  .standings-table td:nth-child(1) {
+    width: 44px !important;
+    min-width: 44px !important;
+    max-width: 44px !important;
+    padding-left: 0.25rem !important;
+    padding-right: 0.25rem !important;
+    text-align: center !important;
+  }
+
+  .standings-table th:nth-child(2),
+  .standings-table td:nth-child(2) {
+    width: auto !important;
+    min-width: 0 !important;
+    padding-left: 0.35rem !important;
+    padding-right: 0.25rem !important;
+  }
+
+  .standings-table th:nth-child(7),
+  .standings-table td:nth-child(7) {
+    width: 66px !important;
+    min-width: 66px !important;
+    max-width: 66px !important;
+    padding-left: 0.25rem !important;
+    padding-right: 0.35rem !important;
+    text-align: right !important;
+    white-space: nowrap !important;
+  }
+
+  .standings-table th {
+    font-size: 0.62rem;
+    padding-top: 0.45rem !important;
+    padding-bottom: 0.45rem !important;
+  }
+
+  .standings-table td {
+    padding-top: 0.55rem !important;
+    padding-bottom: 0.55rem !important;
+  }
+
+  .standings-rank-cell {
+    width: 44px !important;
+  }
+
+  .rank-badge {
+    width: 28px;
+    height: 28px;
+    font-size: 0.86rem;
+  }
+
+  .standings-move {
+    transform: scale(0.86);
+  }
+
+  .standings-user-profile {
+    min-width: 0 !important;
+    width: 100%;
+    max-width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    overflow: hidden;
+  }
+
+  .team-badge.standings-between {
+    width: 24px;
+    height: 24px;
+    min-width: 24px;
+    margin-right: 0;
+    flex: 0 0 auto;
+  }
+
+  .standings-avatar {
+    width: 30px;
+    height: 30px;
+    min-width: 30px;
+    flex: 0 0 auto;
+    font-size: 0.7rem;
+  }
+
+  .standings-name-wrapper {
+    min-width: 0 !important;
+    max-width: 100%;
+    overflow: hidden;
+  }
+
+  .standings-user-name {
+    display: block;
+    max-width: 100%;
+    min-width: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-size: 0.86rem;
+  }
+
+  .standings-tags {
+    max-width: 100%;
+    min-width: 0;
+    overflow: hidden;
+    flex-wrap: nowrap;
+  }
+
+  .standings-badge-tag,
+  .standings-legend-chip {
+    font-size: 0.52rem;
+    padding: 0.03rem 0.32rem;
+    white-space: nowrap;
+  }
+
+  .standings-points-cell {
+    display: inline-block;
+    font-size: 1.25rem;
+    line-height: 1;
+    white-space: nowrap;
+  }
+}
