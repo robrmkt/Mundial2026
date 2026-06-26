@@ -7310,3 +7310,245 @@ details[open] .newq-acc-chevron { transform: rotate(180deg); }
   border: 1px solid var(--error, #dc2626);
   color: var(--error, #dc2626);
 }
+
+/* ============================================================
+   HOTFIX Admin responsive móvil
+   Convierte el sidebar desktop en header + tabs horizontales.
+   ============================================================ */
+
+@media (max-width: 760px) {
+  .admin-console {
+    width: 100%;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    overflow-x: hidden;
+  }
+
+  .admin-console-sidebar {
+    width: 100% !important;
+    min-width: 0 !important;
+    height: auto !important;
+    position: relative !important;
+    top: auto !important;
+    left: auto !important;
+    right: auto !important;
+    display: grid !important;
+    grid-template-columns: 1fr;
+    gap: 0.75rem;
+    padding: 0.85rem;
+    border-right: 0 !important;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface);
+    overflow: hidden;
+  }
+
+  .admin-console-sidebar-head {
+    width: 100%;
+    min-width: 0;
+    padding: 0 !important;
+    border-bottom: 0 !important;
+    display: flex;
+    align-items: center;
+    gap: 0.7rem;
+  }
+
+  .admin-console-logo {
+    width: 42px;
+    height: 42px;
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.85rem;
+  }
+
+  .admin-console-title {
+    display: block;
+    font-size: 1.05rem;
+    line-height: 1;
+  }
+
+  .admin-console-role {
+    display: block;
+    font-size: 0.74rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-secondary);
+  }
+
+  .admin-console-sidebar-foot {
+    width: 100%;
+    min-width: 0;
+    padding: 0 !important;
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.65rem;
+    border-top: 0 !important;
+  }
+
+  .admin-console-session {
+    min-width: 0;
+    max-width: 60%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 0.86rem;
+  }
+
+  .admin-console-logout-btn {
+    flex: 0 0 auto;
+    min-height: 42px;
+    border-radius: 12px;
+    padding: 0.55rem 0.85rem;
+    white-space: nowrap;
+  }
+
+  .admin-console-nav {
+    width: 100% !important;
+    min-width: 0;
+    display: flex !important;
+    flex-direction: row !important;
+    flex-wrap: nowrap !important;
+    gap: 0.45rem;
+    padding: 0.1rem 0 0.2rem !important;
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    border-top: 1px solid var(--border);
+    padding-top: 0.75rem !important;
+  }
+
+  .admin-console-nav::-webkit-scrollbar { display: none; }
+
+  .admin-console-nav-btn {
+    flex: 0 0 auto !important;
+    width: auto !important;
+    min-width: max-content;
+    min-height: 44px;
+    padding: 0.55rem 0.85rem !important;
+    border-right: 0 !important;
+    border-bottom: 0 !important;
+    border-radius: 999px;
+    background: var(--surface-soft);
+    color: var(--text-secondary);
+    display: inline-flex !important;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4rem;
+    font-size: 0.84rem !important;
+    font-weight: 800;
+    white-space: nowrap;
+  }
+
+  .admin-console-nav-btn svg { width: 16px; height: 16px; flex: 0 0 auto; }
+
+  .admin-console-nav-btn span {
+    display: inline !important;
+    max-width: none !important;
+    overflow: visible !important;
+    text-overflow: clip !important;
+    white-space: nowrap !important;
+  }
+
+  .admin-console-nav-btn.active {
+    background: var(--green-soft);
+    color: var(--green);
+    border-bottom: 0 !important;
+    box-shadow: inset 0 0 0 1px #bfe3d0;
+  }
+
+  .admin-console-main {
+    width: 100%;
+    min-width: 0;
+    padding: 1rem 0.85rem calc(5rem + env(safe-area-inset-bottom)) !important;
+    overflow-x: hidden;
+  }
+
+  /* Contenido admin móvil */
+  .admin-section-header,
+  .participants-card-head,
+  .scoreboard-manager-header {
+    display: grid !important;
+    grid-template-columns: 1fr;
+    align-items: stretch;
+    gap: 0.65rem;
+  }
+
+  .admin-section-header h2 { font-size: 1.8rem; line-height: 0.95; }
+  .admin-section-header p  { font-size: 0.95rem; line-height: 1.35; }
+
+  .admin-card { padding: 1rem !important; border-radius: 18px; }
+
+  .admin-extension-stats,
+  .admin-visit-grid {
+    grid-template-columns: 1fr 1fr !important;
+    gap: 0.65rem;
+  }
+
+  .admin-ext-stat,
+  .admin-visit-grid div { min-width: 0; padding: 0.8rem; }
+
+  .admin-ext-stat strong,
+  .admin-visit-grid strong { font-size: 1.35rem; }
+
+  .review-save-btn,
+  .admin-export-all-btn,
+  .admin-header-action-btn,
+  .admin-btn-action { min-height: 44px; justify-content: center; }
+
+  /* Tablas — scroll horizontal sin romper ancho */
+  .crm-table-wrap,
+  .grid-table-container,
+  .notif-log-table {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .crm-table-wrap::-webkit-scrollbar,
+  .grid-table-container::-webkit-scrollbar,
+  .notif-log-table::-webkit-scrollbar { display: none; }
+
+  .crm-table,
+  .matrix-table { min-width: 720px; }
+
+  /* Bandeja de revisión móvil */
+  .admin-review-inbox { display: grid; gap: 0.75rem; }
+
+  .admin-review-item {
+    border: 1px solid var(--border);
+    background: var(--surface);
+    border-radius: 16px;
+    padding: 0.9rem;
+  }
+
+  .admin-review-item-head {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 0.75rem;
+    align-items: start;
+  }
+
+  .admin-review-item-head strong { display: block; font-size: 1rem; line-height: 1.1; }
+
+  .admin-review-item-head span {
+    font-size: 0.78rem;
+    color: var(--text-secondary);
+    overflow-wrap: anywhere;
+  }
+
+  .admin-review-item-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 0.5rem;
+    margin-top: 0.75rem;
+  }
+
+  .admin-review-item-actions button { min-height: 42px; border-radius: 12px; }
+}
