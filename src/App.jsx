@@ -12,8 +12,7 @@ const AdminPanel = lazy(() => import('./components/AdminPanel'));
 import PredictionGrid from './components/PredictionGrid';
 import NewQuinielaPage from './components/NewQuinielaPage';
 import CapitalHumanoArchive from './components/CapitalHumanoArchive';
-import TransitionNoticeModal from './components/TransitionNoticeModal';
-import { shouldShowTransitionNotice } from './services/transitionNotice';
+import RhTransitionPopup from './components/RhTransitionPopup';
 import LiveMatches from './components/LiveMatches';
 import GlobalEventOverlay from './components/GlobalEventOverlay';
 import MatchTicker from './components/MatchTicker';
@@ -193,7 +192,6 @@ export default function App() {
   const [capitalHumanoArchive, setCapitalHumanoArchive] = useState(null);
   const [phaseSubmissions, setPhaseSubmissions] = useState([]);
   const [predictionWindows, setPredictionWindows] = useState([]);
-  const [showTransitionNotice, setShowTransitionNotice] = useState(false);
   const [chatMessages, setChatMessages] = useLocalStorage('quiniela_chat', [
     { id: 1, user: 'Sistema', time: '12:00', text: '¡Bienvenidos a la Quiniela del Mundial 26! Que gane el mejor. 🏆' }
   ]);
@@ -277,7 +275,6 @@ export default function App() {
       setCapitalHumanoArchive(data.capitalHumanoArchive || null);
       setPhaseSubmissions(Array.isArray(data.phaseSubmissions) ? data.phaseSubmissions : []);
       setPredictionWindows(Array.isArray(data.predictionWindows) ? data.predictionWindows : []);
-      if (shouldShowTransitionNotice(nextSettings, data.capitalHumanoArchive)) setShowTransitionNotice(true);
       sharedDataRef.current = { participants: nextParticipants, documents: nextDocuments };
       setSharedState({ status: 'ok', lastSync: new Date() });
     } catch (error) {
@@ -924,14 +921,13 @@ export default function App() {
 
       <MatchTicker matches={matches} />
 
-      {showTransitionNotice && (
-        <TransitionNoticeModal
-          settings={continuationSettings}
-          onClose={() => setShowTransitionNotice(false)}
-          onArchive={() => goToTab('capitalHumano')}
-          onNew={() => goToTab('nuevaQuiniela')}
-        />
-      )}
+      <RhTransitionPopup
+        settings={continuationSettings}
+        activeTab={activeTab}
+        goToTab={goToTab}
+        isAdmin={activeTab === 'admin'}
+        hasArchive={Boolean(capitalHumanoArchive)}
+      />
 
       {/* Main View Container */}
       <main className="main-content-area">

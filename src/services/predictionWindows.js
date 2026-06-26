@@ -108,7 +108,7 @@ export async function recordPhaseProgress(payload) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload)
     });
-  } catch (_) { /* fire-and-forget */ }
+  } catch { /* fire-and-forget */ }
 }
 
 export async function updateContinuationSettings(patch) {

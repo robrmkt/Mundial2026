@@ -5579,6 +5579,7 @@ img {
 .phase-prediction-board,
 .archive-podium,
 .archive-table-card,
+.transition-popup-card,
 .transition-notice {
   background: var(--surface);
   border: 1px solid var(--border);
@@ -5762,6 +5763,7 @@ img {
 .archive-podium-card strong { font-family: var(--font-display); }
 .archive-podium-card small { color: var(--text-secondary); }
 
+.transition-popup-overlay,
 .transition-notice-overlay {
   position: fixed;
   inset: 0;
@@ -5772,23 +5774,89 @@ img {
   background: rgba(16, 28, 46, .58);
   backdrop-filter: blur(4px);
 }
+
+.transition-popup-card,
 .transition-notice {
   width: min(560px, 100%);
   box-shadow: var(--shadow-pop);
 }
+
+.transition-popup-card h2,
 .transition-notice h2 {
   margin: 0.25rem 0 0.7rem;
   font-family: var(--font-display);
 }
+
+.transition-popup-card p,
 .transition-notice p { color: var(--text-secondary); line-height: 1.55; }
+
+.transition-popup-badge {
+  display: inline-flex;
+  border-radius: 999px;
+  padding: 0.28rem 0.65rem;
+  background: var(--green-soft);
+  color: var(--green);
+  font-size: 0.72rem;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.transition-popup-actions,
 .transition-actions {
   display: flex;
   flex-wrap: wrap;
   gap: 0.55rem;
   margin-top: 1rem;
 }
+
+.transition-popup-primary,
+.transition-popup-secondary {
+  border: 0;
+  border-radius: 999px;
+  padding: 0.7rem 1rem;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.transition-popup-primary {
+  background: var(--green);
+  color: #fff;
+}
+
+.transition-popup-secondary {
+  background: var(--text-primary);
+  color: #fff;
+}
+
+.transition-popup-secondary.muted {
+  background: var(--surface-soft);
+  color: var(--text-secondary);
+  border: 1px solid var(--border);
+}
+
 .phase-submit-btn.secondary {
   background: var(--text-primary);
+}
+
+.mobile-copy { display: none; }
+
+@media (max-width: 760px) {
+  .transition-popup-overlay {
+    align-items: end;
+    place-items: end center;
+    padding: 0;
+  }
+  .transition-popup-card {
+    width: 100%;
+    border-radius: 22px 22px 0 0;
+    padding: 1.15rem;
+  }
+  .transition-popup-actions {
+    flex-direction: column;
+  }
+  .desktop-copy { display: none; }
+  .mobile-copy { display: block; }
 }
 
 .phase-status-badge.status-pending { background: #fff4dc; color: #9a5a00; }

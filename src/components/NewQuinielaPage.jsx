@@ -3,7 +3,6 @@ import { CheckCircle2, ChevronDown, Save } from 'lucide-react';
 import { fetchContinuationProfile, inferTeamFromEmail, teamLabel } from '../services/continuation';
 import { fetchPredictionWindows, fetchPhaseSubmissions, getWindowStatus, savePhaseSubmission, recordPhaseProgress } from '../services/predictionWindows';
 import { getMatchKickoff, isMatchConfirmed, isMatchLocked, LOCK_MINUTES_BEFORE_KICKOFF } from '../services/matchLock';
-import { displayTeamName, isPlaceholderTeam } from '../services/teamDisplay';
 import PhaseMatchPredictionCard from './PhaseMatchPredictionCard';
 
 function initials(nameOrEmail) {
@@ -105,7 +104,7 @@ function MobileSaveBar({ dirty, saving, savedAt, canSave, onSave }) {
   );
 }
 
-export default function NewQuinielaPage({ matches = [], settings = {}, onReloadSettings }) {
+export default function NewQuinielaPage({ matches = [], settings = {} }) {
   const [step, setStep] = useState('email');
   const [email, setEmail] = useState('');
   const [profile, setProfile] = useState(null);
@@ -199,7 +198,7 @@ export default function NewQuinielaPage({ matches = [], settings = {}, onReloadS
           const draft = JSON.parse(savedDraft);
           setDraftRestorePrompt({ draft, serverPreds });
           setPredictions(serverPreds);
-        } catch (_) { setPredictions(serverPreds); }
+        } catch { setPredictions(serverPreds); }
       } else {
         setPredictions(serverPreds);
       }
@@ -207,7 +206,7 @@ export default function NewQuinielaPage({ matches = [], settings = {}, onReloadS
       try {
         const draft = JSON.parse(savedDraft);
         setDraftRestorePrompt({ draft, serverPreds: {} });
-      } catch (_) {}
+      } catch { /* ignore invalid saved draft */ }
     }
   };
 
@@ -249,7 +248,7 @@ export default function NewQuinielaPage({ matches = [], settings = {}, onReloadS
       if (profile?.email && activeWindow?.id) {
         const count = Object.values(next).filter(p => p?.home !== '' && p?.home !== undefined && p?.away !== '' && p?.away !== undefined).length;
         recordPhaseProgress({ windowId: activeWindow.id, email: profile.email, status: 'editing', predictionCount: count });
-        try { localStorage.setItem(`newq_draft_${activeWindow.id}_${profile.email}`, JSON.stringify(next)); } catch (_) {}
+        try { localStorage.setItem(`newq_draft_${activeWindow.id}_${profile.email}`, JSON.stringify(next)); } catch { /* ignore unavailable storage */ }
       }
       if (!hasSeenSaveHint) setHasSeenSaveHint(true);
       return next;
@@ -322,7 +321,8 @@ export default function NewQuinielaPage({ matches = [], settings = {}, onReloadS
           <div>
             <span className="newq-kicker">Continuación Mundialista</span>
             <h1>Nueva quiniela mundialista</h1>
-            <p>La Quiniela RH ya cerró con la fase de grupos. Esta es una nueva etapa para quienes quieren seguir pronosticando.</p>
+            <p className="newq-hero-copy desktop-copy">Continúa con tus pronósticos para la siguiente fase del Mundial. Si ya participaste en la Quiniela RH, ingresa con tu correo corporativo vinculado a tu usuario. Si eres nuevo, escribe tu correo y completa tu nombre para registrarte.</p>
+            <p className="newq-hero-copy mobile-copy">Si ya jugaste, entra con tu correo corporativo. Si eres nuevo, registra tu correo y nombre.</p>
           </div>
         </div>
 

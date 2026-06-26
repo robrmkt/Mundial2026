@@ -1,4 +1,4 @@
-export function getDashboardMode(settings, archive) {
+export function getDashboardMode(settings) {
   const mode = settings?.dashboardMode || 'auto';
   if (mode !== 'auto') return mode;
 

@@ -2,7 +2,6 @@ import { useState, useEffect, useMemo, useRef } from 'react';
 import { AlertTriangle, CalendarClock, Check, CheckCircle2, Eye, Plus, RefreshCw, Trash2, X, XCircle } from 'lucide-react';
 import { fetchPredictionWindows, savePredictionWindow, deletePredictionWindow, getWindowStatus, formatWindowDate, fetchPhaseSubmissions, deletePhaseSubmission, approvePhaseSubmission, rejectPhaseSubmission, freezeCapitalHumanoArchive, updateContinuationSettings } from '../../services/predictionWindows';
 import { PARTICIPANT_EMAIL_ROSTER } from '../../services/participantEmails';
-import { isMatchConfirmed } from '../../services/matchLock';
 import PhasePredictionForm from '../PhasePredictionForm';
 
 const STATUS_LABEL = { draft: 'Borrador', scheduled: 'Programada', open: 'Abierta', closed: 'Cerrada' };
@@ -58,7 +57,7 @@ function AdminReviewInbox({ pendingSubmissions, onApprove, onReject, onSelect })
   );
 }
 
-export default function AdminPredictionExtension({ participants, standings = [], matches, phaseSubmissions: propSubs = [], predictionWindows: propWindows = [], continuationSettings = null, onSettingsSaved }) {
+export default function AdminPredictionExtension({ participants, standings = [], matches, phaseSubmissions: propSubs = [], continuationSettings = null, onSettingsSaved }) {
   const [windows, setWindows] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -80,7 +79,10 @@ export default function AdminPredictionExtension({ participants, standings = [],
   const prevPendingCountRef = useRef(null);
   const inboxRef = useRef(null);
 
-  useEffect(() => { setSettings(continuationSettings || {}); }, [continuationSettings]);
+  useEffect(() => {
+    const timer = setTimeout(() => setSettings(continuationSettings || {}), 0);
+    return () => clearTimeout(timer);
+  }, [continuationSettings]);
 
   useEffect(() => {
     fetchPredictionWindows()
@@ -113,7 +115,8 @@ export default function AdminPredictionExtension({ participants, standings = [],
     if (selectedWindowId) return;
     const pendingSub = propSubs.find(s => !s.status || s.status === 'pending');
     if (pendingSub?.windowId) {
-      setSelectedWindowId(pendingSub.windowId);
+      const timer = setTimeout(() => setSelectedWindowId(pendingSub.windowId), 0);
+      return () => clearTimeout(timer);
     }
   }, [propSubs, selectedWindowId]);
 
@@ -163,9 +166,9 @@ export default function AdminPredictionExtension({ participants, standings = [],
   }, [windowSubs]);
 
   // --- Checklist ---
-  const archiveFrozen = !!continuationSettings?._archiveFrozenAt; // proxy check via settings if available
   const hasActiveWindow = !!activeWindow && getWindowStatus(activeWindow) === 'open';
-  const popupEnabled = settings.transitionNoticeEnabled !== false;
+  const transitionPopup = settings.transitionPopup || {};
+  const popupEnabled = transitionPopup.enabled !== false && settings.transitionNoticeEnabled !== false;
   const publicEnabled = settings.publicEnabled !== false;
   const dashboardModeOk = settings.dashboardMode === 'auto' || settings.dashboardMode === 'new_quiniela';
   const feedRangeOk = true; // verified: 20260611-20260719
@@ -276,8 +279,13 @@ export default function AdminPredictionExtension({ participants, standings = [],
   const handleReactivateNotice = async () => {
     setReactivating(true);
     try {
-      const nextVersion = (settings.transitionNoticeVersion || 1) + 1;
-      const next = { ...settings, transitionNoticeVersion: nextVersion };
+      const currentPopup = settings.transitionPopup || {};
+      const nextVersion = (currentPopup.version || settings.transitionNoticeVersion || 1) + 1;
+      const next = {
+        ...settings,
+        transitionNoticeVersion: nextVersion,
+        transitionPopup: { ...currentPopup, version: nextVersion, enabled: true }
+      };
       setSettings(next);
       await updateContinuationSettings(next);
       onSettingsSaved?.();
@@ -288,15 +296,14 @@ export default function AdminPredictionExtension({ participants, standings = [],
 
   const selectedWindow = windows.find(w => w.id === selectedWindowId);
 
-  const visibleSubmissions = useMemo(() => {
-    const base = selectedWindowId ? submissions : [];
-    if (subFilter === 'pendientes') return base.filter(s => !s.status || s.status === 'pending');
-    if (subFilter === 'aprobados') return base.filter(s => s.status === 'approved');
-    if (subFilter === 'rechazados') return base.filter(s => s.status === 'rejected');
-    if (subFilter === 'nuevos') return base.filter(s => s.userType === 'new');
-    if (subFilter === 'existentes') return base.filter(s => s.userType !== 'new');
-    return base;
-  }, [submissions, selectedWindowId, subFilter]);
+  const baseVisibleSubmissions = selectedWindowId ? submissions : [];
+  const visibleSubmissions =
+    subFilter === 'pendientes' ? baseVisibleSubmissions.filter(s => !s.status || s.status === 'pending')
+      : subFilter === 'aprobados' ? baseVisibleSubmissions.filter(s => s.status === 'approved')
+        : subFilter === 'rechazados' ? baseVisibleSubmissions.filter(s => s.status === 'rejected')
+          : subFilter === 'nuevos' ? baseVisibleSubmissions.filter(s => s.userType === 'new')
+            : subFilter === 'existentes' ? baseVisibleSubmissions.filter(s => s.userType !== 'new')
+              : baseVisibleSubmissions;
 
   return (
     <div className="admin-section-body">
@@ -382,8 +389,31 @@ export default function AdminPredictionExtension({ participants, standings = [],
             <input type="checkbox" checked={settings.registrationEnabled !== false} onChange={e => setSettings(p => ({ ...p, registrationEnabled: e.target.checked }))} />
           </label>
           <label className="admin-toggle-row">
-            <span>Popup de transición activo</span>
-            <input type="checkbox" checked={settings.transitionNoticeEnabled !== false} onChange={e => setSettings(p => ({ ...p, transitionNoticeEnabled: e.target.checked }))} />
+            <span>Popup transición RH → Nueva Quiniela</span>
+            <input
+              type="checkbox"
+              checked={(settings.transitionPopup?.enabled ?? settings.transitionNoticeEnabled) !== false}
+              onChange={e => setSettings(p => ({
+                ...p,
+                transitionNoticeEnabled: e.target.checked,
+                transitionPopup: { ...(p.transitionPopup || {}), enabled: e.target.checked }
+              }))}
+            />
+          </label>
+          <label className="admin-toggle-row">
+            <span>Máximo vistas del popup</span>
+            <input
+              type="number"
+              min="1"
+              max="10"
+              className="review-name-input"
+              style={{ width: 90 }}
+              value={settings.transitionPopup?.maxViews ?? 2}
+              onChange={e => setSettings(p => ({
+                ...p,
+                transitionPopup: { ...(p.transitionPopup || {}), maxViews: Number(e.target.value) || 2 }
+              }))}
+            />
           </label>
           <label className="admin-toggle-row">
             <span>Modo emergencia</span>
@@ -410,7 +440,7 @@ export default function AdminPredictionExtension({ participants, standings = [],
             {savingSettings ? 'Guardando…' : 'Guardar configuración'}
           </button>
           <button className="admin-btn-action btn-logout" onClick={handleReactivateNotice} disabled={reactivating}>
-            <RefreshCw size={13} /> {reactivating ? '…' : 'Reactivar aviso de cambio de etapa'}
+            <RefreshCw size={13} /> {reactivating ? '…' : 'Reactivar popup'}
           </button>
         </div>
       </div>

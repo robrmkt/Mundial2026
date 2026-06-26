@@ -1,4 +1,4 @@
-export function buildSafeCombinedStandings({ rhStandings = [], newQuinielaStandings = [], participants = [] }) {
+export function buildSafeCombinedStandings({ rhStandings = [], newQuinielaStandings = [] }) {
   const byKey = new Map();
 
   function getKey(item) {

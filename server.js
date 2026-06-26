@@ -118,6 +118,27 @@ const defaultState = {
     autoApproveSubmissions: false,
     transitionNoticeEnabled: true,
     transitionNoticeVersion: 1,
+    transitionPopup: {
+      enabled: true,
+      version: 1,
+      maxViews: 2,
+      startsAt: '2026-06-26T00:00:00-06:00',
+      afterCloseAt: '2026-06-28T00:00:00-06:00',
+      endsAt: '2026-07-02T23:59:00-06:00',
+      beforeClose: {
+        title: 'La Quiniela RH está por finalizar',
+        body: 'La dinámica de RH cierra con la fase de grupos. Si quieres seguir con la fiebre mundialista, te invitamos a ingresar tus pronósticos para la siguiente fase en la Nueva Quiniela. Es una dinámica interna para seguir disfrutando el Mundial entre todos.',
+        primaryCta: 'Ir a Nueva Quiniela',
+        secondaryCta: 'Cerrar'
+      },
+      afterClose: {
+        title: 'La Quiniela RH ya finalizó',
+        body: 'La dinámica de RH cerró con la fase de grupos y sus resultados quedaron guardados como histórico. Si quieres seguir con la fiebre mundialista, ya puedes participar en la Nueva Quiniela.',
+        primaryCta: 'Ir a Nueva Quiniela',
+        secondaryCta: 'Ver Quiniela RH',
+        tertiaryCta: 'Cerrar'
+      }
+    },
     emergencyMode: false,
     emergencyMessage: 'Estamos ajustando la nueva quiniela. Intenta de nuevo más tarde.'
   },
@@ -207,12 +228,23 @@ function coerceState(parsed) {
 function coerceContinuationSettings(raw) {
   const r = isObject(raw) ? raw : {};
   const d = defaultState.continuationSettings;
+  const popupRaw = isObject(r.transitionPopup) ? r.transitionPopup : {};
+  const popupDefault = d.transitionPopup;
   return {
     ...d,
     ...r,
     allowedDomains: Array.isArray(r.allowedDomains) && r.allowedDomains.length ? r.allowedDomains : d.allowedDomains,
     lockMinutesBeforeKickoff: Number(r.lockMinutesBeforeKickoff ?? d.lockMinutesBeforeKickoff) || d.lockMinutesBeforeKickoff,
-    transitionNoticeVersion: Number(r.transitionNoticeVersion ?? d.transitionNoticeVersion) || d.transitionNoticeVersion
+    transitionNoticeVersion: Number(r.transitionNoticeVersion ?? d.transitionNoticeVersion) || d.transitionNoticeVersion,
+    transitionPopup: {
+      ...popupDefault,
+      ...popupRaw,
+      enabled: typeof popupRaw.enabled === 'boolean' ? popupRaw.enabled : (typeof r.transitionNoticeEnabled === 'boolean' ? r.transitionNoticeEnabled : popupDefault.enabled),
+      version: Number(popupRaw.version ?? r.transitionNoticeVersion ?? popupDefault.version) || popupDefault.version,
+      maxViews: Number(popupRaw.maxViews ?? popupDefault.maxViews) || popupDefault.maxViews,
+      beforeClose: { ...popupDefault.beforeClose, ...(isObject(popupRaw.beforeClose) ? popupRaw.beforeClose : {}) },
+      afterClose: { ...popupDefault.afterClose, ...(isObject(popupRaw.afterClose) ? popupRaw.afterClose : {}) }
+    }
   };
 }
 
@@ -1067,7 +1099,7 @@ const server = createServer(async (request, response) => {
         if (existing >= 0) subs[existing] = entry; else subs.push(entry);
         const savedState = writeState({ ...base, phaseSubmissions: subs });
         sendJson(response, 200, { submission: entry, status: entry.status, message: 'Tus pronósticos fueron recibidos y quedarán pendientes de revisión.', updated: existing >= 0 });
-        try { notifyAdminNewSubmission(entry, savedState); } catch (_) {}
+        try { notifyAdminNewSubmission(entry, savedState); } catch { /* notification is best-effort */ }
         return;
       }
       sendJson(response, 405, { error: 'Method not allowed' }); return;
@@ -1205,7 +1237,14 @@ const server = createServer(async (request, response) => {
         generatedBy: parsed.generatedBy || 'admin',
         generatedAt: nowIso
       };
-      const settings = { ...base.continuationSettings, transitionNoticeEnabled: true };
+      const settings = {
+        ...base.continuationSettings,
+        transitionNoticeEnabled: true,
+        transitionPopup: {
+          ...base.continuationSettings.transitionPopup,
+          enabled: true
+        }
+      };
       writeState({ ...base, capitalHumanoArchive: archive, continuationSettings: settings });
       sendJson(response, 200, { archive });
       return;

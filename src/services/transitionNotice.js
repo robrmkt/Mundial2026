@@ -1,19 +1,14 @@
-const NOTICE_KEY_PREFIX = 'capital_humano_notice_v';
-
-export function shouldShowTransitionNotice(settings, archive) {
-  if (!settings?.transitionNoticeEnabled) return false;
-  if (!archive) return false;
-  const version = settings.transitionNoticeVersion || 1;
+export function readRhPopupState(key) {
   try {
-    return window.localStorage.getItem(`${NOTICE_KEY_PREFIX}${version}_dismissed`) !== '1';
+    return JSON.parse(window.localStorage.getItem(key) || '{}');
   } catch {
-    return true;
+    return {};
   }
 }
 
-export function dismissTransitionNotice(version = 1) {
+export function writeRhPopupState(key, next) {
   try {
-    window.localStorage.setItem(`${NOTICE_KEY_PREFIX}${version}_dismissed`, '1');
+    window.localStorage.setItem(key, JSON.stringify(next));
   } catch {
     /* no-op */
   }
