@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { CheckCircle2, Save } from 'lucide-react';
+import { CheckCircle2, ChevronDown, Save } from 'lucide-react';
 import { fetchContinuationProfile, inferTeamFromEmail, teamLabel } from '../services/continuation';
 import { fetchPredictionWindows, fetchPhaseSubmissions, getWindowStatus, savePhaseSubmission, recordPhaseProgress } from '../services/predictionWindows';
 import { getMatchKickoff, isMatchConfirmed, isMatchLocked, LOCK_MINUTES_BEFORE_KICKOFF } from '../services/matchLock';
@@ -85,6 +85,26 @@ const FILTERS = [
   { key: 'locked', label: 'Cerrados' },
 ];
 
+function MobileSaveBar({ dirty, saving, savedAt, canSave, onSave }) {
+  return (
+    <div className={`newq-mobile-save-bar${dirty || saving ? ' is-active' : ''}`}>
+      <div className="newq-mobile-save-status">
+        {saving && <span className="newq-saving">Guardando...</span>}
+        {!saving && dirty && <span className="newq-unsaved">Cambios sin guardar</span>}
+        {!saving && !dirty && savedAt && <span className="newq-saved">✓ Guardado</span>}
+        {!saving && !dirty && !savedAt && <span className="newq-neutral">Sin cambios</span>}
+      </div>
+      <button
+        className="newq-btn-primary"
+        onClick={onSave}
+        disabled={!canSave}
+      >
+        {saving ? 'Guardando…' : <><Save size={15} /> Guardar</>}
+      </button>
+    </div>
+  );
+}
+
 export default function NewQuinielaPage({ matches = [], settings = {}, onReloadSettings }) {
   const [step, setStep] = useState('email');
   const [email, setEmail] = useState('');
@@ -139,6 +159,10 @@ export default function NewQuinielaPage({ matches = [], settings = {}, onReloadS
       .sort((a, b) => (Date.parse(getMatchKickoff(a)) || 9e15) - (Date.parse(getMatchKickoff(b)) || 9e15));
   }, [activeWindow, matches, settings.startAt]);
 
+  const openMatches    = useMemo(() => continuationMatches.filter(m => isMatchConfirmed(m) && !isMatchLocked(m)), [continuationMatches]);
+  const pendingMatches = useMemo(() => continuationMatches.filter(m => !isMatchConfirmed(m)), [continuationMatches]);
+  const lockedMatches  = useMemo(() => continuationMatches.filter(m => isMatchConfirmed(m) && isMatchLocked(m)), [continuationMatches]);
+
   const filteredMatches = useMemo(() => {
     return continuationMatches.filter(m => {
       if (filter === 'all') return true;
@@ -150,11 +174,16 @@ export default function NewQuinielaPage({ matches = [], settings = {}, onReloadS
   }, [continuationMatches, filter]);
 
   const counts = useMemo(() => ({
-    open: continuationMatches.filter(m => isMatchConfirmed(m) && !isMatchLocked(m)).length,
-    pending: continuationMatches.filter(m => !isMatchConfirmed(m)).length,
-    locked: continuationMatches.filter(m => isMatchConfirmed(m) && isMatchLocked(m)).length,
+    open: openMatches.length,
+    pending: pendingMatches.length,
+    locked: lockedMatches.length,
     all: continuationMatches.length
-  }), [continuationMatches]);
+  }), [openMatches, pendingMatches, lockedMatches, continuationMatches]);
+
+  const completedCount = useMemo(() => openMatches.filter(m => {
+    const p = predictions[m.id];
+    return p?.home !== '' && p?.home !== undefined && p?.away !== '' && p?.away !== undefined;
+  }).length, [openMatches, predictions]);
 
   const loadExistingSubmission = async (targetEmail, windowId) => {
     if (!windowId) return;
@@ -391,91 +420,148 @@ export default function NewQuinielaPage({ matches = [], settings = {}, onReloadS
               </div>
             )}
 
-            {/* Board */}
-            <div className="newq-board">
-              <div className="newq-board-header">
-                <div>
-                  <h2>Mis apuestas</h2>
-                  <p>Cierre {LOCK_MINUTES_BEFORE_KICKOFF} minutos antes de cada partido.</p>
-                </div>
-                <div className="newq-board-actions">
-                  <div className="newq-save-status">
-                    {dirty && !saving && <span className="newq-unsaved">Cambios sin guardar</span>}
-                    {saving && <span className="newq-saving">Guardando...</span>}
-                    {savedAt && !dirty && !saving && <span className="newq-saved">✓ Guardado correctamente</span>}
-                    {!dirty && !savedAt && !saving && <span className="newq-neutral">Sin cambios</span>}
+            {/* Board — Desktop */}
+            <div className="newq-desktop-board">
+              <div className="newq-board">
+                <div className="newq-board-header">
+                  <div>
+                    <h2>Mis apuestas</h2>
+                    <p>Cierre {LOCK_MINUTES_BEFORE_KICKOFF} minutos antes de cada partido.</p>
                   </div>
-                  <button className="newq-btn-primary newq-inline-save" onClick={save} disabled={!canSave}>
-                    {saving ? 'Guardando…' : 'Guardar cambios'}
-                  </button>
-                </div>
-              </div>
-
-              {/* Hint after first edit */}
-              {dirty && hasSeenSaveHint && (
-                <div className="newq-save-hint">
-                  Ya tienes cambios. Toca "Guardar cambios" para enviarlos.
-                </div>
-              )}
-
-              {/* Filters */}
-              <div className="newq-filters">
-                {FILTERS.map(f => (
-                  <button
-                    key={f.key}
-                    className={`newq-filter-btn${filter === f.key ? ' active' : ''}`}
-                    onClick={() => setFilter(f.key)}
-                  >
-                    {f.label}
-                    {counts[f.key] > 0 && <span className="newq-filter-count">{counts[f.key]}</span>}
-                  </button>
-                ))}
-              </div>
-
-              {/* Quick save after filters */}
-              <div className="newq-quick-save-row">
-                <span>{dirty ? 'Tienes cambios sin guardar' : 'Llena tus marcadores y guarda al terminar'}</span>
-                <button onClick={save} disabled={!canSave}>Guardar</button>
-              </div>
-
-              {/* Matches grouped by date */}
-              {filteredMatches.length === 0 ? (
-                <div className="newq-empty">
-                  {filter === 'open' ? 'No hay partidos abiertos para pronosticar en este momento.' : 'Sin partidos en esta categoría.'}
-                </div>
-              ) : (
-                Object.entries(groupMatchesByDate(filteredMatches)).map(([dateLabel, items]) => (
-                  <section key={dateLabel} className="newq-date-group">
-                    <h3 className="newq-date-label">{dateLabel}</h3>
-                    <div className="newq-match-grid">
-                      {items.map(match => (
-                        <PhaseMatchPredictionCard
-                          key={match.id}
-                          match={match}
-                          pred={predictions[match.id] || {}}
-                          onChange={handleScore}
-                        />
-                      ))}
+                  <div className="newq-board-actions">
+                    <div className="newq-save-status">
+                      {dirty && !saving && <span className="newq-unsaved">Cambios sin guardar</span>}
+                      {saving && <span className="newq-saving">Guardando...</span>}
+                      {savedAt && !dirty && !saving && <span className="newq-saved">✓ Guardado correctamente</span>}
+                      {!dirty && !savedAt && !saving && <span className="newq-neutral">Sin cambios</span>}
                     </div>
-                  </section>
-                ))
-              )}
+                    <button className="newq-btn-primary newq-inline-save" onClick={save} disabled={!canSave}>
+                      {saving ? 'Guardando…' : 'Guardar cambios'}
+                    </button>
+                  </div>
+                </div>
 
-              {error && <p className="newq-error" style={{ marginTop: '0.75rem' }}>{error}</p>}
+                {/* Filters */}
+                <div className="newq-filters">
+                  {FILTERS.map(f => (
+                    <button
+                      key={f.key}
+                      className={`newq-filter-btn${filter === f.key ? ' active' : ''}`}
+                      onClick={() => setFilter(f.key)}
+                    >
+                      {f.label}
+                      {counts[f.key] > 0 && <span className="newq-filter-count">{counts[f.key]}</span>}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Matches grouped by date */}
+                {filteredMatches.length === 0 ? (
+                  <div className="newq-empty">
+                    {filter === 'open' ? 'No hay partidos abiertos para pronosticar en este momento.' : 'Sin partidos en esta categoría.'}
+                  </div>
+                ) : (
+                  Object.entries(groupMatchesByDate(filteredMatches)).map(([dateLabel, items]) => (
+                    <section key={dateLabel} className="newq-date-group">
+                      <h3 className="newq-date-label">{dateLabel}</h3>
+                      <div className="newq-match-grid">
+                        {items.map(match => (
+                          <PhaseMatchPredictionCard
+                            key={match.id}
+                            match={match}
+                            pred={predictions[match.id] || {}}
+                            onChange={handleScore}
+                          />
+                        ))}
+                      </div>
+                    </section>
+                  ))
+                )}
+
+                {error && <p className="newq-error" style={{ marginTop: '0.75rem' }}>{error}</p>}
+              </div>
             </div>
 
-            {/* Floating save bar — appears when dirty */}
-            {(dirty || saving) && (
-              <div className="newq-floating-save" role="status">
-                <div className="newq-floating-save-copy">
-                  <strong>{saving ? 'Guardando...' : 'Cambios sin guardar'}</strong>
-                  <span>Recuerda guardar tus pronósticos.</span>
+            {/* Board — Mobile snap carrusel */}
+            <div className="newq-mobile-board">
+              <div className="newq-mobile-board-header">
+                <span className="newq-mobile-progress">
+                  {completedCount} de {openMatches.length} partidos llenados
+                </span>
+                <div className="newq-save-status">
+                  {dirty && !saving && <span className="newq-unsaved">Sin guardar</span>}
+                  {saving && <span className="newq-saving">Guardando...</span>}
+                  {savedAt && !dirty && !saving && <span className="newq-saved">✓ Guardado</span>}
                 </div>
-                <button className="newq-btn-primary newq-save-btn" onClick={save} disabled={!canSave}>
-                  {saving ? 'Guardando…' : <><Save size={15} /> Guardar</>}
-                </button>
               </div>
-            )}
+
+              <div className="newq-match-snap-list">
+                {openMatches.length === 0 && (
+                  <div className="newq-match-snap-item">
+                    <div className="newq-empty">No hay partidos abiertos para pronosticar.</div>
+                  </div>
+                )}
+                {openMatches.map((match, idx) => (
+                  <div key={match.id} className="newq-match-snap-item">
+                    <span className="newq-snap-counter">Partido {idx + 1} de {openMatches.length}</span>
+                    <PhaseMatchPredictionCard
+                      match={match}
+                      pred={predictions[match.id] || {}}
+                      onChange={handleScore}
+                    />
+                  </div>
+                ))}
+
+                {/* Pending matches accordion */}
+                {pendingMatches.length > 0 && (
+                  <div className="newq-match-snap-item newq-snap-accordion-item">
+                    <details className="newq-snap-accordion">
+                      <summary>
+                        Por confirmar ({pendingMatches.length})
+                        <ChevronDown size={16} className="newq-acc-chevron" />
+                      </summary>
+                      <div className="newq-acc-body">
+                        {pendingMatches.map(match => (
+                          <PhaseMatchPredictionCard
+                            key={match.id}
+                            match={match}
+                            pred={predictions[match.id] || {}}
+                            onChange={handleScore}
+                          />
+                        ))}
+                      </div>
+                    </details>
+                  </div>
+                )}
+
+                {/* Locked matches accordion */}
+                {lockedMatches.length > 0 && (
+                  <div className="newq-match-snap-item newq-snap-accordion-item">
+                    <details className="newq-snap-accordion">
+                      <summary>
+                        Cerrados ({lockedMatches.length})
+                        <ChevronDown size={16} className="newq-acc-chevron" />
+                      </summary>
+                      <div className="newq-acc-body">
+                        {lockedMatches.map(match => (
+                          <PhaseMatchPredictionCard
+                            key={match.id}
+                            match={match}
+                            pred={predictions[match.id] || {}}
+                            onChange={handleScore}
+                          />
+                        ))}
+                      </div>
+                    </details>
+                  </div>
+                )}
+              </div>
+
+              {error && <p className="newq-error" style={{ margin: '0 1rem 1rem' }}>{error}</p>}
+
+              {/* Single mobile save bar */}
+              <MobileSaveBar dirty={dirty} saving={saving} savedAt={savedAt} canSave={canSave} onSave={save} />
+            </div>
           </>
         )}
       </div>
