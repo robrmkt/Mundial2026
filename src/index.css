@@ -6757,3 +6757,201 @@ img {
 .newq-draft-actions { display: flex; gap: 0.5rem; }
 .newq-btn-secondary { padding: 0.45rem 1rem; border-radius: 8px; font-size: 0.83rem; font-weight: 700; border: 1.5px solid var(--border); background: var(--surface); color: var(--text); cursor: pointer; }
 .newq-btn-secondary.muted { color: var(--text-muted); }
+
+/* =====================
+   GUARDAR VISIBLE + CARDS PREMIUM
+   ===================== */
+
+/* Board header actions */
+.newq-board-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+}
+
+.newq-inline-save {
+  min-height: 42px;
+  padding-inline: 1rem;
+  white-space: nowrap;
+}
+
+.newq-neutral { color: var(--text-faint); font-weight: 800; font-size: 0.82rem; }
+.newq-saving  { color: #2563eb; font-weight: 900; font-size: 0.82rem; }
+
+/* Save hint banner */
+.newq-save-hint {
+  border: 1px solid #bfe3d0;
+  background: var(--green-soft, #f0fdf4);
+  color: var(--green, #16a34a);
+  border-radius: 14px;
+  padding: 0.7rem 0.9rem;
+  font-weight: 800;
+  font-size: 0.88rem;
+  margin-bottom: 0.8rem;
+}
+
+/* Quick save row (hidden desktop, visible mobile via media) */
+.newq-quick-save-row { display: none; }
+
+/* Floating save bar (desktop: hidden, mobile: fixed via media) */
+.newq-floating-save { display: none; }
+
+/* Date/time card — centered pill */
+.newq-match-time-card {
+  margin: 0.85rem auto 0;
+  width: fit-content;
+  max-width: 100%;
+  display: grid;
+  gap: 0.25rem;
+  justify-items: center;
+  text-align: center;
+  border-radius: 999px;
+  padding: 0.48rem 0.78rem;
+  background: var(--surface-soft);
+  border: 1px solid var(--border);
+}
+
+.newq-match-time-main {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  color: var(--text-primary);
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
+.newq-match-lock-main {
+  color: var(--text-secondary);
+  font-size: 0.76rem;
+  font-weight: 700;
+}
+
+@media (max-width: 760px) {
+  /* Board header goes single-column */
+  .newq-board-header {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 0.85rem;
+  }
+
+  .newq-board-actions {
+    justify-content: stretch;
+    width: 100%;
+  }
+
+  .newq-save-status {
+    width: 100%;
+    font-size: 0.82rem;
+  }
+
+  .newq-inline-save {
+    width: 100%;
+    min-height: 54px;
+    border-radius: 14px;
+    font-size: 1rem;
+  }
+
+  /* Quick save after filters */
+  .newq-quick-save-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    border-radius: 16px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    padding: 0.72rem 0.8rem;
+    margin-bottom: 0.85rem;
+  }
+
+  .newq-quick-save-row span {
+    font-size: 0.8rem;
+    font-weight: 800;
+    color: var(--text-secondary);
+    line-height: 1.2;
+  }
+
+  .newq-quick-save-row button {
+    border: none;
+    background: var(--green, #16a34a);
+    color: #fff;
+    border-radius: 999px;
+    padding: 0.45rem 0.85rem;
+    font-weight: 900;
+    min-height: 38px;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+
+  .newq-quick-save-row button:disabled { opacity: 0.45; }
+
+  /* Floating save bar */
+  .newq-floating-save {
+    display: grid;
+    position: fixed;
+    left: 0.85rem;
+    right: 0.85rem;
+    bottom: calc(0.75rem + env(safe-area-inset-bottom));
+    z-index: 120;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem;
+    border-radius: 20px;
+    background: rgba(255, 255, 255, 0.94);
+    border: 1px solid var(--border);
+    box-shadow: 0 12px 32px rgba(16, 28, 46, 0.22);
+    backdrop-filter: blur(14px);
+  }
+
+  .newq-floating-save-copy {
+    min-width: 0;
+    display: grid;
+    gap: 0.1rem;
+  }
+
+  .newq-floating-save-copy strong { font-size: 0.86rem; line-height: 1.1; }
+  .newq-floating-save-copy span   { font-size: 0.74rem; color: var(--text-secondary); line-height: 1.2; }
+
+  .newq-floating-save .newq-save-btn {
+    width: auto;
+    min-width: 96px;
+    min-height: 48px;
+    padding-inline: 0.95rem;
+    border-radius: 15px;
+    white-space: nowrap;
+  }
+
+  .newq-save-hint { margin: 0 0 0.85rem; font-size: 0.86rem; }
+
+  /* Card premium móvil */
+  .newq-match-card { padding: 1.05rem 0.95rem 1.15rem; border-radius: 20px; }
+  .newq-match-top  { align-items: start; }
+
+  .newq-team-side {
+    display: grid;
+    justify-items: center;
+    text-align: center;
+    gap: 0.35rem;
+  }
+
+  .newq-team-side.right { justify-content: initial; text-align: center; }
+
+  .newq-team-name { font-size: 1rem; font-weight: 900; line-height: 1.05; }
+  .newq-vs        { align-self: center; padding-top: 0.35rem; }
+  .newq-score-box { margin-top: 1rem; }
+
+  /* Time card móvil */
+  .newq-match-time-card {
+    border-radius: 16px;
+    padding: 0.55rem 0.75rem;
+    margin-top: 0.85rem;
+    width: 100%;
+  }
+
+  .newq-match-time-main  { font-size: 0.84rem; }
+  .newq-match-lock-main  { font-size: 0.78rem; }
+}

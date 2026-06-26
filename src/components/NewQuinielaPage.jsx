@@ -99,6 +99,7 @@ export default function NewQuinielaPage({ matches = [], settings = {}, onReloadS
   const [savedAt, setSavedAt] = useState(null);
   const [filter, setFilter] = useState('open');
   const [draftRestorePrompt, setDraftRestorePrompt] = useState(null);
+  const [hasSeenSaveHint, setHasSeenSaveHint] = useState(false);
   const emailRef = useRef(null);
 
   useEffect(() => { emailRef.current?.focus(); }, []);
@@ -221,6 +222,7 @@ export default function NewQuinielaPage({ matches = [], settings = {}, onReloadS
         recordPhaseProgress({ windowId: activeWindow.id, email: profile.email, status: 'editing', predictionCount: count });
         try { localStorage.setItem(`newq_draft_${activeWindow.id}_${profile.email}`, JSON.stringify(next)); } catch (_) {}
       }
+      if (!hasSeenSaveHint) setHasSeenSaveHint(true);
       return next;
     });
   };
@@ -248,6 +250,11 @@ export default function NewQuinielaPage({ matches = [], settings = {}, onReloadS
       setSaving(false);
     }
   };
+
+  const hasPredictions = Object.values(predictions).some(
+    p => p?.home !== '' && p?.home !== undefined && p?.away !== '' && p?.away !== undefined
+  );
+  const canSave = dirty && hasPredictions && !saving;
 
   const displayProfile = profile ? {
     name: profile.userType === 'new' ? (newUser.name || 'Nuevo participante') : profile.name,
@@ -391,11 +398,25 @@ export default function NewQuinielaPage({ matches = [], settings = {}, onReloadS
                   <h2>Mis apuestas</h2>
                   <p>Cierre {LOCK_MINUTES_BEFORE_KICKOFF} minutos antes de cada partido.</p>
                 </div>
-                <div className="newq-save-status">
-                  {dirty && <span className="newq-unsaved">Cambios sin guardar</span>}
-                  {savedAt && !dirty && <span className="newq-saved">✓ Guardado</span>}
+                <div className="newq-board-actions">
+                  <div className="newq-save-status">
+                    {dirty && !saving && <span className="newq-unsaved">Cambios sin guardar</span>}
+                    {saving && <span className="newq-saving">Guardando...</span>}
+                    {savedAt && !dirty && !saving && <span className="newq-saved">✓ Guardado correctamente</span>}
+                    {!dirty && !savedAt && !saving && <span className="newq-neutral">Sin cambios</span>}
+                  </div>
+                  <button className="newq-btn-primary newq-inline-save" onClick={save} disabled={!canSave}>
+                    {saving ? 'Guardando…' : 'Guardar cambios'}
+                  </button>
                 </div>
               </div>
+
+              {/* Hint after first edit */}
+              {dirty && hasSeenSaveHint && (
+                <div className="newq-save-hint">
+                  Ya tienes cambios. Toca "Guardar cambios" para enviarlos.
+                </div>
+              )}
 
               {/* Filters */}
               <div className="newq-filters">
@@ -409,6 +430,12 @@ export default function NewQuinielaPage({ matches = [], settings = {}, onReloadS
                     {counts[f.key] > 0 && <span className="newq-filter-count">{counts[f.key]}</span>}
                   </button>
                 ))}
+              </div>
+
+              {/* Quick save after filters */}
+              <div className="newq-quick-save-row">
+                <span>{dirty ? 'Tienes cambios sin guardar' : 'Llena tus marcadores y guarda al terminar'}</span>
+                <button onClick={save} disabled={!canSave}>Guardar</button>
               </div>
 
               {/* Matches grouped by date */}
@@ -435,14 +462,20 @@ export default function NewQuinielaPage({ matches = [], settings = {}, onReloadS
               )}
 
               {error && <p className="newq-error" style={{ marginTop: '0.75rem' }}>{error}</p>}
+            </div>
 
-              {/* Sticky save */}
-              <div className="newq-sticky-save">
-                <button className="newq-btn-primary newq-save-btn" onClick={save} disabled={saving || !dirty}>
-                  {saving ? 'Guardando…' : <><Save size={15} /> Guardar cambios</>}
+            {/* Floating save bar — appears when dirty */}
+            {(dirty || saving) && (
+              <div className="newq-floating-save" role="status">
+                <div className="newq-floating-save-copy">
+                  <strong>{saving ? 'Guardando...' : 'Cambios sin guardar'}</strong>
+                  <span>Recuerda guardar tus pronósticos.</span>
+                </div>
+                <button className="newq-btn-primary newq-save-btn" onClick={save} disabled={!canSave}>
+                  {saving ? 'Guardando…' : <><Save size={15} /> Guardar</>}
                 </button>
               </div>
-            </div>
+            )}
           </>
         )}
       </div>

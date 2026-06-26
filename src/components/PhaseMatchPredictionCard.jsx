@@ -3,9 +3,14 @@ import FlagIcon from './FlagIcon';
 import { isMatchLocked, getMatchKickoff, getMatchLockAt } from '../services/matchLock';
 import { displayTeamName, isPlaceholderTeam } from '../services/teamDisplay';
 
-function formatDate(iso) {
+function formatShortDate(iso) {
   if (!iso) return '';
   return new Date(iso).toLocaleString('es-MX', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+}
+
+function formatShortTime(iso) {
+  if (!iso) return '';
+  return new Date(iso).toLocaleString('es-MX', { hour: '2-digit', minute: '2-digit' });
 }
 
 function ScoreInput({ value, onChange, disabled }) {
@@ -64,10 +69,14 @@ export default function PhaseMatchPredictionCard({ match, pred = {}, onChange })
         </div>
       </div>
 
-      <div className="newq-match-time">
-        <Clock size={12} />
-        <span>{formatDate(kickoff)}</span>
-        {lockAt && !locked && <span className="newq-lock-note">· cierra {formatDate(lockAt)}</span>}
+      <div className="newq-match-time-card">
+        <div className="newq-match-time-main">
+          <Clock size={13} />
+          <span>{formatShortDate(kickoff)}</span>
+        </div>
+        {lockAt && !locked && (
+          <div className="newq-match-lock-main">Cierra {formatShortTime(lockAt)}</div>
+        )}
       </div>
 
       {locked ? (
