@@ -1,6 +1,7 @@
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { getDashboardMode } from './services/standingsMode';
 import { buildContinuationStandings } from './services/continuationStandings';
+import { buildSafeCombinedStandings } from './services/combinedStandings';
 import { Trophy, Square, Users, MonitorPlay, RefreshCw, Wifi, WifiOff } from 'lucide-react';
 import AdminLogin from './components/AdminLogin';
 import Dashboard from './components/Dashboard';
@@ -530,15 +531,21 @@ export default function App() {
     [continuationSettings, capitalHumanoArchive]
   );
 
-  const standings = useMemo(() => {
-    if (dashboardMode === 'new_quiniela') return newQuinielaStandings;
-    if (dashboardMode === 'rh_archive') return capitalHumanoArchive?.standings || rhStandings;
-    return rhStandings;
-  }, [dashboardMode, newQuinielaStandings, capitalHumanoArchive, rhStandings]);
+  const safeCombinedStandings = useMemo(() =>
+    buildSafeCombinedStandings({ rhStandings, newQuinielaStandings, participants }),
+    [rhStandings, newQuinielaStandings, participants]
+  );
 
-  const dashboardTitle = dashboardMode === 'new_quiniela'
-    ? 'Tabla General · Nueva Quiniela'
-    : 'Tabla General · Quiniela RH';
+  const standings = useMemo(() => {
+    if (dashboardMode === 'rh_archive') return capitalHumanoArchive?.standings || rhStandings;
+    if (dashboardMode === 'rh_current') return rhStandings;
+    // new_quiniela, combined, auto: siempre usar tabla combinada para no ocultar participantes RH
+    return safeCombinedStandings;
+  }, [dashboardMode, safeCombinedStandings, capitalHumanoArchive, rhStandings]);
+
+  const dashboardTitle = dashboardMode === 'rh_current' || dashboardMode === 'rh_archive'
+    ? 'Tabla General · Quiniela RH'
+    : 'Tabla General · Continuación Mundialista';
 
   const pendingAdminCount = useMemo(() =>
     phaseSubmissions.filter(s => !s.status || s.status === 'pending').length,
