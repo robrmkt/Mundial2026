@@ -10,6 +10,17 @@ export default function AdminParticipants({
 }) {
   const withEmail = participants.filter(p => p.email).length;
   const withTeam  = participants.filter(p => p.team).length;
+  const autoLinkEmails = () => {
+    let assigned = 0;
+    let pending = 0;
+    participants.forEach(participant => {
+      const roster = getRosterEntry(participant.name);
+      if (!roster?.email) { pending += 1; return; }
+      if (!participant.email) { onSetEmail(participant.name, roster.email); assigned += 1; }
+      if (!participant.team && roster.team) onSetTeam(participant.name, roster.team);
+    });
+    window.alert(`${assigned} correos asignados · ${pending} pendientes de revisión`);
+  };
 
   return (
     <div className="admin-section-body">
@@ -25,6 +36,9 @@ export default function AdminParticipants({
           disabled={participants.length === 0}
         >
           <Download size={14} /> Descargar todo
+        </button>
+        <button type="button" className="admin-header-action-btn" onClick={autoLinkEmails}>
+          <Mail size={14} /> Vincular correos automáticamente
         </button>
       </div>
 

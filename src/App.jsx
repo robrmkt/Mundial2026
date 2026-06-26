@@ -7,7 +7,10 @@ import Dashboard from './components/Dashboard';
 // así el bundle inicial que descargan todos los participantes es mucho más ligero.
 const AdminPanel = lazy(() => import('./components/AdminPanel'));
 import PredictionGrid from './components/PredictionGrid';
-import PhasePredictionForm from './components/PhasePredictionForm';
+import NewQuinielaPage from './components/NewQuinielaPage';
+import CapitalHumanoArchive from './components/CapitalHumanoArchive';
+import TransitionNoticeModal from './components/TransitionNoticeModal';
+import { shouldShowTransitionNotice } from './services/transitionNotice';
 import LiveMatches from './components/LiveMatches';
 import GlobalEventOverlay from './components/GlobalEventOverlay';
 import MatchTicker from './components/MatchTicker';
@@ -136,7 +139,9 @@ const TAB_HASHES = {
   '#pronosticos': 'predictions',
   '#partidos': 'matches',
   '#admin': 'admin',
-  '#fase2': 'fase2'
+  '#fase2': 'nuevaQuiniela',
+  '#nueva-quiniela': 'nuevaQuiniela',
+  '#capital-humano': 'capitalHumano'
 };
 
 const HASH_BY_TAB = {
@@ -144,7 +149,8 @@ const HASH_BY_TAB = {
   predictions: '#pronosticos',
   matches: '#partidos',
   admin: '#admin',
-  fase2: '#fase2'
+  nuevaQuiniela: '#nueva-quiniela',
+  capitalHumano: '#capital-humano'
 };
 
 function tabFromHash() {
@@ -180,6 +186,9 @@ export default function App() {
   const [documents, setDocumentsState] = useState([]);
   const [support, setSupportState] = useState({});
   const [podiumReactions, setPodiumReactions] = useState({});
+  const [continuationSettings, setContinuationSettings] = useState(null);
+  const [capitalHumanoArchive, setCapitalHumanoArchive] = useState(null);
+  const [showTransitionNotice, setShowTransitionNotice] = useState(false);
   const [chatMessages, setChatMessages] = useLocalStorage('quiniela_chat', [
     { id: 1, user: 'Sistema', time: '12:00', text: '¡Bienvenidos a la Quiniela del Mundial 26! Que gane el mejor. 🏆' }
   ]);
@@ -254,10 +263,14 @@ export default function App() {
       const nextDocuments = Array.isArray(data.documents) ? data.documents : [];
       const nextSupport = data.support && typeof data.support === 'object' && !Array.isArray(data.support) ? data.support : {};
       const nextPodiumReactions = data.podiumReactions && typeof data.podiumReactions === 'object' && !Array.isArray(data.podiumReactions) ? data.podiumReactions : {};
+      const nextSettings = data.continuationSettings && typeof data.continuationSettings === 'object' ? data.continuationSettings : null;
       setParticipantsState(nextParticipants);
       setDocumentsState(nextDocuments);
       setSupportState(nextSupport);
       setPodiumReactions(nextPodiumReactions);
+      setContinuationSettings(nextSettings);
+      setCapitalHumanoArchive(data.capitalHumanoArchive || null);
+      if (shouldShowTransitionNotice(nextSettings, data.capitalHumanoArchive)) setShowTransitionNotice(true);
       sharedDataRef.current = { participants: nextParticipants, documents: nextDocuments };
       setSharedState({ status: 'ok', lastSync: new Date() });
     } catch (error) {
@@ -797,6 +810,15 @@ export default function App() {
               <span className="nav-btn-text">Partidos</span>
               {liveCount > 0 && <span className="nav-live-count">{liveCount}</span>}
             </button>
+            {continuationSettings?.publicEnabled !== false && (
+              <button
+                className={`nav-btn ${activeTab === 'nuevaQuiniela' ? 'active' : ''}`}
+                onClick={() => goToTab('nuevaQuiniela')}
+              >
+                <Users size={15} />
+                <span className="nav-btn-text">Nueva quiniela</span>
+              </button>
+            )}
           </nav>
 
           <div className="header-status">
@@ -836,6 +858,15 @@ export default function App() {
 
       <MatchTicker matches={matches} />
 
+      {showTransitionNotice && (
+        <TransitionNoticeModal
+          settings={continuationSettings}
+          onClose={() => setShowTransitionNotice(false)}
+          onArchive={() => goToTab('capitalHumano')}
+          onNew={() => goToTab('nuevaQuiniela')}
+        />
+      )}
+
       {/* Main View Container */}
       <main className="main-content-area">
         {activeTab === 'dashboard' && (
@@ -869,11 +900,14 @@ export default function App() {
         {activeTab === 'matches' && (
           <LiveMatches matches={matches} />
         )}
-        {activeTab === 'fase2' && (
-          <PhasePredictionForm
+        {activeTab === 'nuevaQuiniela' && (
+          <NewQuinielaPage
             matches={matches}
-            onClose={() => goToTab('dashboard')}
+            settings={continuationSettings || {}}
           />
+        )}
+        {activeTab === 'capitalHumano' && (
+          <CapitalHumanoArchive initialArchive={capitalHumanoArchive} fallbackStandings={standings} onGoNew={() => goToTab('nuevaQuiniela')} />
         )}
         {activeTab === 'admin' && (
           session ? (
@@ -881,6 +915,7 @@ export default function App() {
               <AdminPanel
                 matches={matches}
                 participants={participants}
+                standings={standings}
                 setParticipants={setSharedParticipants}
                 documents={documents}
                 setDocuments={setSharedDocuments}

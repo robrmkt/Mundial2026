@@ -1,5 +1,4 @@
 export default function AdminSystem({ isSuper }) {
-  const hasResend = true; // detectado en runtime, no en frontend
   return (
     <div className="admin-section-body">
       <div className="admin-section-header">

@@ -87,7 +87,7 @@ function parseExcelDocument(data, matches) {
 }
 
 export default function AdminPanel({
-  matches, participants, setParticipants,
+  matches, participants, standings = [], setParticipants,
   documents, setDocuments,
   simActive, setSimActive, handleReset,
   onSyncNow, syncState, session, visitStats, onLogout
@@ -145,7 +145,7 @@ export default function AdminPanel({
       setDocuments(prev => [{ id: Date.now(), fileName: file.name, uploadedAt: new Date().toISOString(), participantName: result.participantName || 'Pendiente', predictionCount: Object.keys(result.predictions).length, status: warnings.length ? 'needs-review' : 'ready' }, ...prev]);
       setStatusMessage(`${usedAI ? 'Analizado con IA: ' : ''}${Object.keys(result.predictions).length} pronósticos detectados.`);
       setActiveSection('quinielas');
-    } catch (e) {
+    } catch {
       setStatusMessage('No pude interpretar el archivo.');
     } finally {
       setIsAnalyzing(false);
@@ -231,7 +231,7 @@ export default function AdminPanel({
         />
       )}
       {activeSection === 'extension' && (
-        <AdminPredictionExtension participants={participants} matches={matches} />
+        <AdminPredictionExtension participants={participants} standings={standings} matches={matches} />
       )}
       {activeSection === 'notifications' && (
         <NotificationCenter isSuper={isSuper} session={session} />

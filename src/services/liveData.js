@@ -1,11 +1,13 @@
 // Datos en vivo del Mundial 2026 vía la API pública de ESPN (sin API key).
-// Scoreboard: marcadores y estados de los 72 partidos de fase de grupos.
+// Scoreboard: marcadores y estados del torneo completo.
 // Summary: cronología (goles, tarjetas, cambios) y estadísticas por partido.
 
 import { buildTimeline } from './timelineAdapter';
 
 const BASE = 'https://site.api.espn.com/apis/site/v2/sports/soccer/fifa.world';
-const RANGE = '20260611-20260627';
+const RANGE_START = '20260611';
+const RANGE_END = '20260719';
+const RANGE = `${RANGE_START}-${RANGE_END}`;
 const LANG = 'lang=es&region=mx';
 
 // ESPN usa algunos nombres distintos a los de matches.json
@@ -54,6 +56,8 @@ export async function fetchScoreboard() {
       kickoff: comp.date || event.date,
       homeNorm: normalizeTeam(home.team?.displayName),
       awayNorm: normalizeTeam(away.team?.displayName),
+      homeTeam: home.team?.displayName || 'Por definir',
+      awayTeam: away.team?.displayName || 'Por definir',
       homeScore: Number.parseInt(home.score ?? '0', 10) || 0,
       awayScore: Number.parseInt(away.score ?? '0', 10) || 0,
       homeLogo: home.team?.logo || '',
@@ -69,12 +73,45 @@ export async function fetchScoreboard() {
   }).filter(Boolean);
 }
 
-// Combina los eventos de ESPN con la lista local de partidos (por par de equipos,
-// único en fase de grupos). Devuelve la lista actualizada y los goles detectados.
+function samePair(match, ev) {
+  const homeNorm = normalizeTeam(match.homeTeam);
+  const awayNorm = normalizeTeam(match.awayTeam);
+  return (`${homeNorm}|${awayNorm}` === `${ev.homeNorm}|${ev.awayNorm}`) ||
+    (`${homeNorm}|${awayNorm}` === `${ev.awayNorm}|${ev.homeNorm}`);
+}
+
+function buildMatchFromEspnEvent(ev, fallbackIndex) {
+  return {
+    id: `espn_${ev.espnId || fallbackIndex}`,
+    espnId: ev.espnId,
+    homeTeam: ev.homeTeam || 'Por definir',
+    awayTeam: ev.awayTeam || 'Por definir',
+    homeFlag: '',
+    awayFlag: '',
+    homeLogo: ev.homeLogo || '',
+    awayLogo: ev.awayLogo || '',
+    homeScore: ev.status === 'SCHEDULED' ? 0 : ev.homeScore,
+    awayScore: ev.status === 'SCHEDULED' ? 0 : ev.awayScore,
+    status: ev.status,
+    statusDetail: ev.statusDetail,
+    isHalftime: ev.isHalftime,
+    kickoff: ev.kickoff,
+    displayClock: ev.displayClock,
+    minute: ev.minute,
+    venue: ev.venue,
+    city: ev.city,
+    source: 'espn'
+  };
+}
+
+// Combina los eventos de ESPN con la lista local de partidos. Actualiza partidos
+// existentes y agrega cruces nuevos del feed usando espnId como llave estable.
 export function mergeScoreboard(matches, espnEvents) {
   const byPair = new Map();
+  const byEspnId = new Map();
   espnEvents.forEach(ev => {
     byPair.set(`${ev.homeNorm}|${ev.awayNorm}`, ev);
+    if (ev.espnId) byEspnId.set(String(ev.espnId), ev);
   });
 
   const goals = [];
@@ -84,7 +121,9 @@ export function mergeScoreboard(matches, espnEvents) {
   const merged = matches.map(match => {
     const homeNorm = normalizeTeam(match.homeTeam);
     const awayNorm = normalizeTeam(match.awayTeam);
-    const ev = byPair.get(`${homeNorm}|${awayNorm}`) || byPair.get(`${awayNorm}|${homeNorm}`);
+    const ev = (match.espnId ? byEspnId.get(String(match.espnId)) : null) ||
+      byPair.get(`${homeNorm}|${awayNorm}`) ||
+      byPair.get(`${awayNorm}|${homeNorm}`);
     if (!ev) return match;
 
     const swapped = ev.homeNorm !== homeNorm;
@@ -132,6 +171,18 @@ export function mergeScoreboard(matches, espnEvents) {
 
     if (JSON.stringify(next) !== JSON.stringify(match)) changed = true;
     return next;
+  });
+
+  const seenEspnIds = new Set(merged.map(m => m.espnId).filter(Boolean).map(String));
+  const seenIds = new Set(merged.map(m => String(m.id)));
+  espnEvents.forEach((ev, index) => {
+    const id = `espn_${ev.espnId || index}`;
+    const alreadyPresent = (ev.espnId && seenEspnIds.has(String(ev.espnId))) ||
+      seenIds.has(id) ||
+      merged.some(m => samePair(m, ev));
+    if (alreadyPresent) return;
+    merged.push(buildMatchFromEspnEvent(ev, index));
+    changed = true;
   });
 
   return { merged, goals, finished, changed };

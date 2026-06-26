@@ -91,6 +91,22 @@ const defaultState = {
   },
   predictionWindows: [],
   phaseSubmissions: [],
+  continuationSettings: {
+    enabled: true,
+    publicEnabled: true,
+    title: 'Nueva quiniela',
+    subtitle: 'Continúa pronosticando los siguientes partidos del Mundial.',
+    startAt: '2026-06-28T00:00:00-06:00',
+    lockMinutesBeforeKickoff: 10,
+    scoringMode: 'phase_only',
+    allowNewUsers: true,
+    allowedDomains: ['bacherzoppi.com', 'uppharma.com'],
+    autoApproveSubmissions: false,
+    transitionNoticeEnabled: true,
+    transitionNoticeVersion: 1
+  },
+  capitalHumanoArchive: null,
+  registeredUsers: [],
   notificationSettings: defaultNotificationSettings,
   notificationLog: [],
   updatedAt: null
@@ -162,9 +178,24 @@ function coerceState(parsed) {
     },
     predictionWindows: asArray(p.predictionWindows),
     phaseSubmissions: asArray(p.phaseSubmissions),
+    continuationSettings: coerceContinuationSettings(p.continuationSettings),
+    capitalHumanoArchive: isObject(p.capitalHumanoArchive) ? p.capitalHumanoArchive : null,
+    registeredUsers: asArray(p.registeredUsers),
     notificationSettings: coerceNotificationSettings(p.notificationSettings),
     notificationLog: asArray(p.notificationLog).slice(-200),
     updatedAt: p.updatedAt || null
+  };
+}
+
+function coerceContinuationSettings(raw) {
+  const r = isObject(raw) ? raw : {};
+  const d = defaultState.continuationSettings;
+  return {
+    ...d,
+    ...r,
+    allowedDomains: Array.isArray(r.allowedDomains) && r.allowedDomains.length ? r.allowedDomains : d.allowedDomains,
+    lockMinutesBeforeKickoff: Number(r.lockMinutesBeforeKickoff ?? d.lockMinutesBeforeKickoff) || d.lockMinutesBeforeKickoff,
+    transitionNoticeVersion: Number(r.transitionNoticeVersion ?? d.transitionNoticeVersion) || d.transitionNoticeVersion
   };
 }
 
@@ -266,6 +297,51 @@ function writeState(nextState) {
 
 function makeId(prefix) {
   return `${prefix}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
+}
+
+function normalizeEmailValue(email) {
+  return String(email || '').trim().toLowerCase();
+}
+
+function inferTeamFromEmail(email) {
+  const e = normalizeEmailValue(email);
+  if (e.endsWith('@bacherzoppi.com')) return 'bz';
+  if (e.endsWith('@uppharma.com')) return 'up';
+  return '';
+}
+
+function isEmailAllowed(email, settings) {
+  const e = normalizeEmailValue(email);
+  return asArray(settings.allowedDomains).some(domain => e.endsWith(`@${String(domain).toLowerCase()}`));
+}
+
+function getMatchKickoffValue(match) {
+  return match?.kickoff || match?.utcDate || match?.dateTime || null;
+}
+
+function getMatchLockAtValue(match, lockMinutes) {
+  const kickoff = getMatchKickoffValue(match);
+  if (!kickoff) return null;
+  const ms = Date.parse(kickoff);
+  if (!Number.isFinite(ms)) return null;
+  return new Date(ms - lockMinutes * 60 * 1000).toISOString();
+}
+
+function isConfirmedMatch(match) {
+  const home = String(match?.homeTeam || '').trim();
+  const away = String(match?.awayTeam || '').trim();
+  return Boolean(home && away && !/por definir|tbd|to be determined/i.test(`${home} ${away}`) && getMatchKickoffValue(match));
+}
+
+function isSubmissionMatchLocked(match, settings) {
+  const lockAt = getMatchLockAtValue(match, settings.lockMinutesBeforeKickoff);
+  if (!lockAt) return true;
+  return Date.now() >= Date.parse(lockAt);
+}
+
+function initials(nameOrEmail) {
+  const name = String(nameOrEmail || '').split('@')[0].replace(/[._-]+/g, ' ');
+  return name.split(/\s+/).filter(Boolean).slice(0, 2).map(p => p[0]?.toUpperCase()).join('') || 'NP';
 }
 
 function visitSummary(state) {
@@ -730,9 +806,10 @@ const server = createServer(async (request, response) => {
         const recent = asArray(base.notificationLog).find(l => l.dedupeKey === dedupeKey && l.status === 'sent');
         if (recent) { sendJson(response, 200, { skipped: true, reason: 'duplicate' }); return; }
       }
+      const rendered = renderTemplate(template, { participantName: participantName || '', ...(isObject(data) ? data : {}) });
       const to = settings.mode === 'test' ? settings.testRecipient : recipientEmail;
-      const subject = settings.mode === 'test' ? `[PRUEBA] ${template.subject}` : template.subject;
-      const text = `Hola, ${participantName || ''}.\n\n${template.previewText}`;
+      const subject = settings.mode === 'test' ? `[PRUEBA] ${rendered.subject}` : rendered.subject;
+      const text = `Hola, ${participantName || ''}.\n\n${rendered.body || template.previewText}`;
       const result = await sendEmail({ to, subject, text });
       const logEntry = {
         id: makeId('notif'),
@@ -760,12 +837,67 @@ const server = createServer(async (request, response) => {
       if (request.method === 'POST') {
         const parsed = await readJsonBody(request);
         const base = readState();
-        const win = { id: makeId('win'), status: 'draft', matchIds: [], closeRule: '24h_before_match', ...parsed, createdAt: new Date().toISOString() };
+        const win = {
+          id: makeId('win'),
+          name: 'Nueva quiniela',
+          status: 'draft',
+          matchIds: [],
+          closeMode: 'per_match',
+          lockMinutesBeforeKickoff: base.continuationSettings.lockMinutesBeforeKickoff,
+          autoIncludeFutureMatches: true,
+          ...parsed,
+          createdAt: new Date().toISOString()
+        };
         const saved = writeState({ ...base, predictionWindows: [...asArray(base.predictionWindows), win] });
         sendJson(response, 200, { window: win, total: saved.predictionWindows.length });
         return;
       }
       sendJson(response, 405, { error: 'Method not allowed' }); return;
+    }
+
+    if (path === '/api/continuation/profile' && request.method === 'POST') {
+      const { email } = await readJsonBody(request);
+      const base = readState();
+      const settings = base.continuationSettings;
+      const normalizedEmail = normalizeEmailValue(email);
+      if (!normalizedEmail || !normalizedEmail.includes('@')) {
+        sendJson(response, 400, { error: 'invalid_email', message: 'Ingresa un correo válido.' });
+        return;
+      }
+      if (!isEmailAllowed(normalizedEmail, settings)) {
+        sendJson(response, 403, { error: 'domain_not_allowed', message: 'Por ahora esta quiniela solo acepta correos corporativos de Bacher Zoppi o UP Pharma.' });
+        return;
+      }
+      const participants = asArray(base.participants);
+      const registered = asArray(base.registeredUsers);
+      const existingParticipant = participants.find(p => normalizeEmailValue(p.email) === normalizedEmail);
+      const existingRegistered = registered.find(p => normalizeEmailValue(p.email) === normalizedEmail);
+      const approvedSub = asArray(base.phaseSubmissions).find(s => normalizeEmailValue(s.email) === normalizedEmail && s.status === 'approved');
+      const existing = existingParticipant || existingRegistered || approvedSub;
+      if (existing) {
+        const rank = existingParticipant?.rank || null;
+        sendJson(response, 200, {
+          exists: true,
+          userType: existingParticipant ? 'existing' : 'new',
+          profile: {
+            name: existing.name || existing.participantName || normalizedEmail,
+            email: normalizedEmail,
+            team: existing.team || inferTeamFromEmail(normalizedEmail),
+            photo: existing.photo || '',
+            avatar: existing.avatar || initials(existing.name || existing.participantName || normalizedEmail),
+            capitalHumanoRank: rank,
+            capitalHumanoPoints: existingParticipant?.points || 0,
+            capitalHumanoExactHits: existingParticipant?.exactHits || 0
+          }
+        });
+        return;
+      }
+      sendJson(response, 200, {
+        exists: false,
+        allowedToRegister: settings.allowNewUsers !== false,
+        inferredTeam: inferTeamFromEmail(normalizedEmail)
+      });
+      return;
     }
     if (path.startsWith('/api/prediction-windows/') && request.method === 'PUT') {
       const id = path.replace('/api/prediction-windows/', '');
@@ -805,15 +937,149 @@ const server = createServer(async (request, response) => {
           sendJson(response, 400, { error: 'email, windowId y predictions son requeridos' }); return;
         }
         const base = readState();
+        const settings = base.continuationSettings;
+        const email = normalizeEmailValue(parsed.email);
+        if (!isEmailAllowed(email, settings)) {
+          sendJson(response, 403, { error: 'domain_not_allowed', message: 'Correo corporativo no permitido.' });
+          return;
+        }
+        const wins = asArray(base.predictionWindows);
+        const win = wins.find(w => w.id === parsed.windowId);
+        if (!win || !['open', 'scheduled', 'draft'].includes(String(win.status || 'draft'))) {
+          sendJson(response, 400, { error: 'window_closed', message: 'La ventana no está abierta.' });
+          return;
+        }
+        const matchMeta = asObject(parsed.matchMeta);
         const subs = asArray(base.phaseSubmissions);
-        const existing = subs.findIndex(s => s.email === parsed.email.toLowerCase() && s.windowId === parsed.windowId);
-        const entry = { id: existing >= 0 ? subs[existing].id : makeId('sub'), ...parsed, email: parsed.email.toLowerCase(), updatedAt: new Date().toISOString(), createdAt: existing >= 0 ? subs[existing].createdAt : new Date().toISOString() };
+        const existing = subs.findIndex(s => normalizeEmailValue(s.email) === email && s.windowId === parsed.windowId);
+        const previous = existing >= 0 ? subs[existing] : null;
+        const nextPredictions = {};
+        const audit = asArray(previous?.audit);
+        for (const [matchId, pred] of Object.entries(asObject(parsed.predictions))) {
+          const meta = matchMeta[String(matchId)] || matchMeta[matchId];
+          if (!meta || !isConfirmedMatch(meta)) {
+            sendJson(response, 400, { error: 'match_unconfirmed', matchId, message: 'Este cruce se activará cuando se confirmen los equipos.' });
+            return;
+          }
+          if (isSubmissionMatchLocked(meta, settings)) {
+            if (previous?.predictions?.[matchId]) {
+              nextPredictions[matchId] = previous.predictions[matchId];
+              continue;
+            }
+            sendJson(response, 400, { error: 'match_locked', matchId, message: 'Este partido ya cerró para pronósticos.' });
+            return;
+          }
+          nextPredictions[matchId] = {
+            homeScore: Number(pred.homeScore),
+            awayScore: Number(pred.awayScore),
+            savedAt: new Date().toISOString(),
+            lockedAt: getMatchLockAtValue(meta, settings.lockMinutesBeforeKickoff)
+          };
+        }
+        const existingParticipant = asArray(base.participants).find(p => normalizeEmailValue(p.email) === email);
+        const entry = {
+          id: existing >= 0 ? subs[existing].id : makeId('sub'),
+          windowId: parsed.windowId,
+          email,
+          participantName: String(parsed.participantName || existingParticipant?.name || email).trim(),
+          team: parsed.team || existingParticipant?.team || inferTeamFromEmail(email),
+          userType: existingParticipant ? 'existing' : (parsed.userType || 'new'),
+          status: existing >= 0 && previous.status === 'approved' ? 'edited' : 'pending',
+          predictions: nextPredictions,
+          createdAt: existing >= 0 ? subs[existing].createdAt : new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+          reviewedAt: existing >= 0 ? previous.reviewedAt || '' : '',
+          reviewedBy: existing >= 0 ? previous.reviewedBy || '' : '',
+          rejectedReason: '',
+          audit: [...audit, { type: existing >= 0 ? 'public_update' : 'public_create', at: new Date().toISOString() }]
+        };
         if (existing >= 0) subs[existing] = entry; else subs.push(entry);
         writeState({ ...base, phaseSubmissions: subs });
-        sendJson(response, 200, { submission: entry, updated: existing >= 0 });
+        sendJson(response, 200, { submission: entry, status: entry.status, message: 'Tus pronósticos fueron recibidos y quedarán pendientes de revisión.', updated: existing >= 0 });
         return;
       }
       sendJson(response, 405, { error: 'Method not allowed' }); return;
+    }
+    if (path.startsWith('/api/phase-submissions/') && path.endsWith('/approve') && request.method === 'POST') {
+      const id = path.replace('/api/phase-submissions/', '').replace('/approve', '');
+      const base = readState();
+      const subs = asArray(base.phaseSubmissions);
+      const idx = subs.findIndex(s => s.id === id);
+      if (idx === -1) { sendJson(response, 404, { error: 'Submission not found' }); return; }
+      const sub = subs[idx];
+      const participants = asArray(base.participants);
+      const pidx = participants.findIndex(p => normalizeEmailValue(p.email) === normalizeEmailValue(sub.email) || p.name === sub.participantName);
+      const approvedPredictions = Object.fromEntries(Object.entries(asObject(sub.predictions)).map(([matchId, p]) => [matchId, { homeScore: Number(p.homeScore), awayScore: Number(p.awayScore) }]));
+      if (pidx >= 0) {
+        participants[pidx] = {
+          ...participants[pidx],
+          email: normalizeEmailValue(sub.email),
+          team: sub.team || participants[pidx].team,
+          predictions: { ...asObject(participants[pidx].predictions), ...approvedPredictions }
+        };
+      } else {
+        participants.push({
+          id: makeId('participant'),
+          name: sub.participantName || sub.email,
+          email: normalizeEmailValue(sub.email),
+          team: sub.team || inferTeamFromEmail(sub.email),
+          avatar: initials(sub.participantName || sub.email),
+          photo: '',
+          predictions: approvedPredictions,
+          createdFrom: 'continuation_submission'
+        });
+      }
+      subs[idx] = { ...sub, status: 'approved', reviewedAt: new Date().toISOString(), reviewedBy: 'admin', audit: [...asArray(sub.audit), { type: 'approved', by: 'admin', at: new Date().toISOString() }] };
+      const registeredUsers = asArray(base.registeredUsers);
+      if (!registeredUsers.some(u => normalizeEmailValue(u.email) === normalizeEmailValue(sub.email))) {
+        registeredUsers.push({ name: sub.participantName, email: normalizeEmailValue(sub.email), team: sub.team, userType: sub.userType, createdAt: new Date().toISOString() });
+      }
+      const saved = writeState({ ...base, participants, phaseSubmissions: subs, registeredUsers });
+      sendJson(response, 200, { submission: subs[idx], participants: saved.participants });
+      return;
+    }
+    if (path.startsWith('/api/phase-submissions/') && path.endsWith('/reject') && request.method === 'POST') {
+      const id = path.replace('/api/phase-submissions/', '').replace('/reject', '');
+      const parsed = await readJsonBody(request);
+      const base = readState();
+      const subs = asArray(base.phaseSubmissions);
+      const idx = subs.findIndex(s => s.id === id);
+      if (idx === -1) { sendJson(response, 404, { error: 'Submission not found' }); return; }
+      subs[idx] = { ...subs[idx], status: 'rejected', rejectedReason: parsed.reason || '', reviewedAt: new Date().toISOString(), reviewedBy: 'admin', audit: [...asArray(subs[idx].audit), { type: 'rejected', by: 'admin', at: new Date().toISOString(), reason: parsed.reason || '' }] };
+      writeState({ ...base, phaseSubmissions: subs });
+      sendJson(response, 200, { submission: subs[idx] });
+      return;
+    }
+    if (path === '/api/capital-humano/archive') {
+      if (request.method === 'GET') {
+        sendJson(response, 200, { archive: readState().capitalHumanoArchive });
+        return;
+      }
+      sendJson(response, 405, { error: 'Method not allowed' }); return;
+    }
+    if (path === '/api/capital-humano/archive/freeze' && request.method === 'POST') {
+      const parsed = await readJsonBody(request);
+      const base = readState();
+      const nowIso = new Date().toISOString();
+      const archive = {
+        id: 'capital_humano_grupos_2026',
+        title: 'Quiniela Capital Humano · Fase de grupos',
+        organizer: 'Capital Humano',
+        status: 'closed',
+        closedAt: parsed.closedAt || nowIso,
+        frozenAt: nowIso,
+        source: 'group_stage',
+        matches: asArray(parsed.matches),
+        participants: asArray(parsed.participants),
+        standings: asArray(parsed.standings),
+        podium: asArray(parsed.standings).slice(0, 3),
+        generatedBy: parsed.generatedBy || 'admin',
+        generatedAt: nowIso
+      };
+      const settings = { ...base.continuationSettings, transitionNoticeEnabled: true };
+      writeState({ ...base, capitalHumanoArchive: archive, continuationSettings: settings });
+      sendJson(response, 200, { archive });
+      return;
     }
     if (path.startsWith('/api/phase-submissions/') && request.method === 'DELETE') {
       const id = path.replace('/api/phase-submissions/', '');

@@ -29,13 +29,32 @@ export async function fetchPhaseSubmissions(windowId) {
   return res.json();
 }
 
-export async function savePhaseSubmission({ email, windowId, participantName, predictions }) {
+export async function savePhaseSubmission({ email, windowId, participantName, team, userType, predictions, matchMeta }) {
   const res = await fetch('/api/phase-submissions', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ email, windowId, participantName, predictions })
+    body: JSON.stringify({ email, windowId, participantName, team, userType, predictions, matchMeta })
   });
-  if (!res.ok) throw new Error('Error al guardar pronósticos');
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.message || 'Error al guardar pronósticos');
+  }
+  return res.json();
+}
+
+export async function approvePhaseSubmission(id) {
+  const res = await fetch(`/api/phase-submissions/${id}/approve`, { method: 'POST' });
+  if (!res.ok) throw new Error('Error al aprobar');
+  return res.json();
+}
+
+export async function rejectPhaseSubmission(id, reason = '') {
+  const res = await fetch(`/api/phase-submissions/${id}/reject`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ reason })
+  });
+  if (!res.ok) throw new Error('Error al rechazar');
   return res.json();
 }
 
@@ -63,4 +82,20 @@ export function formatWindowDate(iso) {
     weekday: 'short', day: 'numeric', month: 'long',
     hour: '2-digit', minute: '2-digit', timeZoneName: 'short'
   });
+}
+
+export async function freezeCapitalHumanoArchive(payload) {
+  const res = await fetch('/api/capital-humano/archive/freeze', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload)
+  });
+  if (!res.ok) throw new Error('Error al congelar histórico');
+  return res.json();
+}
+
+export async function fetchCapitalHumanoArchive() {
+  const res = await fetch('/api/capital-humano/archive', { cache: 'no-store' });
+  if (!res.ok) throw new Error('Error al leer histórico');
+  return res.json();
 }

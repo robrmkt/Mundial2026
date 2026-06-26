@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components */
 // Escudo del equipo interno (la empresa es un grupo de 2: Team BZ rojo / Team UP azul).
 // Se asigna por participante desde el Admin (campo `team`) y aparece junto a su foto.
 export const TEAMS = {

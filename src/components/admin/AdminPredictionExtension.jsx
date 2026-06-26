@@ -1,24 +1,25 @@
 import { useState, useEffect } from 'react';
-import { CalendarClock, Eye, Plus, Trash2 } from 'lucide-react';
-import { fetchPredictionWindows, savePredictionWindow, deletePredictionWindow, getWindowStatus, formatWindowDate, fetchPhaseSubmissions, deletePhaseSubmission } from '../../services/predictionWindows';
+import { CalendarClock, Check, Eye, Plus, Trash2, X } from 'lucide-react';
+import { fetchPredictionWindows, savePredictionWindow, deletePredictionWindow, getWindowStatus, formatWindowDate, fetchPhaseSubmissions, deletePhaseSubmission, approvePhaseSubmission, rejectPhaseSubmission, freezeCapitalHumanoArchive } from '../../services/predictionWindows';
 import { PARTICIPANT_EMAIL_ROSTER } from '../../services/participantEmails';
 import PhasePredictionForm from '../PhasePredictionForm';
 
 const STATUS_LABEL = { draft: 'Borrador', scheduled: 'Programada', open: 'Abierta', closed: 'Cerrada' };
 const STATUS_COLOR = { draft: 'grey', scheduled: 'amber', open: 'green', closed: 'grey' };
 
-export default function AdminPredictionExtension({ participants, matches }) {
+export default function AdminPredictionExtension({ participants, standings = [], matches }) {
   const [windows, setWindows] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
-  const [form, setForm] = useState({ name: 'Siguiente fase', status: 'draft', openAt: '', matchIds: [], closeRule: '24h_before_match' });
+  const [form, setForm] = useState({ name: 'Nueva quiniela · Siguiente fase', status: 'draft', openAt: '', matchIds: [], closeMode: 'per_match', lockMinutesBeforeKickoff: 10, autoIncludeFutureMatches: true });
   const [saving, setSaving] = useState(false);
   const [deletingId, setDeletingId] = useState(null);
   const [previewOpen, setPreviewOpen] = useState(false);
   const [selectedWindowId, setSelectedWindowId] = useState(null);
   const [submissions, setSubmissions] = useState([]);
-  const [loadingSubs, setLoadingSubs] = useState(false);
   const [deletingSubId, setDeletingSubId] = useState(null);
+  const [reviewingId, setReviewingId] = useState(null);
+  const [freezing, setFreezing] = useState(false);
 
   useEffect(() => {
     fetchPredictionWindows()
@@ -28,13 +29,13 @@ export default function AdminPredictionExtension({ participants, matches }) {
   }, []);
 
   useEffect(() => {
-    if (!selectedWindowId) { setSubmissions([]); return; }
-    setLoadingSubs(true);
+    if (!selectedWindowId) return;
     fetchPhaseSubmissions(selectedWindowId)
       .then(d => setSubmissions(d.submissions || []))
-      .catch(() => {})
-      .finally(() => setLoadingSubs(false));
+      .catch(() => {});
   }, [selectedWindowId]);
+
+  const visibleSubmissions = selectedWindowId ? submissions : [];
 
   const withEmail = participants.filter(p => p.email).length;
   const rosterTotal = PARTICIPANT_EMAIL_ROSTER.length;
@@ -46,11 +47,56 @@ export default function AdminPredictionExtension({ participants, matches }) {
       const result = await savePredictionWindow(form);
       setWindows(prev => [...prev, result.window]);
       setShowForm(false);
-      setForm({ name: 'Siguiente fase', status: 'draft', openAt: '', matchIds: [], closeRule: '24h_before_match' });
+      setForm({ name: 'Nueva quiniela · Siguiente fase', status: 'draft', openAt: '', matchIds: [], closeMode: 'per_match', lockMinutesBeforeKickoff: 10, autoIncludeFutureMatches: true });
     } catch (e) {
       alert(e.message);
     } finally {
       setSaving(false);
+    }
+  };
+
+  const refreshSubs = async () => {
+    if (!selectedWindowId) return;
+    const data = await fetchPhaseSubmissions(selectedWindowId);
+    setSubmissions(data.submissions || []);
+  };
+
+  const handleApprove = async (id) => {
+    setReviewingId(id);
+    try {
+      await approvePhaseSubmission(id);
+      await refreshSubs();
+    } catch (e) {
+      alert(e.message);
+    } finally {
+      setReviewingId(null);
+    }
+  };
+
+  const handleReject = async (id) => {
+    const reason = window.prompt('Motivo opcional de rechazo:', '') || '';
+    setReviewingId(id);
+    try {
+      await rejectPhaseSubmission(id, reason);
+      await refreshSubs();
+    } catch (e) {
+      alert(e.message);
+    } finally {
+      setReviewingId(null);
+    }
+  };
+
+  const handleFreeze = async () => {
+    if (!window.confirm('¿Seguro que quieres congelar la quiniela de Capital Humano? Esto guardará la tabla actual como resultado final de fase de grupos.')) return;
+    setFreezing(true);
+    try {
+      const frozenStandings = standings.length ? standings : [...participants].map((p, index) => ({ ...p, rank: p.rank || index + 1 }));
+      await freezeCapitalHumanoArchive({ matches, participants, standings: frozenStandings, generatedBy: 'admin' });
+      alert('Histórico Capital Humano congelado.');
+    } catch (e) {
+      alert(e.message);
+    } finally {
+      setFreezing(false);
     }
   };
 
@@ -125,6 +171,14 @@ export default function AdminPredictionExtension({ participants, matches }) {
         )}
       </div>
 
+      <div className="admin-card">
+        <h3 className="admin-section-title">Cierre Capital Humano</h3>
+        <p className="admin-ext-hint">Checklist: participantes cargados, partidos sincronizados, tabla final visible y Capital Humano no continuará la dinámica.</p>
+        <button className="review-save-btn" onClick={handleFreeze} disabled={freezing}>
+          {freezing ? 'Congelando…' : 'Cerrar y congelar Capital Humano'}
+        </button>
+      </div>
+
       {/* Windows list */}
       <div className="admin-card">
         <div className="participants-card-head">
@@ -152,7 +206,11 @@ export default function AdminPredictionExtension({ participants, matches }) {
               Apertura (opcional)
               <input type="datetime-local" className="review-name-input" value={form.openAt} onChange={e => setForm(p => ({ ...p, openAt: e.target.value }))} />
             </label>
-            <p className="admin-ext-hint">Regla de cierre: cada partido se bloquea 24 h antes de jugarse.</p>
+            <label className="review-field-label">
+              <input type="checkbox" checked={form.autoIncludeFutureMatches} onChange={e => setForm(p => ({ ...p, autoIncludeFutureMatches: e.target.checked }))} />
+              Incluir automáticamente partidos futuros del feed
+            </label>
+            <p className="admin-ext-hint">Regla de cierre: cada partido se bloquea 10 minutos antes de jugarse.</p>
             <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
               <button className="review-save-btn" onClick={handleSave} disabled={saving}>{saving ? 'Guardando…' : 'Crear ventana'}</button>
               <button className="admin-btn-action btn-logout" onClick={() => setShowForm(false)}>Cancelar</button>
@@ -222,9 +280,7 @@ export default function AdminPredictionExtension({ participants, matches }) {
           <h3 className="admin-section-title">
             Quinielas enviadas — {selectedWindow?.name}
           </h3>
-          {loadingSubs
-            ? <div className="participants-empty-state">Cargando…</div>
-            : submissions.length === 0
+          {visibleSubmissions.length === 0
               ? <div className="participants-empty-state">Nadie ha enviado pronósticos para esta ventana todavía.</div>
               : (
                 <div className="crm-table-wrap" style={{ marginTop: '0.75rem' }}>
@@ -233,20 +289,38 @@ export default function AdminPredictionExtension({ participants, matches }) {
                       <tr>
                         <th>Participante</th>
                         <th>Correo</th>
+                        <th className="crm-th-center" style={{ width: 80 }}>Estado</th>
                         <th className="crm-th-center" style={{ width: 80 }}>Pronóst.</th>
                         <th>Guardado</th>
-                        <th className="crm-th-center" style={{ width: 80 }}>Acciones</th>
+                        <th className="crm-th-center" style={{ width: 140 }}>Acciones</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {submissions.map(sub => (
+                      {visibleSubmissions.map(sub => (
                         <tr key={sub.id} className="crm-row">
                           <td><span className="crm-name">{sub.participantName || sub.email}</span></td>
                           <td><span className="crm-email">{sub.email}</span></td>
+                          <td className="crm-th-center"><span className={`phase-status-badge status-${sub.status || 'pending'}`}>{sub.status || 'pending'}</span></td>
                           <td className="crm-th-center"><span className="crm-count">{Object.keys(sub.predictions || {}).length}</span></td>
                           <td><span className="crm-email">{sub.updatedAt ? new Date(sub.updatedAt).toLocaleString('es-MX', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : '—'}</span></td>
                           <td>
                             <div className="crm-actions">
+                              <button
+                                className="crm-action-btn"
+                                title="Aprobar"
+                                disabled={reviewingId === sub.id || sub.status === 'approved'}
+                                onClick={() => handleApprove(sub.id)}
+                              >
+                                <Check size={13} />
+                              </button>
+                              <button
+                                className="crm-action-btn"
+                                title="Rechazar"
+                                disabled={reviewingId === sub.id || sub.status === 'rejected'}
+                                onClick={() => handleReject(sub.id)}
+                              >
+                                <X size={13} />
+                              </button>
                               <button
                                 className="crm-action-btn danger"
                                 title="Eliminar envío"
@@ -268,9 +342,9 @@ export default function AdminPredictionExtension({ participants, matches }) {
 
       <div className="admin-card" style={{ background: 'var(--surface-soft)' }}>
         <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', margin: 0, lineHeight: 1.6 }}>
-          <strong>Flujo:</strong> Crea una ventana → cámbiala a "Abierta" → comparte el link <code>/fase2</code> con los participantes → ellos ingresan su correo y sus pronósticos.<br />
-          <strong>Cierre automático:</strong> Cada partido se bloquea 24 h antes de jugarse.<br />
-          <strong>Link para usuarios:</strong> <code>{typeof window !== 'undefined' ? window.location.origin : ''}/fase2</code>
+          <strong>Flujo:</strong> Crea una ventana → cámbiala a "Abierta" → comparte el link <code>#nueva-quiniela</code> con los participantes → ellos ingresan su correo y sus pronósticos.<br />
+          <strong>Cierre automático:</strong> Cada partido se bloquea 10 minutos antes de jugarse.<br />
+          <strong>Link para usuarios:</strong> <code>{typeof window !== 'undefined' ? window.location.origin : ''}/#nueva-quiniela</code>
         </p>
       </div>
     </div>

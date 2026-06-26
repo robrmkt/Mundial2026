@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components */
 import { Activity, Bell, CalendarClock, LogOut, Settings, ShieldCheck, Upload, Users2 } from 'lucide-react';
 
 export const ADMIN_SECTIONS = [
