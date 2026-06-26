@@ -267,9 +267,10 @@ export default function NewQuinielaPage({ matches = [], settings = {}, onReloadS
     const filled = Object.entries(predictions).filter(([, p]) => p?.home !== '' && p?.home !== undefined && p?.away !== '' && p?.away !== undefined);
     if (!filled.length) { setError('Ingresa al menos un pronóstico.'); return; }
     const payloadPreds = Object.fromEntries(filled.map(([id, p]) => [id, { homeScore: Number(p.home), awayScore: Number(p.away) }]));
+    const matchMeta = Object.fromEntries(continuationMatches.map(m => [String(m.id), m]));
     setSaving(true); setError('');
     try {
-      const result = await savePhaseSubmission({ email: profile.email, windowId: activeWindow.id, participantName, team, userType: profile.userType, predictions: payloadPreds });
+      const result = await savePhaseSubmission({ email: profile.email, windowId: activeWindow.id, participantName, team, userType: profile.userType, predictions: payloadPreds, matchMeta });
       setExistingSubmission(result.submission);
       setSavedAt(new Date());
       setDirty(false);
