@@ -1,4 +1,6 @@
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { getDashboardMode } from './services/standingsMode';
+import { buildContinuationStandings } from './services/continuationStandings';
 import { Trophy, Square, Users, MonitorPlay, RefreshCw, Wifi, WifiOff } from 'lucide-react';
 import AdminLogin from './components/AdminLogin';
 import Dashboard from './components/Dashboard';
@@ -188,6 +190,8 @@ export default function App() {
   const [podiumReactions, setPodiumReactions] = useState({});
   const [continuationSettings, setContinuationSettings] = useState(null);
   const [capitalHumanoArchive, setCapitalHumanoArchive] = useState(null);
+  const [phaseSubmissions, setPhaseSubmissions] = useState([]);
+  const [predictionWindows, setPredictionWindows] = useState([]);
   const [showTransitionNotice, setShowTransitionNotice] = useState(false);
   const [chatMessages, setChatMessages] = useLocalStorage('quiniela_chat', [
     { id: 1, user: 'Sistema', time: '12:00', text: '¡Bienvenidos a la Quiniela del Mundial 26! Que gane el mejor. 🏆' }
@@ -270,6 +274,8 @@ export default function App() {
       setPodiumReactions(nextPodiumReactions);
       setContinuationSettings(nextSettings);
       setCapitalHumanoArchive(data.capitalHumanoArchive || null);
+      setPhaseSubmissions(Array.isArray(data.phaseSubmissions) ? data.phaseSubmissions : []);
+      setPredictionWindows(Array.isArray(data.predictionWindows) ? data.predictionWindows : []);
       if (shouldShowTransitionNotice(nextSettings, data.capitalHumanoArchive)) setShowTransitionNotice(true);
       sharedDataRef.current = { participants: nextParticipants, documents: nextDocuments };
       setSharedState({ status: 'ok', lastSync: new Date() });
@@ -499,7 +505,7 @@ export default function App() {
   }, [anyLive, handleIncomingEvent]);
 
   // Compute standings with rankings
-  const standings = useMemo(() => {
+  const rhStandings = useMemo(() => {
     const scoredList = participants.map(p => {
       const stats = calculateDetailedStats(p.predictions, matches);
       return { ...p, ...stats };
@@ -513,6 +519,26 @@ export default function App() {
 
     return sorted.map((p, idx) => ({ ...p, rank: idx + 1 }));
   }, [matches, participants]);
+
+  const newQuinielaStandings = useMemo(() =>
+    buildContinuationStandings({ participants, phaseSubmissions, matches }),
+    [participants, phaseSubmissions, matches]
+  );
+
+  const dashboardMode = useMemo(() =>
+    getDashboardMode(continuationSettings, capitalHumanoArchive),
+    [continuationSettings, capitalHumanoArchive]
+  );
+
+  const standings = useMemo(() => {
+    if (dashboardMode === 'new_quiniela') return newQuinielaStandings;
+    if (dashboardMode === 'rh_archive') return capitalHumanoArchive?.standings || rhStandings;
+    return rhStandings;
+  }, [dashboardMode, newQuinielaStandings, capitalHumanoArchive, rhStandings]);
+
+  const dashboardTitle = dashboardMode === 'new_quiniela'
+    ? 'Tabla General · Nueva Quiniela'
+    : 'Tabla General · Quiniela RH';
 
   // ---- Movimiento de ranking + tiempo en podio (Modo Leyenda) ----
   // Cálculo RETROACTIVO desde el inicio del Mundial: tiempo real acumulado en el
@@ -883,6 +909,9 @@ export default function App() {
             onReaction={handleReaction}
             onPodiumReaction={handlePodiumReaction}
             onOpenPredictionsForMatch={openPredictionsForMatch}
+            dashboardMode={dashboardMode}
+            dashboardTitle={dashboardTitle}
+            onGoNewQuiniela={() => goToTab('nuevaQuiniela')}
           />
         )}
         {activeTab === 'predictions' && (
@@ -915,7 +944,7 @@ export default function App() {
               <AdminPanel
                 matches={matches}
                 participants={participants}
-                standings={standings}
+                standings={rhStandings}
                 setParticipants={setSharedParticipants}
                 documents={documents}
                 setDocuments={setSharedDocuments}
@@ -927,6 +956,10 @@ export default function App() {
                 session={session}
                 visitStats={displayVisitStats}
                 onLogout={handleLogout}
+                phaseSubmissions={phaseSubmissions}
+                predictionWindows={predictionWindows}
+                continuationSettings={continuationSettings}
+                onSettingsSaved={loadSharedData}
               />
             </Suspense>
           ) : (

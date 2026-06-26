@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { CheckCircle2, Save } from 'lucide-react';
 import { fetchContinuationProfile, inferTeamFromEmail, teamLabel } from '../services/continuation';
-import { fetchPredictionWindows, fetchPhaseSubmissions, getWindowStatus, savePhaseSubmission } from '../services/predictionWindows';
+import { fetchPredictionWindows, fetchPhaseSubmissions, getWindowStatus, savePhaseSubmission, recordPhaseProgress } from '../services/predictionWindows';
 import { getMatchKickoff, isMatchConfirmed, isMatchLocked, LOCK_MINUTES_BEFORE_KICKOFF } from '../services/matchLock';
 import { displayTeamName, isPlaceholderTeam } from '../services/teamDisplay';
 import PhaseMatchPredictionCard from './PhaseMatchPredictionCard';
@@ -33,7 +33,7 @@ function CapitalHumanoSummary({ history }) {
   if (!history || history.status === 'pending_freeze') {
     return (
       <div className="newq-stat-card is-muted">
-        <small>Histórico Capital Humano</small>
+        <small>Quiniela RH · Histórico</small>
         <strong>Pendiente de cierre</strong>
         <span>Se mostrará al congelar la fase de grupos.</span>
       </div>
@@ -42,7 +42,7 @@ function CapitalHumanoSummary({ history }) {
   if (history.status === 'not_found') {
     return (
       <div className="newq-stat-card is-muted">
-        <small>Histórico Capital Humano</small>
+        <small>Quiniela RH · Histórico</small>
         <strong>Sin registro previo</strong>
         <span>Participa desde la nueva quiniela.</span>
       </div>
@@ -85,7 +85,7 @@ const FILTERS = [
   { key: 'locked', label: 'Cerrados' },
 ];
 
-export default function NewQuinielaPage({ matches = [], settings = {} }) {
+export default function NewQuinielaPage({ matches = [], settings = {}, onReloadSettings }) {
   const [step, setStep] = useState('email');
   const [email, setEmail] = useState('');
   const [profile, setProfile] = useState(null);
@@ -154,10 +154,12 @@ export default function NewQuinielaPage({ matches = [], settings = {} }) {
     setError('');
     try {
       const data = await fetchContinuationProfile(value);
+      const uType = data.exists ? (data.userType || 'existing') : 'new';
       if (data.exists) {
-        setProfile({ ...data.profile, userType: data.userType || 'existing' });
+        setProfile({ ...data.profile, userType: uType });
         setNewUser({ name: data.profile.name, team: data.profile.team || inferTeamFromEmail(value) });
         await loadExistingSubmission(value, activeWindow?.id);
+        recordPhaseProgress({ windowId: activeWindow?.id || '', email: value, participantName: data.profile.name, team: data.profile.team || inferTeamFromEmail(value), userType: uType, status: 'started' });
         setStep('board');
         return;
       }
@@ -168,6 +170,7 @@ export default function NewQuinielaPage({ matches = [], settings = {} }) {
       setProfile({ email: value, userType: 'new', team: data.inferredTeam || inferTeamFromEmail(value), avatar: initials(value) });
       setNewUser({ name: '', team: data.inferredTeam || inferTeamFromEmail(value) });
       await loadExistingSubmission(value, activeWindow?.id);
+      recordPhaseProgress({ windowId: activeWindow?.id || '', email: value, participantName: '', team: data.inferredTeam || inferTeamFromEmail(value), userType: 'new', status: 'started' });
       setStep('new');
     } catch (err) {
       setError(err.message);
@@ -177,7 +180,14 @@ export default function NewQuinielaPage({ matches = [], settings = {} }) {
   const handleScore = (matchId, side, value) => {
     setDirty(true);
     setSavedAt(null);
-    setPredictions(prev => ({ ...prev, [matchId]: { ...prev[matchId], [side]: scoreValue(value) } }));
+    setPredictions(prev => {
+      const next = { ...prev, [matchId]: { ...prev[matchId], [side]: scoreValue(value) } };
+      if (profile?.email && activeWindow?.id) {
+        const count = Object.values(next).filter(p => p?.home !== '' && p?.home !== undefined && p?.away !== '' && p?.away !== undefined).length;
+        recordPhaseProgress({ windowId: activeWindow.id, email: profile.email, status: 'editing', predictionCount: count });
+      }
+      return next;
+    });
   };
 
   const save = async () => {
@@ -194,6 +204,7 @@ export default function NewQuinielaPage({ matches = [], settings = {} }) {
       setExistingSubmission(result.submission);
       setSavedAt(new Date());
       setDirty(false);
+      recordPhaseProgress({ windowId: activeWindow.id, email: profile.email, participantName, team, userType: profile.userType, status: 'submitted', predictionCount: filled.length });
     } catch (err) {
       setError(err.message);
     } finally {
@@ -209,6 +220,22 @@ export default function NewQuinielaPage({ matches = [], settings = {} }) {
     photo: profile.photo || ''
   } : null;
 
+  if (settings.emergencyMode) {
+    return (
+      <section className="new-quiniela-page">
+        <div className="newq-shell">
+          <div className="newq-hero">
+            <div>
+              <span className="newq-kicker">Mantenimiento</span>
+              <h1>Nueva quiniela en pausa</h1>
+              <p>{settings.emergencyMessage || 'Estamos ajustando la nueva quiniela. Intenta de nuevo más tarde.'}</p>
+            </div>
+          </div>
+        </div>
+      </section>
+    );
+  }
+
   return (
     <section className="new-quiniela-page">
       <div className="newq-shell">
@@ -218,7 +245,7 @@ export default function NewQuinielaPage({ matches = [], settings = {} }) {
           <div>
             <span className="newq-kicker">Continuación Mundialista</span>
             <h1>Nueva quiniela mundialista</h1>
-            <p>La dinámica de Capital Humano ya cerró. Esta es una nueva etapa para quienes quieren seguir pronosticando.</p>
+            <p>La Quiniela RH ya cerró con la fase de grupos. Esta es una nueva etapa para quienes quieren seguir pronosticando.</p>
           </div>
         </div>
 

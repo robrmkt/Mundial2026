@@ -99,3 +99,26 @@ export async function fetchCapitalHumanoArchive() {
   if (!res.ok) throw new Error('Error al leer histórico');
   return res.json();
 }
+
+
+export async function recordPhaseProgress(payload) {
+  try {
+    await fetch('/api/phase-progress', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+  } catch (_) { /* fire-and-forget */ }
+}
+
+export async function updateContinuationSettings(patch) {
+  const current = await fetch('/api/state', { cache: 'no-store' }).then(r => r.json());
+  const merged = { ...current.continuationSettings, ...patch };
+  const res = await fetch('/api/state', {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ continuationSettings: merged })
+  });
+  if (!res.ok) throw new Error('Error al guardar configuración');
+  return res.json();
+}

@@ -90,7 +90,8 @@ export default function AdminPanel({
   matches, participants, standings = [], setParticipants,
   documents, setDocuments,
   simActive, setSimActive, handleReset,
-  onSyncNow, syncState, session, visitStats, onLogout
+  onSyncNow, syncState, session, visitStats, onLogout,
+  phaseSubmissions = [], predictionWindows = [], continuationSettings = null, onSettingsSaved
 }) {
   const isSuper = session?.role === 'superadmin';
   const [activeSection, setActiveSection] = useState('overview');
@@ -231,7 +232,15 @@ export default function AdminPanel({
         />
       )}
       {activeSection === 'extension' && (
-        <AdminPredictionExtension participants={participants} standings={standings} matches={matches} />
+        <AdminPredictionExtension
+          participants={participants}
+          standings={standings}
+          matches={matches}
+          phaseSubmissions={phaseSubmissions}
+          predictionWindows={predictionWindows}
+          continuationSettings={continuationSettings}
+          onSettingsSaved={onSettingsSaved}
+        />
       )}
       {activeSection === 'notifications' && (
         <NotificationCenter isSuper={isSuper} session={session} />

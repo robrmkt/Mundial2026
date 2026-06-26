@@ -91,19 +91,25 @@ const defaultState = {
   },
   predictionWindows: [],
   phaseSubmissions: [],
+  phaseProgress: [],
   continuationSettings: {
     enabled: true,
     publicEnabled: true,
-    title: 'Nueva quiniela',
+    registrationEnabled: true,
+    title: 'Nueva Quiniela',
     subtitle: 'Continúa pronosticando los siguientes partidos del Mundial.',
     startAt: '2026-06-28T00:00:00-06:00',
     lockMinutesBeforeKickoff: 10,
+    dashboardMode: 'auto',
+    defaultDashboardAfterStart: 'new_quiniela',
     scoringMode: 'phase_only',
     allowNewUsers: true,
     allowedDomains: ['bacherzoppi.com', 'uppharma.com'],
     autoApproveSubmissions: false,
     transitionNoticeEnabled: true,
-    transitionNoticeVersion: 1
+    transitionNoticeVersion: 1,
+    emergencyMode: false,
+    emergencyMessage: 'Estamos ajustando la nueva quiniela. Intenta de nuevo más tarde.'
   },
   capitalHumanoArchive: null,
   registeredUsers: [],
@@ -178,6 +184,7 @@ function coerceState(parsed) {
     },
     predictionWindows: asArray(p.predictionWindows),
     phaseSubmissions: asArray(p.phaseSubmissions),
+    phaseProgress: asArray(p.phaseProgress),
     continuationSettings: coerceContinuationSettings(p.continuationSettings),
     capitalHumanoArchive: isObject(p.capitalHumanoArchive) ? p.capitalHumanoArchive : null,
     registeredUsers: asArray(p.registeredUsers),
@@ -1038,12 +1045,13 @@ const server = createServer(async (request, response) => {
       const participants = asArray(base.participants);
       const pidx = participants.findIndex(p => normalizeEmailValue(p.email) === normalizeEmailValue(sub.email) || p.name === sub.participantName);
       const approvedPredictions = Object.fromEntries(Object.entries(asObject(sub.predictions)).map(([matchId, p]) => [matchId, { homeScore: Number(p.homeScore), awayScore: Number(p.awayScore) }]));
+      // Actualizar datos básicos del participante SIN mezclar sus predictions de RH
       if (pidx >= 0) {
         participants[pidx] = {
           ...participants[pidx],
           email: normalizeEmailValue(sub.email),
           team: sub.team || participants[pidx].team,
-          predictions: { ...asObject(participants[pidx].predictions), ...approvedPredictions }
+          continuationPredictions: { ...asObject(participants[pidx].continuationPredictions), ...approvedPredictions }
         };
       } else {
         participants.push({
@@ -1053,7 +1061,8 @@ const server = createServer(async (request, response) => {
           team: sub.team || inferTeamFromEmail(sub.email),
           avatar: initials(sub.participantName || sub.email),
           photo: '',
-          predictions: approvedPredictions,
+          predictions: {},
+          continuationPredictions: approvedPredictions,
           createdFrom: 'continuation_submission'
         });
       }
@@ -1062,7 +1071,11 @@ const server = createServer(async (request, response) => {
       if (!registeredUsers.some(u => normalizeEmailValue(u.email) === normalizeEmailValue(sub.email))) {
         registeredUsers.push({ name: sub.participantName, email: normalizeEmailValue(sub.email), team: sub.team, userType: sub.userType, createdAt: new Date().toISOString() });
       }
-      const saved = writeState({ ...base, participants, phaseSubmissions: subs, registeredUsers });
+      // Actualizar phaseProgress si existe
+      const phaseProgress = asArray(base.phaseProgress);
+      const ppIdx = phaseProgress.findIndex(pp => normalizeEmailValue(pp.email) === normalizeEmailValue(sub.email));
+      if (ppIdx >= 0) phaseProgress[ppIdx] = { ...phaseProgress[ppIdx], status: 'approved', approvedAt: new Date().toISOString() };
+      const saved = writeState({ ...base, participants, phaseSubmissions: subs, registeredUsers, phaseProgress });
       sendJson(response, 200, { submission: subs[idx], participants: saved.participants });
       return;
     }
@@ -1074,9 +1087,60 @@ const server = createServer(async (request, response) => {
       const idx = subs.findIndex(s => s.id === id);
       if (idx === -1) { sendJson(response, 404, { error: 'Submission not found' }); return; }
       subs[idx] = { ...subs[idx], status: 'rejected', rejectedReason: parsed.reason || '', reviewedAt: new Date().toISOString(), reviewedBy: 'admin', audit: [...asArray(subs[idx].audit), { type: 'rejected', by: 'admin', at: new Date().toISOString(), reason: parsed.reason || '' }] };
-      writeState({ ...base, phaseSubmissions: subs });
+      const phaseProgressR = asArray(base.phaseProgress);
+      const ppIdxR = phaseProgressR.findIndex(pp => normalizeEmailValue(pp.email) === normalizeEmailValue(subs[idx].email));
+      if (ppIdxR >= 0) phaseProgressR[ppIdxR] = { ...phaseProgressR[ppIdxR], status: 'rejected', rejectedAt: new Date().toISOString() };
+      writeState({ ...base, phaseSubmissions: subs, phaseProgress: phaseProgressR });
       sendJson(response, 200, { submission: subs[idx] });
       return;
+    }
+    if (path === '/api/phase-progress') {
+      if (request.method === 'GET') {
+        const state = readState();
+        sendJson(response, 200, { phaseProgress: asArray(state.phaseProgress) });
+        return;
+      }
+      if (request.method === 'POST') {
+        const parsed = await readJsonBody(request);
+        const base = readState();
+        const phaseProgress = asArray(base.phaseProgress);
+        const email = normalizeEmailValue(parsed.email || '');
+        if (!email) { sendJson(response, 400, { error: 'email required' }); return; }
+        const existing = phaseProgress.findIndex(pp => normalizeEmailValue(pp.email) === email);
+        const now = new Date().toISOString();
+        if (existing >= 0) {
+          const prev = phaseProgress[existing];
+          phaseProgress[existing] = {
+            ...prev,
+            status: parsed.status || prev.status,
+            predictionCount: parsed.predictionCount ?? prev.predictionCount,
+            lastSeenAt: now,
+            ...(parsed.status === 'submitted' ? { submittedAt: now } : {}),
+            ...(parsed.participantName && !prev.participantName ? { participantName: parsed.participantName } : {}),
+            ...(parsed.team && !prev.team ? { team: parsed.team } : {})
+          };
+        } else {
+          phaseProgress.push({
+            id: `prog_${Date.now().toString(36)}`,
+            windowId: parsed.windowId || '',
+            email,
+            participantName: parsed.participantName || '',
+            team: parsed.team || '',
+            userType: parsed.userType || 'existing',
+            status: parsed.status || 'started',
+            predictionCount: parsed.predictionCount || 0,
+            firstSeenAt: now,
+            lastSeenAt: now,
+            submittedAt: parsed.status === 'submitted' ? now : '',
+            approvedAt: '',
+            rejectedAt: ''
+          });
+        }
+        writeState({ ...base, phaseProgress });
+        sendJson(response, 200, { ok: true });
+        return;
+      }
+      sendJson(response, 405, { error: 'Method not allowed' }); return;
     }
     if (path === '/api/capital-humano/archive') {
       if (request.method === 'GET') {

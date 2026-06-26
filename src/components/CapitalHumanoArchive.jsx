@@ -16,10 +16,10 @@ export default function CapitalHumanoArchive({ initialArchive = null, fallbackSt
     <section className="archive-page">
       <div className="archive-hero">
         <span className="archive-status">Histórico cerrado</span>
-        <h2>{archive?.title || 'Quiniela Capital Humano · Fase de grupos'}</h2>
-        <p>La dinámica organizada por Capital Humano cerró con la fase de grupos. Esta vista es una fotografía histórica y ya no se mueve.</p>
+        <h2>{archive?.title || 'Quiniela RH · Fase de grupos'}</h2>
+        <p>Esta vista muestra la dinámica organizada por Capital Humano. Es una fotografía histórica y ya no se mueve.</p>
         {archive?.frozenAt && <small>Congelado: {new Date(archive.frozenAt).toLocaleString('es-MX')}</small>}
-        <button className="phase-submit-btn" onClick={onGoNew}>Ir a nueva quiniela</button>
+        <button className="phase-submit-btn" onClick={onGoNew}>Ir a Nueva Quiniela</button>
       </div>
 
       <div className="archive-podium">

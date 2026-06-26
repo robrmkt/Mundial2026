@@ -6530,3 +6530,31 @@ img {
   .newq-score-input { width: 56px; height: 48px; font-size: 1.35rem; }
   .newq-board-header { flex-direction: column; gap: 0.5rem; }
 }
+
+/* Dashboard empty state */
+.dashboard-empty-state { padding: 1.5rem; text-align: center; color: var(--text-muted); font-size: 0.88rem; line-height: 1.6; }
+.dashboard-empty-state p { margin: 0 0 0.5rem; }
+.dashboard-empty-state .phase-submit-btn { margin-top: 0.75rem; }
+
+/* Admin publication controls */
+.admin-publication-controls { display: flex; flex-direction: column; gap: 0.5rem; }
+.admin-toggle-row { display: flex; align-items: center; justify-content: space-between; padding: 0.4rem 0; border-bottom: 1px solid var(--border); font-size: 0.875rem; gap: 1rem; cursor: pointer; }
+.admin-toggle-row:last-child { border-bottom: none; }
+.admin-toggle-row input[type="checkbox"] { width: 18px; height: 18px; cursor: pointer; accent-color: var(--brand, #16a34a); flex-shrink: 0; }
+.admin-toggle-row select { flex-shrink: 0; }
+
+/* Checklist domingo */
+.admin-checklist { display: flex; flex-direction: column; gap: 0.35rem; }
+.admin-checklist-item { display: flex; align-items: center; gap: 0.5rem; padding: 0.3rem 0; font-size: 0.85rem; }
+.admin-checklist-item.warn { color: var(--text); }
+.chk-icon { flex-shrink: 0; }
+.chk-icon.green { color: #16a34a; }
+.chk-icon.amber { color: #d97706; }
+.chk-icon.red { color: #dc2626; }
+.chk-hint { font-size: 0.75rem; color: var(--text-muted); margin-left: auto; }
+
+/* phase-status-badge status variants */
+.phase-status-badge.status-approved { background: #dcfce7; color: #15803d; }
+.phase-status-badge.status-rejected { background: #fee2e2; color: #dc2626; }
+.phase-status-badge.status-pending { background: #fef9c3; color: #92400e; }
+.phase-status-badge.status-edited { background: #eff6ff; color: #1d4ed8; }

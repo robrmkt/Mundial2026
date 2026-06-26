@@ -103,7 +103,7 @@ function Podium({ topThree, onSelect, legend, reactions = {}, onReact }) {
   );
 }
 
-export default function Dashboard({ standings, matches = [], chatMessages = [], support = {}, podiumReactions = {}, movement = {}, podiumMs = {}, legend = null, onSendMessage, onReaction, onPodiumReaction, onOpenPredictionsForMatch }) {
+export default function Dashboard({ standings, matches = [], chatMessages = [], support = {}, podiumReactions = {}, movement = {}, podiumMs = {}, legend = null, onSendMessage, onReaction, onPodiumReaction, onOpenPredictionsForMatch, dashboardMode = 'rh_current', dashboardTitle, onGoNewQuiniela }) {
   const topThree = standings.slice(0, 3);
   const [selected, setSelected] = useState(null);
 
@@ -133,10 +133,20 @@ export default function Dashboard({ standings, matches = [], chatMessages = [], 
         <div className="standings-table-header">
           <h3 className="section-title">
             <Medal size={20} />
-            Tabla General de Posiciones
+            {dashboardTitle || 'Tabla General de Posiciones'}
           </h3>
           <span className="standings-participants-count">{standings.length} participantes</span>
         </div>
+
+        {dashboardMode === 'new_quiniela' && standings.length === 0 && (
+          <div className="dashboard-empty-state">
+            <p>La Nueva Quiniela todavía no tiene registros aprobados.</p>
+            <p>Cuando el admin apruebe pronósticos, aparecerá aquí la tabla general.</p>
+            {onGoNewQuiniela && (
+              <button className="phase-submit-btn secondary" onClick={onGoNewQuiniela}>Ir a Nueva Quiniela</button>
+            )}
+          </div>
+        )}
 
         <div className="standings-table-container">
           <table className="standings-table">
