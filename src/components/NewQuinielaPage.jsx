@@ -416,11 +416,21 @@ export default function NewQuinielaPage({ matches = [], settings = {}, onReloadS
               </div>
             )}
 
-            {/* Save feedback */}
-            {savedAt && !dirty && (
-              <div className="newq-save-notice">
-                <CheckCircle2 size={16} />
-                Tus pronósticos fueron recibidos. Quedarán pendientes de revisión antes de aparecer en la tabla.
+            {/* Submission status */}
+            {existingSubmission && !dirty && (
+              <div className={`newq-submission-status status-${existingSubmission.status || 'pending'}`}>
+                {(existingSubmission.status === 'pending' || !existingSubmission.status) && (
+                  <><CheckCircle2 size={16} /> Tus pronósticos están <strong>pendientes de revisión</strong>. Puedes volver más tarde para ver si ya fueron aprobados.</>
+                )}
+                {existingSubmission.status === 'approved' && (
+                  <><CheckCircle2 size={16} /> Tu quiniela fue <strong>aprobada</strong> y ya aparece en la tabla general.</>
+                )}
+                {existingSubmission.status === 'edited' && (
+                  <><CheckCircle2 size={16} /> Tu quiniela actualizada está <strong>pendiente de revisión</strong>.</>
+                )}
+                {existingSubmission.status === 'rejected' && (
+                  <>Tu quiniela fue <strong>rechazada</strong>.{existingSubmission.rejectedReason ? ` Motivo: ${existingSubmission.rejectedReason}` : ''} Puedes corregir y volver a guardar.</>
+                )}
               </div>
             )}
 

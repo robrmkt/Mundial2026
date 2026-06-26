@@ -7099,3 +7099,146 @@ details[open] .newq-acc-chevron { transform: rotate(180deg); }
   border-radius: 14px;
   padding-inline: 1.1rem;
 }
+
+/* ===================================================
+   BANDEJA DE REVISIÓN ADMIN
+   =================================================== */
+
+.admin-review-inbox-card.is-empty .admin-ext-hint {
+  color: var(--text-secondary);
+}
+
+.admin-review-inbox-card.has-pending {
+  border-left: 3px solid var(--accent, #f59e0b);
+}
+
+.admin-review-inbox-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.admin-pending-badge {
+  background: var(--accent, #f59e0b);
+  color: #fff;
+  font-size: 0.78rem;
+  font-weight: 700;
+  padding: 0.2rem 0.55rem;
+  border-radius: 20px;
+  white-space: nowrap;
+}
+
+.admin-review-inbox {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.admin-review-item {
+  border: 1px solid var(--border-color, #e5e7eb);
+  background: var(--surface-soft, #f9fafb);
+  border-radius: 14px;
+  padding: 0.85rem;
+}
+
+.admin-review-item-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 0.75rem;
+}
+
+.admin-review-item-head strong {
+  display: block;
+  font-size: 0.95rem;
+  line-height: 1.2;
+}
+
+.admin-review-item-actions {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.admin-review-item-actions .crm-action-btn {
+  flex: 1;
+  min-height: 38px;
+  min-width: 64px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.3rem;
+  font-size: 0.82rem;
+  font-weight: 600;
+  border-radius: 8px;
+}
+
+/* Toast nuevo pendiente */
+.admin-new-pending-toast {
+  position: fixed;
+  top: 1rem;
+  right: 1rem;
+  background: var(--accent, #f59e0b);
+  color: #fff;
+  font-size: 0.88rem;
+  font-weight: 700;
+  padding: 0.6rem 1rem;
+  border-radius: 12px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+  z-index: 9999;
+  animation: slideInRight 0.25s ease;
+}
+
+@keyframes slideInRight {
+  from { transform: translateX(120%); opacity: 0; }
+  to   { transform: translateX(0);    opacity: 1; }
+}
+
+/* Badge en header — admin con pendientes */
+.admin-pending-chip {
+  background: var(--accent, #f59e0b);
+  color: #fff;
+  font-size: 0.78rem;
+  font-weight: 700;
+  padding: 0.25rem 0.65rem;
+  border-radius: 20px;
+  border: none;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: opacity 0.15s;
+}
+
+.admin-pending-chip:hover { opacity: 0.85; }
+
+/* Estado de envío para el usuario */
+.newq-submission-status {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  padding: 0.85rem 1rem;
+  border-radius: 14px;
+  font-size: 0.9rem;
+  line-height: 1.4;
+  margin-bottom: 0.75rem;
+}
+
+.newq-submission-status.status-pending,
+.newq-submission-status.status-edited {
+  background: var(--surface-amber, #fffbeb);
+  border: 1px solid var(--accent, #f59e0b);
+  color: var(--text-primary);
+}
+
+.newq-submission-status.status-approved {
+  background: var(--surface-green, #f0fdf4);
+  border: 1px solid var(--success, #16a34a);
+  color: var(--text-primary);
+}
+
+.newq-submission-status.status-rejected {
+  background: var(--surface-red, #fef2f2);
+  border: 1px solid var(--error, #dc2626);
+  color: var(--error, #dc2626);
+}

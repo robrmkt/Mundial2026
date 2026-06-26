@@ -17,6 +17,7 @@ const defaultNotificationSettings = {
   enabled: false,
   mode: 'off', // off | test | production
   testRecipient: 'roberto.tejeda@bacherzoppi.com',
+  adminRecipient: 'roberto.tejeda@bacherzoppi.com',
   replyTo: '',
   updatedAt: null,
   updatedBy: null,
@@ -64,6 +65,15 @@ const defaultNotificationSettings = {
       subject: '✅ Recibimos tus pronósticos',
       previewText: 'Tu quiniela de la siguiente fase fue registrada.',
       audience: 'participant',
+      cooldownMinutes: 0
+    },
+    adminNewSubmission: {
+      enabled: true,
+      label: 'Nuevo registro para revisar',
+      trigger: 'Cuando un usuario envía pronósticos de Nueva Quiniela',
+      subject: '📝 Nueva quiniela pendiente de revisión',
+      previewText: 'Un participante envió pronósticos y espera aprobación.',
+      audience: 'admin',
       cooldownMinutes: 0
     }
   }
@@ -349,6 +359,32 @@ function findCapitalHumanoHistory({ email, name, archive }) {
   }
 
   return { status: archive ? 'not_found' : 'pending_freeze', rank: null, points: 0, exactHits: 0, outcomeHits: 0 };
+}
+
+function notifyAdminNewSubmission(entry, state) {
+  const ns = state.notificationSettings || defaultNotificationSettings;
+  const template = ns.templates?.adminNewSubmission;
+  const skipped = !ns.enabled || ns.mode === 'off' || template?.enabled === false;
+  const to = ns.mode === 'test' ? ns.testRecipient : (ns.adminRecipient || 'roberto.tejeda@bacherzoppi.com');
+  const subject = template?.subject || '📝 Nueva quiniela pendiente de revisión';
+  const predCount = Object.keys(entry.predictions || {}).length;
+  const baseUrl = process.env.PUBLIC_BASE_URL || '';
+  const html = `<p>Hola Roberto,</p>
+<p><strong>${entry.participantName || entry.email}</strong> (<code>${entry.email}</code>) acaba de enviar su quiniela con ${predCount} pronóstico${predCount !== 1 ? 's' : ''}.</p>
+<p>Estado: <strong>${entry.status || 'pending'}</strong></p>
+<p><a href="${baseUrl}/#admin" style="display:inline-block;background:#2563eb;color:#fff;padding:10px 20px;border-radius:8px;text-decoration:none">Revisar ahora</a></p>`;
+
+  if (skipped) {
+    const nextState = appendNotificationLog(state, { type: 'adminNewSubmission', status: 'skipped', mode: ns.mode || 'off', to: '', subject, error: 'notifications_off', at: new Date().toISOString() });
+    writeState(nextState);
+    return;
+  }
+
+  sendEmail({ to, subject, html }).then(result => {
+    const base = readState();
+    const next = appendNotificationLog(base, { type: 'adminNewSubmission', status: result.ok ? 'sent' : 'failed', mode: ns.mode, to, subject, error: result.error || null, at: new Date().toISOString() });
+    writeState(next);
+  }).catch(() => {});
 }
 
 function getMatchKickoffValue(match) {
@@ -1029,8 +1065,9 @@ const server = createServer(async (request, response) => {
           audit: [...audit, { type: existing >= 0 ? 'public_update' : 'public_create', at: new Date().toISOString() }]
         };
         if (existing >= 0) subs[existing] = entry; else subs.push(entry);
-        writeState({ ...base, phaseSubmissions: subs });
+        const savedState = writeState({ ...base, phaseSubmissions: subs });
         sendJson(response, 200, { submission: entry, status: entry.status, message: 'Tus pronósticos fueron recibidos y quedarán pendientes de revisión.', updated: existing >= 0 });
+        try { notifyAdminNewSubmission(entry, savedState); } catch (_) {}
         return;
       }
       sendJson(response, 405, { error: 'Method not allowed' }); return;

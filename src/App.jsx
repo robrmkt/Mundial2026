@@ -540,6 +540,11 @@ export default function App() {
     ? 'Tabla General · Nueva Quiniela'
     : 'Tabla General · Quiniela RH';
 
+  const pendingAdminCount = useMemo(() =>
+    phaseSubmissions.filter(s => !s.status || s.status === 'pending').length,
+    [phaseSubmissions]
+  );
+
   // ---- Movimiento de ranking + tiempo en podio (Modo Leyenda) ----
   // Cálculo RETROACTIVO desde el inicio del Mundial: tiempo real acumulado en el
   // top-3 según los resultados. El tramo abierto (último partido → ahora) se acredita
@@ -867,6 +872,15 @@ export default function App() {
           </nav>
 
           <div className="header-status">
+            {session && pendingAdminCount > 0 && (
+              <button
+                className="admin-pending-chip"
+                onClick={() => goToTab('admin')}
+                title="Ir a bandeja de revisión"
+              >
+                Admin · {pendingAdminCount} pendiente{pendingAdminCount !== 1 ? 's' : ''}
+              </button>
+            )}
             {liveCount > 0 && (
               <span className="header-live-pill">
                 <span className="live-dot" /> {liveCount} en vivo

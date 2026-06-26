@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { AlertTriangle, CalendarClock, Check, CheckCircle2, Eye, Plus, RefreshCw, Trash2, X, XCircle } from 'lucide-react';
 import { fetchPredictionWindows, savePredictionWindow, deletePredictionWindow, getWindowStatus, formatWindowDate, fetchPhaseSubmissions, deletePhaseSubmission, approvePhaseSubmission, rejectPhaseSubmission, freezeCapitalHumanoArchive, updateContinuationSettings } from '../../services/predictionWindows';
 import { PARTICIPANT_EMAIL_ROSTER } from '../../services/participantEmails';
@@ -11,6 +11,52 @@ const SUB_STATUS_LABEL = { pending: 'Pendiente', approved: 'Aprobado', rejected:
 
 const SUB_FILTERS = ['todos', 'pendientes', 'aprobados', 'rechazados', 'nuevos', 'existentes'];
 const SUB_FILTER_LABEL = { todos: 'Todos', pendientes: 'Pendientes', aprobados: 'Aprobados', rechazados: 'Rechazados', nuevos: 'Nuevos usuarios', existentes: 'Usuarios RH' };
+
+function AdminReviewInbox({ pendingSubmissions, onApprove, onReject, onSelect }) {
+  if (!pendingSubmissions.length) {
+    return (
+      <div className="admin-card admin-review-inbox-card is-empty">
+        <h3 className="admin-section-title">Bandeja de revisión</h3>
+        <p className="admin-ext-hint">Sin quinielas pendientes por ahora.</p>
+      </div>
+    );
+  }
+  return (
+    <div className="admin-card admin-review-inbox-card has-pending">
+      <div className="admin-review-inbox-head">
+        <h3 className="admin-section-title">Bandeja de revisión</h3>
+        <span className="admin-pending-badge">{pendingSubmissions.length} pendiente{pendingSubmissions.length !== 1 ? 's' : ''}</span>
+      </div>
+      <div className="admin-review-inbox">
+        {pendingSubmissions.map(sub => (
+          <div className="admin-review-item" key={sub.id}>
+            <div className="admin-review-item-head">
+              <div>
+                <strong>{sub.participantName || sub.email}</strong>
+                <span className="crm-email">{sub.email}</span>
+              </div>
+              <span className="phase-status-badge status-pending">Pendiente</span>
+            </div>
+            <p className="admin-ext-hint" style={{ margin: '0.35rem 0 0' }}>
+              {Object.keys(sub.predictions || {}).length} pronósticos
+              {sub.updatedAt ? ` · ${new Date(sub.updatedAt).toLocaleString('es-MX', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}` : ''}
+              {sub.userType === 'new' ? ' · Nuevo usuario' : ' · Usuario RH'}
+            </p>
+            <div className="admin-review-item-actions">
+              <button className="crm-action-btn" onClick={() => onSelect(sub)}>Ver</button>
+              <button className="crm-action-btn" style={{ color: 'var(--success, #16a34a)' }} onClick={() => onApprove(sub.id)}>
+                <Check size={13} /> Aprobar
+              </button>
+              <button className="crm-action-btn danger" onClick={() => onReject(sub.id)}>
+                <X size={13} /> Rechazar
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 export default function AdminPredictionExtension({ participants, standings = [], matches, phaseSubmissions: propSubs = [], predictionWindows: propWindows = [], continuationSettings = null, onSettingsSaved }) {
   const [windows, setWindows] = useState([]);
@@ -30,6 +76,9 @@ export default function AdminPredictionExtension({ participants, standings = [],
   const [settings, setSettings] = useState(continuationSettings || {});
   const [approvingAll, setApprovingAll] = useState(false);
   const [reactivating, setReactivating] = useState(false);
+  const [newPendingToast, setNewPendingToast] = useState(null);
+  const prevPendingCountRef = useRef(null);
+  const inboxRef = useRef(null);
 
   useEffect(() => { setSettings(continuationSettings || {}); }, [continuationSettings]);
 
@@ -47,8 +96,47 @@ export default function AdminPredictionExtension({ participants, standings = [],
       .catch(() => {});
   }, [selectedWindowId]);
 
+  // Polling cada 15s para refrescar submissions mientras admin está dentro
+  useEffect(() => {
+    const poll = async () => {
+      const id = selectedWindowId;
+      if (!id) return;
+      const data = await fetchPhaseSubmissions(id).catch(() => null);
+      if (data) setSubmissions(data.submissions || []);
+    };
+    const interval = setInterval(poll, 15000);
+    return () => clearInterval(interval);
+  }, [selectedWindowId]);
+
+  // Auto-seleccionar ventana con pendientes si ninguna está seleccionada
+  useEffect(() => {
+    if (selectedWindowId) return;
+    const pendingSub = propSubs.find(s => !s.status || s.status === 'pending');
+    if (pendingSub?.windowId) {
+      setSelectedWindowId(pendingSub.windowId);
+    }
+  }, [propSubs, selectedWindowId]);
+
   // Use propSubs for metrics (loaded from /api/state in App.jsx, always fresh)
   const allSubs = propSubs.length ? propSubs : submissions;
+
+  const pendingSubmissions = useMemo(() =>
+    allSubs.filter(s => !s.status || s.status === 'pending'),
+    [allSubs]
+  );
+
+  // Toast cuando llegan nuevos pendientes mientras el admin está dentro
+  useEffect(() => {
+    const count = pendingSubmissions.length;
+    if (prevPendingCountRef.current === null) { prevPendingCountRef.current = count; return; }
+    if (count > prevPendingCountRef.current) {
+      setNewPendingToast(`Nueva quiniela pendiente de revisión (${count} total)`);
+      const t = setTimeout(() => setNewPendingToast(null), 5000);
+      prevPendingCountRef.current = count;
+      return () => clearTimeout(t);
+    }
+    prevPendingCountRef.current = count;
+  }, [pendingSubmissions.length]);
 
   const withEmail = participants.filter(p => p.email).length;
   const rosterTotal = PARTICIPANT_EMAIL_ROSTER.length;
@@ -212,6 +300,11 @@ export default function AdminPredictionExtension({ participants, standings = [],
 
   return (
     <div className="admin-section-body">
+      {/* Toast de nuevo pendiente */}
+      {newPendingToast && (
+        <div className="admin-new-pending-toast">{newPendingToast}</div>
+      )}
+
       <div className="admin-section-header">
         <div>
           <h2>Nueva Quiniela</h2>
@@ -230,6 +323,20 @@ export default function AdminPredictionExtension({ participants, standings = [],
         />
       )}
 
+      {/* === BANDEJA DE REVISIÓN (primero) === */}
+      <div ref={inboxRef}>
+        <AdminReviewInbox
+          pendingSubmissions={pendingSubmissions}
+          onApprove={handleApprove}
+          onReject={handleReject}
+          onSelect={(sub) => {
+            setSelectedWindowId(sub.windowId);
+            setSubFilter('pendientes');
+            setTimeout(() => document.querySelector('.admin-submissions-panel')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100);
+          }}
+        />
+      </div>
+
       {/* === MÉTRICAS === */}
       {activeWindow && (
         <div className="admin-card">
@@ -241,7 +348,18 @@ export default function AdminPredictionExtension({ participants, standings = [],
           </p>
           <div className="admin-extension-stats">
             <div className="admin-ext-stat"><strong>{metrics.total}</strong><span>Enviaron pronósticos</span></div>
-            <div className="admin-ext-stat"><strong>{metrics.pending}</strong><span>Pendientes revisión</span></div>
+            <div
+              className="admin-ext-stat"
+              style={metrics.pending > 0 ? { cursor: 'pointer' } : {}}
+              onClick={() => {
+                if (!metrics.pending) return;
+                inboxRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+              }}
+            >
+              <strong style={metrics.pending > 0 ? { color: 'var(--accent, #f59e0b)' } : {}}>{metrics.pending}</strong>
+              <span>Pendientes revisión</span>
+              {metrics.pending > 0 && <small style={{ fontSize: '0.72rem', color: 'var(--accent, #f59e0b)' }}>↑ Revisar</small>}
+            </div>
             <div className="admin-ext-stat"><strong>{metrics.approved}</strong><span>Aprobados</span></div>
             <div className="admin-ext-stat"><strong>{metrics.rejected}</strong><span>Rechazados</span></div>
             <div className="admin-ext-stat"><strong>{metrics.edited}</strong><span>Editados</span></div>
@@ -430,7 +548,7 @@ export default function AdminPredictionExtension({ participants, standings = [],
 
       {/* === SUBMISSIONS PANEL === */}
       {selectedWindowId && (
-        <div className="admin-card">
+        <div className="admin-card admin-submissions-panel">
           <div className="participants-card-head" style={{ marginBottom: '0.5rem' }}>
             <h3 className="admin-section-title">Quinielas enviadas — {selectedWindow?.name}</h3>
             {visibleSubmissions.filter(s => !s.status || s.status === 'pending').length > 0 && (
