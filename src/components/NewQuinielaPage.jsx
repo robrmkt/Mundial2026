@@ -257,7 +257,10 @@ export default function NewQuinielaPage({ matches = [], settings = {}, onReloadS
   };
 
   const save = async () => {
-    if (!activeWindow?.id || !profile) return;
+    if (!activeWindow?.id || !profile) {
+      setError('No hay una ventana de pronósticos activa. El administrador debe abrir una ventana primero.');
+      return;
+    }
     const participantName = profile.userType === 'new' ? newUser.name.trim() : profile.name;
     const team = newUser.team || profile.team || inferTeamFromEmail(profile.email);
     if (!participantName) { setError('Captura tu nombre completo.'); setStep('new'); return; }
@@ -417,6 +420,13 @@ export default function NewQuinielaPage({ matches = [], settings = {}, onReloadS
               <div className="newq-save-notice">
                 <CheckCircle2 size={16} />
                 Tus pronósticos fueron recibidos. Quedarán pendientes de revisión antes de aparecer en la tabla.
+              </div>
+            )}
+
+            {/* No active window warning */}
+            {!activeWindow && (
+              <div className="newq-error" style={{ marginBottom: '1rem', padding: '0.85rem 1rem', borderRadius: '12px', background: 'var(--error-bg, #fef2f2)' }}>
+                No hay una ventana de pronósticos activa. El administrador debe crear o abrir una ventana para habilitar el guardado.
               </div>
             )}
 
