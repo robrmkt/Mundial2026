@@ -98,9 +98,21 @@ export default function NewQuinielaPage({ matches = [], settings = {}, onReloadS
   const [dirty, setDirty] = useState(false);
   const [savedAt, setSavedAt] = useState(null);
   const [filter, setFilter] = useState('open');
+  const [draftRestorePrompt, setDraftRestorePrompt] = useState(null);
   const emailRef = useRef(null);
 
   useEffect(() => { emailRef.current?.focus(); }, []);
+
+  // Advertencia de salida con cambios sin guardar
+  useEffect(() => {
+    const handler = (event) => {
+      if (!dirty) return;
+      event.preventDefault();
+      event.returnValue = '';
+    };
+    window.addEventListener('beforeunload', handler);
+    return () => window.removeEventListener('beforeunload', handler);
+  }, [dirty]);
   useEffect(() => {
     fetchPredictionWindows().then(d => setWindows(d.windows || [])).catch(() => {});
   }, []);
@@ -109,6 +121,10 @@ export default function NewQuinielaPage({ matches = [], settings = {}, onReloadS
     const viable = windows.filter(w => ['open', 'scheduled', 'draft'].includes(getWindowStatus(w)));
     return viable.find(w => getWindowStatus(w) === 'open') || viable[0] || null;
   }, [windows]);
+
+  const draftKey = profile && activeWindow
+    ? `newq_draft_${activeWindow.id}_${profile.email}`
+    : null;
 
   const continuationMatches = useMemo(() => {
     const startAt = settings.startAt ? Date.parse(settings.startAt) : 0;
@@ -143,9 +159,26 @@ export default function NewQuinielaPage({ matches = [], settings = {}, onReloadS
     if (!windowId) return;
     const data = await fetchPhaseSubmissions(windowId).catch(() => ({ submissions: [] }));
     const sub = (data.submissions || []).find(s => String(s.email).toLowerCase() === targetEmail);
-    if (!sub) return;
-    setExistingSubmission(sub);
-    setPredictions(Object.fromEntries(Object.entries(sub.predictions || {}).map(([id, p]) => [id, { home: p.homeScore, away: p.awayScore }])));
+    const key = `newq_draft_${windowId}_${targetEmail}`;
+    const savedDraft = localStorage.getItem(key);
+    if (sub) {
+      setExistingSubmission(sub);
+      const serverPreds = Object.fromEntries(Object.entries(sub.predictions || {}).map(([id, p]) => [id, { home: p.homeScore, away: p.awayScore }]));
+      if (savedDraft) {
+        try {
+          const draft = JSON.parse(savedDraft);
+          setDraftRestorePrompt({ draft, serverPreds });
+          setPredictions(serverPreds);
+        } catch (_) { setPredictions(serverPreds); }
+      } else {
+        setPredictions(serverPreds);
+      }
+    } else if (savedDraft) {
+      try {
+        const draft = JSON.parse(savedDraft);
+        setDraftRestorePrompt({ draft, serverPreds: {} });
+      } catch (_) {}
+    }
   };
 
   const handleEmail = async (event) => {
@@ -161,6 +194,7 @@ export default function NewQuinielaPage({ matches = [], settings = {}, onReloadS
         await loadExistingSubmission(value, activeWindow?.id);
         recordPhaseProgress({ windowId: activeWindow?.id || '', email: value, participantName: data.profile.name, team: data.profile.team || inferTeamFromEmail(value), userType: uType, status: 'started' });
         setStep('board');
+        requestAnimationFrame(() => { document.activeElement?.blur?.(); window.scrollTo({ top: 0, behavior: 'smooth' }); });
         return;
       }
       if (!data.allowedToRegister) {
@@ -185,6 +219,7 @@ export default function NewQuinielaPage({ matches = [], settings = {}, onReloadS
       if (profile?.email && activeWindow?.id) {
         const count = Object.values(next).filter(p => p?.home !== '' && p?.home !== undefined && p?.away !== '' && p?.away !== undefined).length;
         recordPhaseProgress({ windowId: activeWindow.id, email: profile.email, status: 'editing', predictionCount: count });
+        try { localStorage.setItem(`newq_draft_${activeWindow.id}_${profile.email}`, JSON.stringify(next)); } catch (_) {}
       }
       return next;
     });
@@ -204,7 +239,9 @@ export default function NewQuinielaPage({ matches = [], settings = {}, onReloadS
       setExistingSubmission(result.submission);
       setSavedAt(new Date());
       setDirty(false);
+      if (draftKey) localStorage.removeItem(draftKey);
       recordPhaseProgress({ windowId: activeWindow.id, email: profile.email, participantName, team, userType: profile.userType, status: 'submitted', predictionCount: filled.length });
+      document.activeElement?.blur?.();
     } catch (err) {
       setError(err.message);
     } finally {
@@ -274,7 +311,7 @@ export default function NewQuinielaPage({ matches = [], settings = {}, onReloadS
         {step === 'new' && (
           <div className="newq-email-card">
             <h2>Regístrate</h2>
-            <p className="newq-email-hint">No encontramos ese correo en la quiniela anterior, pero puedes participar en la nueva etapa.</p>
+            <p className="newq-email-hint">No encontramos ese correo en la Quiniela RH, pero puedes registrarte para la Nueva Quiniela.</p>
             <div className="newq-new-user-form">
               <label className="newq-field-label">
                 Nombre completo
@@ -320,6 +357,24 @@ export default function NewQuinielaPage({ matches = [], settings = {}, onReloadS
                 <NuevaQuinielaSummary submission={existingSubmission} />
               </div>
             </div>
+
+            {/* Draft restore prompt */}
+            {draftRestorePrompt && (
+              <div className="newq-draft-banner">
+                <span>Encontramos cambios sin guardar en este dispositivo.</span>
+                <div className="newq-draft-actions">
+                  <button className="newq-btn-secondary" onClick={() => {
+                    setPredictions(draftRestorePrompt.draft);
+                    setDirty(true);
+                    setDraftRestorePrompt(null);
+                  }}>Restaurar</button>
+                  <button className="newq-btn-secondary muted" onClick={() => {
+                    if (draftKey) localStorage.removeItem(draftKey);
+                    setDraftRestorePrompt(null);
+                  }}>Descartar</button>
+                </div>
+              </div>
+            )}
 
             {/* Save feedback */}
             {savedAt && !dirty && (

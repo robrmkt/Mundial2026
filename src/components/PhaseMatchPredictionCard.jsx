@@ -11,11 +11,15 @@ function formatDate(iso) {
 function ScoreInput({ value, onChange, disabled }) {
   return (
     <input
-      type="number" min="0" max="99"
+      type="number"
+      inputMode="numeric"
+      pattern="[0-9]*"
+      min="0"
+      max="99"
       className={`newq-score-input${disabled ? ' disabled' : ''}`}
       value={value ?? ''}
       onChange={e => onChange(e.target.value)}
-      placeholder="—"
+      placeholder="0"
       disabled={disabled}
     />
   );

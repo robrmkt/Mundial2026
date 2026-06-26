@@ -817,32 +817,51 @@ export default function App() {
             <button
               className={`nav-btn ${activeTab === 'dashboard' ? 'active' : ''}`}
               onClick={() => goToTab('dashboard')}
+              aria-label="Tabla General"
+              title="Tabla General"
             >
               <Trophy size={15} />
-              <span className="nav-btn-text">Tabla General</span>
+              <span className="nav-btn-text">
+                <span className="desktop-label">Tabla General</span>
+                <span className="mobile-label">Tabla</span>
+              </span>
             </button>
             <button
               className={`nav-btn ${activeTab === 'predictions' ? 'active' : ''}`}
               onClick={() => goToTab('predictions')}
+              aria-label="Pronósticos"
+              title="Pronósticos"
             >
               <Users size={15} />
-              <span className="nav-btn-text">Pronósticos</span>
+              <span className="nav-btn-text">
+                <span className="desktop-label">Pronósticos</span>
+                <span className="mobile-label">Pronóst.</span>
+              </span>
             </button>
             <button
-              className={`nav-btn ${activeTab === 'matches' ? 'active' : ''}`}
+              className={`nav-btn nav-btn-matches ${activeTab === 'matches' ? 'active' : ''}`}
               onClick={() => goToTab('matches')}
+              aria-label="Partidos"
+              title="Partidos"
             >
               <MonitorPlay size={15} />
-              <span className="nav-btn-text">Partidos</span>
+              <span className="nav-btn-text nav-btn-text-matches">
+                <span className="desktop-label">Partidos</span>
+              </span>
               {liveCount > 0 && <span className="nav-live-count">{liveCount}</span>}
             </button>
             {continuationSettings?.publicEnabled !== false && (
               <button
-                className={`nav-btn ${activeTab === 'nuevaQuiniela' ? 'active' : ''}`}
+                className={`nav-btn nav-btn-newq ${activeTab === 'nuevaQuiniela' ? 'active' : ''}`}
                 onClick={() => goToTab('nuevaQuiniela')}
+                aria-label="Nueva Quiniela"
+                title="Nueva Quiniela"
               >
                 <Users size={15} />
-                <span className="nav-btn-text">Nueva quiniela</span>
+                <span className="nav-btn-text">
+                  <span className="desktop-label">Nueva quiniela</span>
+                  <span className="mobile-label">Nueva</span>
+                </span>
               </button>
             )}
           </nav>
