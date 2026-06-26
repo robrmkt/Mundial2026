@@ -17,18 +17,22 @@ const DEFAULT_COPY = {
   }
 };
 
-function getPopupConfig(settings = {}) {
-  const legacyEnabled = settings.transitionNoticeEnabled !== false;
+function getPopupConfig(settings) {
+  const safeSettings = settings && typeof settings === 'object' ? settings : {};
+  const transitionPopup = safeSettings.transitionPopup && typeof safeSettings.transitionPopup === 'object'
+    ? safeSettings.transitionPopup
+    : {};
+  const legacyEnabled = safeSettings.transitionNoticeEnabled !== false;
   return {
     enabled: legacyEnabled,
-    version: settings.transitionNoticeVersion || 1,
+    version: safeSettings.transitionNoticeVersion || 1,
     maxViews: 2,
     startsAt: '2026-06-26T00:00:00-06:00',
     afterCloseAt: '2026-06-28T00:00:00-06:00',
     endsAt: '2026-07-02T23:59:00-06:00',
     beforeClose: DEFAULT_COPY.before_close,
     afterClose: DEFAULT_COPY.after_close,
-    ...(settings.transitionPopup || {})
+    ...transitionPopup
   };
 }
 
@@ -59,8 +63,8 @@ export default function RhTransitionPopup({ settings, activeTab, goToTab, isAdmi
       };
     }
 
-    const timer = window.setTimeout(() => setPopupState(nextState), 0);
-    return () => window.clearTimeout(timer);
+    const timer = setTimeout(() => setPopupState(nextState), 0);
+    return () => clearTimeout(timer);
   }, [activeTab, hasArchive, isAdmin, maxViews, popup.afterCloseAt, popup.enabled, popup.endsAt, popup.startsAt, settings?.startAt, version]);
 
   const close = (action = 'close') => {
@@ -76,13 +80,13 @@ export default function RhTransitionPopup({ settings, activeTab, goToTab, isAdmi
   const goNew = () => {
     close('new_quiniela');
     goToTab?.('nuevaQuiniela');
-    window.location.hash = '#nueva-quiniela';
+    if (typeof window !== 'undefined') window.location.hash = '#nueva-quiniela';
   };
 
   const goRh = () => {
     close('quiniela_rh');
     goToTab?.('capitalHumano');
-    window.location.hash = '#capital-humano';
+    if (typeof window !== 'undefined') window.location.hash = '#capital-humano';
   };
 
   if (!popupState.visible) return null;

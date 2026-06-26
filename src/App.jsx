@@ -921,13 +921,15 @@ export default function App() {
 
       <MatchTicker matches={matches} />
 
-      <RhTransitionPopup
-        settings={continuationSettings}
-        activeTab={activeTab}
-        goToTab={goToTab}
-        isAdmin={activeTab === 'admin'}
-        hasArchive={Boolean(capitalHumanoArchive)}
-      />
+      {continuationSettings && (
+        <RhTransitionPopup
+          settings={continuationSettings}
+          activeTab={activeTab}
+          goToTab={goToTab}
+          isAdmin={activeTab === 'admin'}
+          hasArchive={Boolean(capitalHumanoArchive)}
+        />
+      )}
 
       {/* Main View Container */}
       <main className="main-content-area">
