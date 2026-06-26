@@ -315,6 +315,35 @@ function isEmailAllowed(email, settings) {
   return asArray(settings.allowedDomains).some(domain => e.endsWith(`@${String(domain).toLowerCase()}`));
 }
 
+function normalizeName(name) {
+  return String(name || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim();
+}
+
+function findCapitalHumanoHistory({ email, name, archive }) {
+  const normalizedEmail = normalizeEmailValue(email);
+  const normalizedName = normalizeName(name);
+  const standings = asArray(archive?.standings);
+  const participants = asArray(archive?.participants);
+
+  const byStanding = standings.find(item =>
+    normalizeEmailValue(item.email) === normalizedEmail ||
+    (normalizedName && normalizeName(item.name) === normalizedName)
+  );
+  if (byStanding) {
+    return { status: 'available', rank: byStanding.rank || null, points: Number(byStanding.points || 0), exactHits: Number(byStanding.exactHits || 0), outcomeHits: Number(byStanding.outcomeHits || 0) };
+  }
+
+  const byParticipant = participants.find(item =>
+    normalizeEmailValue(item.email) === normalizedEmail ||
+    (normalizedName && normalizeName(item.name) === normalizedName)
+  );
+  if (byParticipant) {
+    return { status: 'available', rank: byParticipant.rank || null, points: Number(byParticipant.points || 0), exactHits: Number(byParticipant.exactHits || 0), outcomeHits: Number(byParticipant.outcomeHits || 0) };
+  }
+
+  return { status: archive ? 'not_found' : 'pending_freeze', rank: null, points: 0, exactHits: 0, outcomeHits: 0 };
+}
+
 function getMatchKickoffValue(match) {
   return match?.kickoff || match?.utcDate || match?.dateTime || null;
 }
@@ -875,7 +904,8 @@ const server = createServer(async (request, response) => {
       const approvedSub = asArray(base.phaseSubmissions).find(s => normalizeEmailValue(s.email) === normalizedEmail && s.status === 'approved');
       const existing = existingParticipant || existingRegistered || approvedSub;
       if (existing) {
-        const rank = existingParticipant?.rank || null;
+        const archive = base.capitalHumanoArchive;
+        const capitalHumano = findCapitalHumanoHistory({ email: normalizedEmail, name: existing.name || existing.participantName, archive });
         sendJson(response, 200, {
           exists: true,
           userType: existingParticipant ? 'existing' : 'new',
@@ -885,9 +915,7 @@ const server = createServer(async (request, response) => {
             team: existing.team || inferTeamFromEmail(normalizedEmail),
             photo: existing.photo || '',
             avatar: existing.avatar || initials(existing.name || existing.participantName || normalizedEmail),
-            capitalHumanoRank: rank,
-            capitalHumanoPoints: existingParticipant?.points || 0,
-            capitalHumanoExactHits: existingParticipant?.exactHits || 0
+            capitalHumano
           }
         });
         return;

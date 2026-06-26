@@ -1,27 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Save, Clock, Lock, CheckCircle2 } from 'lucide-react';
-import FlagIcon from './FlagIcon';
+import { CheckCircle2, Save } from 'lucide-react';
 import { fetchContinuationProfile, inferTeamFromEmail, teamLabel } from '../services/continuation';
 import { fetchPredictionWindows, fetchPhaseSubmissions, getWindowStatus, savePhaseSubmission } from '../services/predictionWindows';
-import { getMatchKickoff, isMatchConfirmed, isMatchLocked, getMatchLockAt, LOCK_MINUTES_BEFORE_KICKOFF } from '../services/matchLock';
-
-function formatWhen(value) {
-  if (!value) return 'Horario por confirmar';
-  return new Date(value).toLocaleString('es-MX', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
-}
+import { getMatchKickoff, isMatchConfirmed, isMatchLocked, LOCK_MINUTES_BEFORE_KICKOFF } from '../services/matchLock';
+import { displayTeamName, isPlaceholderTeam } from '../services/teamDisplay';
+import PhaseMatchPredictionCard from './PhaseMatchPredictionCard';
 
 function initials(nameOrEmail) {
   return String(nameOrEmail || 'NQ').split('@')[0].replace(/[._-]+/g, ' ').split(/\s+/).filter(Boolean).slice(0, 2).map(p => p[0]?.toUpperCase()).join('') || 'NQ';
-}
-
-function buildMatchMeta(match) {
-  return {
-    id: match.id,
-    homeTeam: match.homeTeam,
-    awayTeam: match.awayTeam,
-    kickoff: getMatchKickoff(match),
-    status: match.status
-  };
 }
 
 function scoreValue(value) {
@@ -30,6 +16,74 @@ function scoreValue(value) {
   if (!Number.isFinite(parsed)) return '';
   return Math.max(0, Math.min(99, parsed));
 }
+
+function groupMatchesByDate(matches) {
+  return matches.reduce((acc, match) => {
+    const kickoff = getMatchKickoff(match);
+    const key = kickoff
+      ? new Date(kickoff).toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'long' })
+      : 'Por confirmar';
+    if (!acc[key]) acc[key] = [];
+    acc[key].push(match);
+    return acc;
+  }, {});
+}
+
+function CapitalHumanoSummary({ history }) {
+  if (!history || history.status === 'pending_freeze') {
+    return (
+      <div className="newq-stat-card is-muted">
+        <small>Histórico Capital Humano</small>
+        <strong>Pendiente de cierre</strong>
+        <span>Se mostrará al congelar la fase de grupos.</span>
+      </div>
+    );
+  }
+  if (history.status === 'not_found') {
+    return (
+      <div className="newq-stat-card is-muted">
+        <small>Histórico Capital Humano</small>
+        <strong>Sin registro previo</strong>
+        <span>Participa desde la nueva quiniela.</span>
+      </div>
+    );
+  }
+  return (
+    <div className="newq-stat-card">
+      <small>Histórico Capital Humano</small>
+      <strong>{history.rank ? `#${history.rank}` : '—'} · {history.points} pts</strong>
+      <span>{history.exactHits} exactos · {history.outcomeHits} resultados</span>
+    </div>
+  );
+}
+
+function NuevaQuinielaSummary({ submission }) {
+  if (!submission) {
+    return (
+      <div className="newq-stat-card">
+        <small>Nueva Quiniela</small>
+        <strong>Sin pronósticos todavía</strong>
+        <span>Agrega tus primeras apuestas.</span>
+      </div>
+    );
+  }
+  const count = Object.keys(submission.predictions || {}).length;
+  const statusLabel = { pending: 'Pendiente de revisión', approved: 'Aprobada', rejected: 'Rechazada', edited: 'Actualizada' }[submission.status] || 'Pendiente';
+  return (
+    <div className="newq-stat-card">
+      <small>Nueva Quiniela</small>
+      <strong>{count} pronósticos</strong>
+      <span>{statusLabel}</span>
+    </div>
+  );
+}
+
+const FILTERS = [
+  { key: 'all', label: 'Todos' },
+  { key: 'open', label: 'Abiertos' },
+  { key: 'pending', label: 'Por confirmar' },
+  { key: 'locked', label: 'Cerrados' },
+];
 
 export default function NewQuinielaPage({ matches = [], settings = {} }) {
   const [step, setStep] = useState('email');
@@ -43,6 +97,7 @@ export default function NewQuinielaPage({ matches = [], settings = {} }) {
   const [saving, setSaving] = useState(false);
   const [dirty, setDirty] = useState(false);
   const [savedAt, setSavedAt] = useState(null);
+  const [filter, setFilter] = useState('open');
   const emailRef = useRef(null);
 
   useEffect(() => { emailRef.current?.focus(); }, []);
@@ -67,8 +122,22 @@ export default function NewQuinielaPage({ matches = [], settings = {} }) {
       .sort((a, b) => (Date.parse(getMatchKickoff(a)) || 9e15) - (Date.parse(getMatchKickoff(b)) || 9e15));
   }, [activeWindow, matches, settings.startAt]);
 
-  const confirmedMatches = continuationMatches.filter(m => isMatchConfirmed(m));
-  const pendingMatches = continuationMatches.filter(m => !isMatchConfirmed(m));
+  const filteredMatches = useMemo(() => {
+    return continuationMatches.filter(m => {
+      if (filter === 'all') return true;
+      if (filter === 'pending') return !isMatchConfirmed(m);
+      if (filter === 'locked') return isMatchConfirmed(m) && isMatchLocked(m);
+      if (filter === 'open') return isMatchConfirmed(m) && !isMatchLocked(m);
+      return true;
+    });
+  }, [continuationMatches, filter]);
+
+  const counts = useMemo(() => ({
+    open: continuationMatches.filter(m => isMatchConfirmed(m) && !isMatchLocked(m)).length,
+    pending: continuationMatches.filter(m => !isMatchConfirmed(m)).length,
+    locked: continuationMatches.filter(m => isMatchConfirmed(m) && isMatchLocked(m)).length,
+    all: continuationMatches.length
+  }), [continuationMatches]);
 
   const loadExistingSubmission = async (targetEmail, windowId) => {
     if (!windowId) return;
@@ -89,11 +158,11 @@ export default function NewQuinielaPage({ matches = [], settings = {} }) {
         setProfile({ ...data.profile, userType: data.userType || 'existing' });
         setNewUser({ name: data.profile.name, team: data.profile.team || inferTeamFromEmail(value) });
         await loadExistingSubmission(value, activeWindow?.id);
-        setStep('profile');
+        setStep('board');
         return;
       }
       if (!data.allowedToRegister) {
-        setError('No encontramos ese correo y por ahora no hay registros nuevos.');
+        setError('No encontramos ese correo. Por ahora no hay registros nuevos.');
         return;
       }
       setProfile({ email: value, userType: 'new', team: data.inferredTeam || inferTeamFromEmail(value), avatar: initials(value) });
@@ -107,6 +176,7 @@ export default function NewQuinielaPage({ matches = [], settings = {} }) {
 
   const handleScore = (matchId, side, value) => {
     setDirty(true);
+    setSavedAt(null);
     setPredictions(prev => ({ ...prev, [matchId]: { ...prev[matchId], [side]: scoreValue(value) } }));
   };
 
@@ -117,24 +187,13 @@ export default function NewQuinielaPage({ matches = [], settings = {} }) {
     if (!participantName) { setError('Captura tu nombre completo.'); setStep('new'); return; }
     const filled = Object.entries(predictions).filter(([, p]) => p?.home !== '' && p?.home !== undefined && p?.away !== '' && p?.away !== undefined);
     if (!filled.length) { setError('Ingresa al menos un pronóstico.'); return; }
-    const matchMeta = Object.fromEntries(confirmedMatches.map(m => [String(m.id), buildMatchMeta(m)]));
     const payloadPreds = Object.fromEntries(filled.map(([id, p]) => [id, { homeScore: Number(p.home), awayScore: Number(p.away) }]));
-    setSaving(true);
-    setError('');
+    setSaving(true); setError('');
     try {
-      const result = await savePhaseSubmission({
-        email: profile.email,
-        windowId: activeWindow.id,
-        participantName,
-        team,
-        userType: profile.userType,
-        predictions: payloadPreds,
-        matchMeta
-      });
+      const result = await savePhaseSubmission({ email: profile.email, windowId: activeWindow.id, participantName, team, userType: profile.userType, predictions: payloadPreds });
       setExistingSubmission(result.submission);
       setSavedAt(new Date());
       setDirty(false);
-      setStep('saved');
     } catch (err) {
       setError(err.message);
     } finally {
@@ -152,99 +211,159 @@ export default function NewQuinielaPage({ matches = [], settings = {} }) {
 
   return (
     <section className="new-quiniela-page">
-      <div className="new-quiniela-hero">
-        <span className="section-kicker">Continuación</span>
-        <h2>Nueva quiniela</h2>
-        <p>Continúa pronosticando los siguientes partidos del Mundial. La quiniela de Capital Humano queda como histórico separado.</p>
-      </div>
+      <div className="newq-shell">
 
-      {step === 'email' && (
-        <form className="new-quiniela-email" onSubmit={handleEmail}>
-          <label>
-            Correo corporativo
-            <input ref={emailRef} type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="tu.correo@empresa.com" />
-          </label>
-          {error && <p className="phase-email-error">{error}</p>}
-          <button type="submit" className="phase-submit-btn">Siguiente</button>
-        </form>
-      )}
-
-      {step === 'new' && (
-        <div className="new-user-card">
-          <p>No encontramos ese correo en la quiniela anterior, pero puedes registrarte para la nueva etapa.</p>
-          <label>Nombre completo<input value={newUser.name} onChange={e => setNewUser(p => ({ ...p, name: e.target.value }))} /></label>
-          <label>Team<select value={newUser.team} onChange={e => setNewUser(p => ({ ...p, team: e.target.value }))}><option value="">Seleccionar</option><option value="bz">Team BZ</option><option value="up">Team UP</option></select></label>
-          {error && <p className="phase-email-error">{error}</p>}
-          <button className="phase-submit-btn" onClick={() => setStep('profile')}>Continuar a mis apuestas</button>
+        {/* Hero */}
+        <div className="newq-hero">
+          <div>
+            <span className="newq-kicker">Continuación Mundialista</span>
+            <h1>Nueva quiniela mundialista</h1>
+            <p>La dinámica de Capital Humano ya cerró. Esta es una nueva etapa para quienes quieren seguir pronosticando.</p>
+          </div>
         </div>
-      )}
 
-      {displayProfile && ['profile', 'saved'].includes(step) && (
-        <>
-          <div className="user-prediction-profile">
-            <div className="profile-avatar">{displayProfile.photo ? <img src={displayProfile.photo} alt={displayProfile.name} /> : displayProfile.avatar}</div>
-            <div>
-              <h3>{displayProfile.name}</h3>
-              <p>{displayProfile.email}</p>
-              <span>{teamLabel(displayProfile.team)}</span>
-            </div>
-            <div className="profile-stat"><small>Histórico Capital Humano</small><strong>{profile.capitalHumanoRank ? `#${profile.capitalHumanoRank} · ${profile.capitalHumanoPoints} pts` : 'Sin histórico'}</strong></div>
-            <div className="profile-stat"><small>Nueva quiniela</small><strong>{existingSubmission ? `${Object.keys(existingSubmission.predictions || {}).length} pronósticos · ${existingSubmission.status || 'pending'}` : 'Sin pronósticos todavía'}</strong></div>
+        {/* Step: email */}
+        {step === 'email' && (
+          <div className="newq-email-card">
+            <h2>Ingresa tu correo</h2>
+            <p className="newq-email-hint">Usa tu correo corporativo para acceder a tus pronósticos.</p>
+            <form onSubmit={handleEmail} className="newq-email-form">
+              <input
+                ref={emailRef}
+                type="email"
+                className="newq-email-input"
+                placeholder="tu.correo@empresa.com"
+                value={email}
+                onChange={e => { setEmail(e.target.value); setError(''); }}
+                autoComplete="email"
+              />
+              {error && <p className="newq-error">{error}</p>}
+              <button type="submit" className="newq-btn-primary">Continuar →</button>
+            </form>
           </div>
+        )}
 
-          {step === 'saved' && (
-            <div className="phase-save-notice"><CheckCircle2 size={18} /> Tus pronósticos fueron recibidos y quedarán pendientes de revisión por el administrador.</div>
-          )}
-
-          <div className="phase-prediction-board">
-            <div className="phase-board-head">
-              <div><h3>Mis apuestas</h3><p>{activeWindow?.name || 'Nueva quiniela'} · cierre {LOCK_MINUTES_BEFORE_KICKOFF} min antes de cada partido</p></div>
-              {dirty && <span className="unsaved-chip">Cambios sin guardar</span>}
-              {savedAt && !dirty && <span className="saved-chip">Guardado hace unos segundos</span>}
+        {/* Step: new user registration */}
+        {step === 'new' && (
+          <div className="newq-email-card">
+            <h2>Regístrate</h2>
+            <p className="newq-email-hint">No encontramos ese correo en la quiniela anterior, pero puedes participar en la nueva etapa.</p>
+            <div className="newq-new-user-form">
+              <label className="newq-field-label">
+                Nombre completo
+                <input className="newq-email-input" value={newUser.name} onChange={e => setNewUser(p => ({ ...p, name: e.target.value }))} placeholder="Nombre Apellido" />
+              </label>
+              <label className="newq-field-label">
+                Equipo
+                <select className="newq-email-input" value={newUser.team} onChange={e => setNewUser(p => ({ ...p, team: e.target.value }))}>
+                  <option value="">Seleccionar</option>
+                  <option value="bz">Team BZ</option>
+                  <option value="up">Team UP</option>
+                </select>
+              </label>
+              {error && <p className="newq-error">{error}</p>}
+              <button className="newq-btn-primary" onClick={() => { if (!newUser.name.trim()) { setError('Escribe tu nombre completo.'); return; } setError(''); setStep('board'); }}>
+                Continuar a mis apuestas →
+              </button>
             </div>
+          </div>
+        )}
 
-            <h4>Partidos confirmados</h4>
-            <div className="phase-match-list-v2">
-              {confirmedMatches.length === 0 ? <p className="phase-form-hint">No hay partidos confirmados todavía.</p> : confirmedMatches.map(match => {
-                const locked = isMatchLocked(match);
-                const pred = predictions[match.id] || {};
-                return (
-                  <div key={match.id} className={`phase-match-card-v2 ${locked ? 'is-locked' : ''}`}>
-                    <div className="phase-match-main">
-                      <span><FlagIcon team={match.homeTeam} size={18} /> {match.homeTeam}</span>
-                      <strong>vs</strong>
-                      <span><FlagIcon team={match.awayTeam} size={18} /> {match.awayTeam}</span>
-                    </div>
-                    <div className="phase-match-meta"><Clock size={13} /> {formatWhen(getMatchKickoff(match))} · cierra {formatWhen(getMatchLockAt(match))}</div>
-                    {locked ? <div className="phase-locked-inline"><Lock size={14} /> Este partido ya cerró para pronósticos.</div> : (
-                      <div className="phase-score-inputs">
-                        <input type="number" min="0" max="99" value={pred.home ?? ''} onChange={e => handleScore(match.id, 'home', e.target.value)} placeholder="0" />
-                        <span>-</span>
-                        <input type="number" min="0" max="99" value={pred.away ?? ''} onChange={e => handleScore(match.id, 'away', e.target.value)} placeholder="0" />
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-
-            <h4>Partidos por confirmar</h4>
-            <div className="phase-match-list-v2">
-              {pendingMatches.length === 0 ? <p className="phase-form-hint">No hay cruces pendientes por confirmar.</p> : pendingMatches.map(match => (
-                <div key={match.id} className="phase-match-card-v2 is-pending">
-                  <div className="phase-match-main"><span>{match.homeTeam || 'Por definir'}</span><strong>vs</strong><span>{match.awayTeam || 'Por definir'}</span></div>
-                  <p>Este cruce se activará cuando se confirmen los equipos y horario.</p>
+        {/* Profile + Board */}
+        {displayProfile && step === 'board' && (
+          <>
+            {/* Profile card */}
+            <div className="newq-profile-card">
+              <div className="newq-profile-main">
+                <div className="newq-profile-avatar">
+                  {displayProfile.photo
+                    ? <img src={displayProfile.photo} alt={displayProfile.name} />
+                    : <span>{displayProfile.avatar}</span>}
                 </div>
-              ))}
+                <div className="newq-profile-info">
+                  <h2>{displayProfile.name}</h2>
+                  <p>{displayProfile.email}</p>
+                  {displayProfile.team && (
+                    <span className={`newq-team-chip ${displayProfile.team}`}>{teamLabel(displayProfile.team)}</span>
+                  )}
+                </div>
+              </div>
+              <div className="newq-profile-stats">
+                <CapitalHumanoSummary history={profile.capitalHumano} />
+                <NuevaQuinielaSummary submission={existingSubmission} />
+              </div>
             </div>
 
-            {error && <p className="phase-email-error">{error}</p>}
-            <div className="phase-sticky-save">
-              <button className="phase-submit-btn" onClick={save} disabled={saving}>{saving ? 'Guardando…' : <><Save size={15} /> Guardar cambios</>}</button>
+            {/* Save feedback */}
+            {savedAt && !dirty && (
+              <div className="newq-save-notice">
+                <CheckCircle2 size={16} />
+                Tus pronósticos fueron recibidos. Quedarán pendientes de revisión antes de aparecer en la tabla.
+              </div>
+            )}
+
+            {/* Board */}
+            <div className="newq-board">
+              <div className="newq-board-header">
+                <div>
+                  <h2>Mis apuestas</h2>
+                  <p>Cierre {LOCK_MINUTES_BEFORE_KICKOFF} minutos antes de cada partido.</p>
+                </div>
+                <div className="newq-save-status">
+                  {dirty && <span className="newq-unsaved">Cambios sin guardar</span>}
+                  {savedAt && !dirty && <span className="newq-saved">✓ Guardado</span>}
+                </div>
+              </div>
+
+              {/* Filters */}
+              <div className="newq-filters">
+                {FILTERS.map(f => (
+                  <button
+                    key={f.key}
+                    className={`newq-filter-btn${filter === f.key ? ' active' : ''}`}
+                    onClick={() => setFilter(f.key)}
+                  >
+                    {f.label}
+                    {counts[f.key] > 0 && <span className="newq-filter-count">{counts[f.key]}</span>}
+                  </button>
+                ))}
+              </div>
+
+              {/* Matches grouped by date */}
+              {filteredMatches.length === 0 ? (
+                <div className="newq-empty">
+                  {filter === 'open' ? 'No hay partidos abiertos para pronosticar en este momento.' : 'Sin partidos en esta categoría.'}
+                </div>
+              ) : (
+                Object.entries(groupMatchesByDate(filteredMatches)).map(([dateLabel, items]) => (
+                  <section key={dateLabel} className="newq-date-group">
+                    <h3 className="newq-date-label">{dateLabel}</h3>
+                    <div className="newq-match-grid">
+                      {items.map(match => (
+                        <PhaseMatchPredictionCard
+                          key={match.id}
+                          match={match}
+                          pred={predictions[match.id] || {}}
+                          onChange={handleScore}
+                        />
+                      ))}
+                    </div>
+                  </section>
+                ))
+              )}
+
+              {error && <p className="newq-error" style={{ marginTop: '0.75rem' }}>{error}</p>}
+
+              {/* Sticky save */}
+              <div className="newq-sticky-save">
+                <button className="newq-btn-primary newq-save-btn" onClick={save} disabled={saving || !dirty}>
+                  {saving ? 'Guardando…' : <><Save size={15} /> Guardar cambios</>}
+                </button>
+              </div>
             </div>
-          </div>
-        </>
-      )}
+          </>
+        )}
+      </div>
     </section>
   );
 }

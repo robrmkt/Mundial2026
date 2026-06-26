@@ -79,15 +79,20 @@ export default function AdminParticipants({
                   </td>
                   <td>
                     {participant.email ? (
-                      <span className="crm-email"><Mail size={11} /> {participant.email}</span>
+                      <div className="crm-email-cell">
+                        <span className="crm-email-badge linked">✅ Vinculado</span>
+                        <span className="crm-email">{participant.email}</span>
+                      </div>
                     ) : roster?.email ? (
-                      <button
-                        className="crm-email-assign-btn"
-                        onClick={() => { onSetEmail(participant.name, roster.email); if (!participant.team && roster.team) onSetTeam(participant.name, roster.team); }}
-                        title="Asignar correo del roster"
-                      >
-                        <Mail size={11} /> {roster.email}
-                      </button>
+                      <div className="crm-email-cell">
+                        <span className="crm-email-badge suggested">Sugerido</span>
+                        <span className="crm-email">{roster.email}</span>
+                        <button
+                          className="crm-email-assign-btn"
+                          onClick={() => { onSetEmail(participant.name, roster.email); if (!participant.team && roster.team) onSetTeam(participant.name, roster.team); }}
+                          title="Asignar correo del roster"
+                        >Asignar</button>
+                      </div>
                     ) : (
                       <span className="crm-email missing">Sin correo</span>
                     )}
