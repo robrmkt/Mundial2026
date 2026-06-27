@@ -4,17 +4,18 @@ import { readRhPopupState, writeRhPopupState } from '../services/transitionNotic
 const POPUP_MIN_VERSION = 3;
 const DEFAULT_MAX_VIEWS = 10;
 const DEFAULT_COOLDOWN_HOURS = 0.33;
+const RH_CLOSE_AT = '2026-06-27T21:15:00-06:00';
 
 const DEFAULT_COPY = {
   before_close: {
     title: 'La Quiniela RH está por finalizar',
-    body: 'La fase de grupos está por cerrar y la Quiniela RH quedará guardada como histórico. ¿Quieres seguir jugando? Entra a la Nueva Quiniela y registra tus pronósticos para la siguiente fase. Si ya participaste, usa tu mismo correo. Si eres nuevo, también puedes registrarte. Pasa la voz.',
-    primaryCta: 'Continuar a Nueva Quiniela',
+    body: 'La Quiniela RH cierra con la fase de grupos y sus resultados quedarán guardados como histórico. Gracias por participar. Si quieres seguir viviendo la fiebre mundialista, puedes sumarte a la Nueva Quiniela: una dinámica aparte para seguir pronosticando y jugando por diversión. Pasa la voz.',
+    primaryCta: 'Sumarme a Nueva Quiniela',
     secondaryCta: 'Cerrar'
   },
   after_close: {
     title: 'La Quiniela RH ya finalizó',
-    body: 'La Quiniela RH cerró con la fase de grupos y sus resultados quedaron guardados como histórico. La siguiente fase ya está disponible. Puedes entrar a la Nueva Quiniela, registrar tus pronósticos y seguir participando. Pasa la voz.',
+    body: 'La Quiniela RH cerró con la fase de grupos y sus resultados quedaron guardados como histórico. Gracias por participar. Si quieres seguir viviendo la fiebre mundialista, puedes sumarte a la Nueva Quiniela: una dinámica aparte para seguir pronosticando y jugando por diversión. Pasa la voz.',
     primaryCta: 'Nueva Quiniela',
     secondaryCta: 'Ver Quiniela RH',
     tertiaryCta: 'Cerrar'
@@ -33,7 +34,7 @@ function getPopupConfig(settings) {
     maxViews: DEFAULT_MAX_VIEWS,
     cooldownHours: DEFAULT_COOLDOWN_HOURS,
     startsAt: '2026-06-26T00:00:00-06:00',
-    afterCloseAt: '2026-06-28T00:00:00-06:00',
+    afterCloseAt: RH_CLOSE_AT,
     endsAt: '2026-07-02T23:59:00-06:00',
     beforeClose: DEFAULT_COPY.before_close,
     afterClose: DEFAULT_COPY.after_close,
@@ -45,6 +46,7 @@ function getPopupConfig(settings) {
     version: Math.max(Number(rawConfig.version) || POPUP_MIN_VERSION, POPUP_MIN_VERSION),
     maxViews: Math.max(Number(rawConfig.maxViews) || DEFAULT_MAX_VIEWS, DEFAULT_MAX_VIEWS),
     cooldownHours: Number.isFinite(Number(rawConfig.cooldownHours)) ? Number(rawConfig.cooldownHours) : DEFAULT_COOLDOWN_HOURS,
+    afterCloseAt: RH_CLOSE_AT,
     beforeClose: { ...(rawConfig.beforeClose || {}), ...DEFAULT_COPY.before_close },
     afterClose: { ...(rawConfig.afterClose || {}), ...DEFAULT_COPY.after_close }
   };
@@ -60,7 +62,7 @@ function canShowAgain(state, now, cooldownHours) {
   return now - lastSeenAt >= cooldownMs;
 }
 
-export default function RhTransitionPopup({ settings, activeTab, goToTab, isAdmin, hasArchive }) {
+export default function RhTransitionPopup({ settings, activeTab, goToTab, isAdmin }) {
   const [popupState, setPopupState] = useState({ visible: false, phase: 'before_close', key: '' });
   const popup = useMemo(() => getPopupConfig(settings), [settings]);
   const version = popup.version || POPUP_MIN_VERSION;
@@ -70,9 +72,9 @@ export default function RhTransitionPopup({ settings, activeTab, goToTab, isAdmi
   useEffect(() => {
     let nextState = { visible: false, phase: 'before_close', key: '' };
     const now = Date.now();
-    const afterCloseAt = popup.afterCloseAt || settings?.startAt;
+    const afterCloseAt = popup.afterCloseAt || RH_CLOSE_AT;
     const afterCloseTime = afterCloseAt ? Date.parse(afterCloseAt) : Infinity;
-    const phase = hasArchive || now >= afterCloseTime ? 'after_close' : 'before_close';
+    const phase = now >= afterCloseTime ? 'after_close' : 'before_close';
     const key = `rh_to_new_quiniela_popup_v${version}_${phase}`;
 
     if (!isAdmin && popup.enabled !== false && activeTab !== 'nuevaQuiniela' && activeTab !== 'capitalHumano') {
@@ -92,7 +94,7 @@ export default function RhTransitionPopup({ settings, activeTab, goToTab, isAdmi
 
     const timer = setTimeout(() => setPopupState(nextState), 0);
     return () => clearTimeout(timer);
-  }, [activeTab, cooldownHours, hasArchive, isAdmin, maxViews, popup.afterCloseAt, popup.enabled, popup.endsAt, popup.startsAt, settings?.startAt, version]);
+  }, [activeTab, cooldownHours, isAdmin, maxViews, popup.afterCloseAt, popup.enabled, popup.endsAt, popup.startsAt, version]);
 
   const close = (action = 'close') => {
     const state = readRhPopupState(popupState.key);
