@@ -45,8 +45,8 @@ function getPopupConfig(settings) {
     version: Math.max(Number(rawConfig.version) || POPUP_MIN_VERSION, POPUP_MIN_VERSION),
     maxViews: Math.max(Number(rawConfig.maxViews) || DEFAULT_MAX_VIEWS, DEFAULT_MAX_VIEWS),
     cooldownHours: Number.isFinite(Number(rawConfig.cooldownHours)) ? Number(rawConfig.cooldownHours) : DEFAULT_COOLDOWN_HOURS,
-    beforeClose: { ...DEFAULT_COPY.before_close, ...(rawConfig.beforeClose || {}) },
-    afterClose: { ...DEFAULT_COPY.after_close, ...(rawConfig.afterClose || {}) }
+    beforeClose: { ...(rawConfig.beforeClose || {}), ...DEFAULT_COPY.before_close },
+    afterClose: { ...(rawConfig.afterClose || {}), ...DEFAULT_COPY.after_close }
   };
 }
 
@@ -120,8 +120,8 @@ export default function RhTransitionPopup({ settings, activeTab, goToTab, isAdmi
   if (!popupState.visible) return null;
 
   const copy = popupState.phase === 'after_close'
-    ? { ...DEFAULT_COPY.after_close, ...(popup.afterClose || {}) }
-    : { ...DEFAULT_COPY.before_close, ...(popup.beforeClose || {}) };
+    ? { ...(popup.afterClose || {}), ...DEFAULT_COPY.after_close }
+    : { ...(popup.beforeClose || {}), ...DEFAULT_COPY.before_close };
 
   return (
     <div className="transition-popup-overlay" role="dialog" aria-modal="true" aria-labelledby="rh-popup-title">
