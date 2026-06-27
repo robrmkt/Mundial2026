@@ -6,6 +6,8 @@
 // partido y el del siguiente, el top-3 permanece fijo y acumula ese tiempo real.
 // El que más tiempo acumula desde el inicio del Mundial es la Leyenda.
 
+import { assignDenseRanksByPoints } from './ranking';
+
 const MATCH_DURATION_MS = 2 * 60 * 60 * 1000; // ~fin del partido = inicio + 2h
 
 function scoreParticipant(predictions, playedMatches) {
@@ -32,14 +34,8 @@ function scoreParticipant(predictions, playedMatches) {
 
 // Mismo orden que la tabla general: puntos, luego exactos, luego efectividad.
 function rankParticipants(participants, playedMatches) {
-  return participants
-    .map(p => ({ name: p.name, ...scoreParticipant(p.predictions, playedMatches) }))
-    .sort((a, b) => {
-      if (b.points !== a.points) return b.points - a.points;
-      if (b.exactHits !== a.exactHits) return b.exactHits - a.exactHits;
-      return b.effectiveness - a.effectiveness;
-    })
-    .map((p, idx) => ({ ...p, rank: idx + 1 }));
+  const scored = participants.map(p => ({ name: p.name, ...scoreParticipant(p.predictions, playedMatches) }));
+  return assignDenseRanksByPoints(scored);
 }
 
 // liveTop3 = nombres del top-3 ACTUAL en pantalla (incluye el partido en vivo).
@@ -64,10 +60,11 @@ export function computePodiumAndMovement(matches = [], participants = [], nowTs 
     let top3names;
     if (isLast && Array.isArray(liveTop3) && liveTop3.length > 0) {
       // Tramo abierto: usa el podio que se ve en pantalla (en vivo).
-      top3names = liveTop3.slice(0, 3);
+      top3names = liveTop3;
     } else {
       const ranked = rankParticipants(participants, finished.slice(0, i + 1));
-      top3names = ranked.slice(0, 3).filter(p => p.points > 0).map(p => p.name); // 0 pts no "pisa" el podio
+      // dense: todos los que ocupan lugar 1-3 (los empatados comparten lugar). 0 pts no pisa.
+      top3names = ranked.filter(p => p.points > 0 && p.rank <= 3).map(p => p.name);
     }
     const segStart = Math.min(finished[i]._end, nowTs);
     const segEnd = isLast ? nowTs : Math.min(finished[i + 1]._end, nowTs);

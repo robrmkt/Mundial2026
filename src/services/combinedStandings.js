@@ -1,3 +1,5 @@
+import { assignDenseRanksByPoints } from './ranking';
+
 export function buildSafeCombinedStandings({ rhStandings = [], newQuinielaStandings = [] }) {
   const byKey = new Map();
 
@@ -40,11 +42,5 @@ export function buildSafeCombinedStandings({ rhStandings = [], newQuinielaStandi
     }
   });
 
-  return Array.from(byKey.values())
-    .sort((a, b) => {
-      if (b.points !== a.points) return b.points - a.points;
-      if ((b.exactHits || 0) !== (a.exactHits || 0)) return (b.exactHits || 0) - (a.exactHits || 0);
-      return String(a.name || '').localeCompare(String(b.name || ''), 'es');
-    })
-    .map((item, index) => ({ ...item, rank: index + 1 }));
+  return assignDenseRanksByPoints(Array.from(byKey.values()));
 }

@@ -2,6 +2,7 @@ import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } fro
 import { getDashboardMode } from './services/standingsMode';
 import { buildContinuationStandings } from './services/continuationStandings';
 import { buildSafeCombinedStandings } from './services/combinedStandings';
+import { assignDenseRanksByPoints, getDensePodiumNames } from './services/ranking';
 import { Trophy, Square, Users, MonitorPlay, RefreshCw, Wifi, WifiOff } from 'lucide-react';
 import AdminLogin from './components/AdminLogin';
 import Dashboard from './components/Dashboard';
@@ -509,13 +510,8 @@ export default function App() {
       return { ...p, ...stats };
     });
 
-    const sorted = [...scoredList].sort((a, b) => {
-      if (b.points !== a.points) return b.points - a.points;
-      if (b.exactHits !== a.exactHits) return b.exactHits - a.exactHits;
-      return b.effectiveness - a.effectiveness;
-    });
-
-    return sorted.map((p, idx) => ({ ...p, rank: idx + 1 }));
+    // Ranking DENSO por puntos: los empatados en puntos comparten lugar.
+    return assignDenseRanksByPoints(scoredList);
   }, [matches, participants]);
 
   const newQuinielaStandings = useMemo(() =>
@@ -553,7 +549,7 @@ export default function App() {
   // Cálculo RETROACTIVO desde el inicio del Mundial: tiempo real acumulado en el
   // top-3 según los resultados. El tramo abierto (último partido → ahora) se acredita
   // al podio que se VE en pantalla (top-3 en vivo), para que el líder actual cuente.
-  const liveTop3 = useMemo(() => standings.slice(0, 3).map(p => p.name), [standings]);
+  const liveTop3 = useMemo(() => getDensePodiumNames(standings, 3), [standings]);
   const { podiumMs, legend, movement } = useMemo(
     () => computePodiumAndMovement(matches, participants, nowTs, liveTop3),
     [matches, participants, nowTs, liveTop3]

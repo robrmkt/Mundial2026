@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Trophy, Medal } from 'lucide-react';
 import LivePulse from './LivePulse';
 import PlayerCard from './PlayerCard';
@@ -6,6 +6,14 @@ import RankMovement from './RankMovement';
 import TeamBadge from './TeamBadge';
 import TeamRivalryBar from './TeamRivalryBar';
 import { formatPodiumTime } from '../services/podiumTime';
+import { getPodiumGroups } from '../services/ranking';
+
+function rankLabel(rank) {
+  if (rank === 1) return '1er lugar';
+  if (rank === 2) return '2do lugar';
+  if (rank === 3) return '3er lugar';
+  return `${rank}° lugar`;
+}
 
 const PODIUM_REACTIONS = [
   { key: 'bank', icon: '🔥', label: 'Banco' },
@@ -13,25 +21,66 @@ const PODIUM_REACTIONS = [
   { key: 'salt', icon: '🧂', label: 'Arde' }
 ];
 
-// Pódium de los tres primeros lugares
-function Podium({ topThree, onSelect, legend, reactions = {}, onReact }) {
-  const [first, second, third] = topThree;
+// Pódium con empates reales: cada lugar (1/2/3) puede tener 1 o varias personas.
+const PODIUM_META = {
+  1: { medal: '🏆', label: 'I', cls: 'gold' },
+  2: { medal: '🥈', label: 'II', cls: 'silver' },
+  3: { medal: '🥉', label: 'III', cls: 'bronze' }
+};
 
+function Podium({ podiumGroups, onSelect, legend, reactions = {}, onReact }) {
   const triggerReaction = (playerName, reaction) => {
     onReact?.(playerName, reaction);
   };
 
-  const renderStep = (player, place) => {
-    const meta = {
-      1: { medal: '🏆', label: 'I', cls: 'gold' },
-      2: { medal: '🥈', label: 'II', cls: 'silver' },
-      3: { medal: '🥉', label: 'III', cls: 'bronze' }
-    }[place];
+  const groupsByRank = {
+    1: podiumGroups.find(g => g.rank === 1),
+    2: podiumGroups.find(g => g.rank === 2),
+    3: podiumGroups.find(g => g.rank === 3)
+  };
 
-    if (!player) {
+  const renderStep = (group, place) => {
+    const meta = PODIUM_META[place];
+
+    if (!group || group.players.length === 0) {
       return <div className={`podium-step ${meta.cls} empty`}><div className="podium-block">{meta.label}</div></div>;
     }
 
+    // Empate: tarjeta compacta con la lista de empatados (cada uno abre su ficha).
+    if (group.players.length > 1) {
+      return (
+        <div className={`podium-step ${meta.cls} tied`}>
+          <div className="podium-card podium-card-tied">
+            <span className="podium-medal">{meta.medal}</span>
+            <span className="podium-tie-label">Empate en {rankLabel(place)}</span>
+            <span className="podium-points">{group.points} <small>PTS</small></span>
+            <div className="podium-tie-list" aria-label={`Empatados en ${rankLabel(place)}`}>
+              {group.players.map(player => (
+                <button
+                  key={player.name}
+                  type="button"
+                  className="podium-tie-player"
+                  onClick={() => onSelect(player)}
+                  title={`Ver ficha de ${player.name}`}
+                >
+                  {player.photo ? (
+                    <span className="podium-tie-avatar has-photo"><img src={player.photo} alt="" /></span>
+                  ) : (
+                    <span className="podium-tie-avatar">{player.avatar}</span>
+                  )}
+                  <span className="podium-tie-name">{player.name}</span>
+                  <TeamBadge team={player.team} className="podium-tie-team" />
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="podium-block">{meta.label}</div>
+        </div>
+      );
+    }
+
+    // Lugar sin empate: tarjeta rica clásica.
+    const player = group.players[0];
     const playerReactions = reactions[player.name] || {};
 
     return (
@@ -95,16 +144,20 @@ function Podium({ topThree, onSelect, legend, reactions = {}, onReact }) {
         <p>Copa Mundial FIFA 26 · Termómetro del podio abierto</p>
       </div>
       <div className="podium-row">
-        {renderStep(second, 2)}
-        {renderStep(first, 1)}
-        {renderStep(third, 3)}
+        {renderStep(groupsByRank[2], 2)}
+        {renderStep(groupsByRank[1], 1)}
+        {renderStep(groupsByRank[3], 3)}
       </div>
     </section>
   );
 }
 
 export default function Dashboard({ standings, matches = [], chatMessages = [], support = {}, podiumReactions = {}, movement = {}, podiumMs = {}, legend = null, onSendMessage, onReaction, onPodiumReaction, onOpenPredictionsForMatch, dashboardMode = 'rh_current', dashboardTitle, onGoNewQuiniela }) {
-  const topThree = standings.slice(0, 3);
+  const podiumGroups = useMemo(() => getPodiumGroups(standings, 3), [standings]);
+  const podiumNames = useMemo(
+    () => new Set(podiumGroups.flatMap(g => g.players.map(p => p.name))),
+    [podiumGroups]
+  );
   const [selected, setSelected] = useState(null);
 
   const openCard = (player) => {
@@ -115,7 +168,7 @@ export default function Dashboard({ standings, matches = [], chatMessages = [], 
 
   return (
     <div className="command-grid">
-      <Podium topThree={topThree} onSelect={openCard} legend={legend} reactions={podiumReactions} onReact={onPodiumReaction} />
+      <Podium podiumGroups={podiumGroups} onSelect={openCard} legend={legend} reactions={podiumReactions} onReact={onPodiumReaction} />
 
       <LivePulse
         matches={matches}
@@ -240,7 +293,7 @@ export default function Dashboard({ standings, matches = [], chatMessages = [], 
           rankDelta={movement[selected.player.name]}
           podiumMs={podiumMs[selected.player.name] || 0}
           isLegend={legend?.name === selected.player.name}
-          accruingPodium={standings.slice(0, 3).some(p => p.name === selected.player.name)}
+          accruingPodium={podiumNames.has(selected.player.name)}
           onClose={() => setSelected(null)}
         />
       )}

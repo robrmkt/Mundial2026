@@ -1,3 +1,5 @@
+import { assignDenseRanksByPoints } from './ranking';
+
 function normalizeSubmissionPredictions(predictions) {
   const result = {};
   Object.entries(predictions || {}).forEach(([matchId, p]) => {
@@ -64,12 +66,7 @@ export function buildContinuationStandings({ participants, phaseSubmissions, mat
     byEmail.set(email, existing);
   });
 
-  return Array.from(byEmail.values())
-    .map(p => ({ ...p, ...computeScore(p.predictions, matches) }))
-    .sort((a, b) => {
-      if (b.points !== a.points) return b.points - a.points;
-      if (b.exactHits !== a.exactHits) return b.exactHits - a.exactHits;
-      return b.effectiveness - a.effectiveness;
-    })
-    .map((p, idx) => ({ ...p, rank: idx + 1 }));
+  const scored = Array.from(byEmail.values())
+    .map(p => ({ ...p, ...computeScore(p.predictions, matches) }));
+  return assignDenseRanksByPoints(scored);
 }
