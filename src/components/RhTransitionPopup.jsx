@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
 import { readRhPopupState, writeRhPopupState } from '../services/transitionNotice';
 
-const POPUP_MIN_VERSION = 2;
-const DEFAULT_MAX_VIEWS = 4;
-const DEFAULT_COOLDOWN_HOURS = 2;
+const POPUP_MIN_VERSION = 3;
+const DEFAULT_MAX_VIEWS = 10;
+const DEFAULT_COOLDOWN_HOURS = 0.33;
 
 const DEFAULT_COPY = {
   before_close: {
