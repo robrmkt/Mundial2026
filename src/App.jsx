@@ -543,6 +543,15 @@ export default function App() {
       ? 'Tabla General · Acumulado Mundialista'
       : 'Tabla General · Nueva Quiniela';
 
+  // Pronósticos: en Nueva Quiniela / Acumulado usa participantes de la nueva fase,
+  // para que el contador refleje los registros aprobados (no los 28 RH).
+  const predictionParticipants = useMemo(() => {
+    if (dashboardMode === 'new_quiniela' || dashboardMode === 'combined') {
+      return newQuinielaStandings;
+    }
+    return participants;
+  }, [dashboardMode, newQuinielaStandings, participants]);
+
   // Transición automática a las 23:00 del 27 jun: antes muestra RH, después Nueva.
   const newQuinielaStarted = useMemo(() => {
     const startAt = Date.parse(continuationSettings?.startAt || DEFAULT_NEW_QUINIELA_START_AT);
@@ -981,7 +990,7 @@ export default function App() {
             <p className="prediction-page-subtitle">
               Consulta qué marcador apostó la oficina para el partido actual o el siguiente.
             </p>
-            <PredictionGrid matches={matches} participants={participants} />
+            <PredictionGrid matches={matches} participants={predictionParticipants} />
           </div>
         )}
         {activeTab === 'matches' && (
