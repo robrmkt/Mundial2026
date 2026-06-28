@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react';
-import { Trophy, Medal } from 'lucide-react';
+import Dashboard from './Dashboard';
 import { fetchCapitalHumanoArchive } from '../services/predictionWindows';
 
+// Vista histórica de la Quiniela RH: reutiliza el tablero (Dashboard) pero con
+// los datos CONGELADOS del cierre (modo rh_archive). Es una fotografía, no se mueve.
 export default function CapitalHumanoArchive({ initialArchive = null, fallbackStandings = [], onGoNew }) {
   const [archive, setArchive] = useState(initialArchive);
 
@@ -9,51 +11,51 @@ export default function CapitalHumanoArchive({ initialArchive = null, fallbackSt
     fetchCapitalHumanoArchive().then(d => setArchive(d.archive || null)).catch(() => {});
   }, []);
 
-  const standings = archive?.standings?.length ? archive.standings : fallbackStandings;
-  const podium = archive?.podium?.length ? archive.podium : standings.slice(0, 3);
+  const frozenStandings = archive?.standings?.length ? archive.standings : fallbackStandings;
+  const frozenMatches = Array.isArray(archive?.matches) ? archive.matches : [];
+
+  if (!frozenStandings.length) {
+    return (
+      <section className="archive-page">
+        <div className="archive-hero">
+          <span className="archive-status">Quiniela RH</span>
+          <h2>Quiniela RH · Fase de grupos</h2>
+          <p>El histórico RH todavía no ha sido cerrado.</p>
+          <button className="phase-submit-btn" onClick={onGoNew}>Ir a Nueva Quiniela</button>
+        </div>
+      </section>
+    );
+  }
 
   return (
-    <section className="archive-page">
+    <section className="archive-page archive-dashboard-page">
       <div className="archive-hero">
-        <span className="archive-status">Histórico cerrado</span>
+        <span className="archive-status">Histórico RH</span>
         <h2>{archive?.title || 'Quiniela RH · Fase de grupos'}</h2>
-        <p>Esta vista muestra la dinámica organizada por Capital Humano. Es una fotografía histórica y ya no se mueve.</p>
-        {archive?.frozenAt && <small>Congelado: {new Date(archive.frozenAt).toLocaleString('es-MX')}</small>}
+        <p>Tabla final de la Quiniela RH. Esta vista conserva el cierre de la fase de grupos.</p>
+        {archive?.frozenAt && (
+          <small>Congelado: {new Date(archive.frozenAt).toLocaleString('es-MX')}</small>
+        )}
         <button className="phase-submit-btn" onClick={onGoNew}>Ir a Nueva Quiniela</button>
       </div>
 
-      <div className="archive-podium">
-        <h3><Trophy size={18} /> Podio final</h3>
-        <div className="archive-podium-row">
-          {podium.map((p, index) => (
-            <div key={p.name || index} className="archive-podium-card">
-              <span>{index === 0 ? '🏆' : index === 1 ? '🥈' : '🥉'}</span>
-              <strong>{p.name}</strong>
-              <small>{p.points || 0} pts · {p.exactHits || 0} exactos</small>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      <div className="archive-table-card">
-        <h3><Medal size={18} /> Tabla final congelada</h3>
-        <div className="standings-table-container">
-          <table className="standings-table">
-            <thead><tr><th>Pos</th><th>Participante</th><th>Exactos</th><th>Resultados</th><th>Puntos</th></tr></thead>
-            <tbody>
-              {standings.map((p, idx) => (
-                <tr key={p.name || idx}>
-                  <td>#{p.rank || idx + 1}</td>
-                  <td>{p.name}</td>
-                  <td>{p.exactHits || 0}</td>
-                  <td>{p.outcomeHits || 0}</td>
-                  <td><strong>{p.points || 0}</strong></td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
+      <Dashboard
+        standings={frozenStandings}
+        matches={frozenMatches}
+        chatMessages={[]}
+        support={{}}
+        podiumReactions={{}}
+        movement={{}}
+        podiumMs={{}}
+        legend={null}
+        onSendMessage={() => {}}
+        onReaction={() => {}}
+        onPodiumReaction={() => {}}
+        onOpenPredictionsForMatch={() => {}}
+        dashboardMode="rh_archive"
+        dashboardTitle="Tabla Final · Quiniela RH"
+        onGoNewQuiniela={onGoNew}
+      />
     </section>
   );
 }

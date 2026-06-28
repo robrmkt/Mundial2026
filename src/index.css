@@ -7590,3 +7590,6 @@ details[open] .newq-acc-chevron { transform: rotate(180deg); }
   .podium-tie-name { font-size: 0.72rem; }
   .podium-step.tied .podium-reactions, .podium-card-tied .podium-mini-stats { display: none; }
 }
+
+/* Vista histórica RH: tablero congelado, sin interacciones en vivo en el podio. */
+.archive-dashboard-page .podium-reactions { display: none; }

@@ -239,7 +239,16 @@ export default function AdminPredictionExtension({ participants, standings = [],
     setFreezing(true);
     try {
       const frozenStandings = standings.length ? standings : [...participants].map((p, index) => ({ ...p, rank: p.rank || index + 1 }));
-      await freezeCapitalHumanoArchive({ matches, participants, standings: frozenStandings, generatedBy: 'admin' });
+      await freezeCapitalHumanoArchive({
+        title: 'Quiniela RH · Fase de grupos',
+        frozenAt: new Date().toISOString(),
+        matches,
+        participants,
+        standings: frozenStandings,
+        podium: frozenStandings.filter(p => p.rank <= 3),
+        source: 'rh_final',
+        generatedBy: 'admin'
+      });
       alert('Quiniela RH congelada como histórico.');
       onSettingsSaved?.();
     } catch (e) { alert(e.message); }

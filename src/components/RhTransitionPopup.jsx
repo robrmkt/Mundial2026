@@ -17,7 +17,7 @@ const DEFAULT_COPY = {
     title: 'La Quiniela RH ya finalizó',
     body: 'La Quiniela RH cerró con la fase de grupos y sus resultados quedaron guardados como histórico. Gracias por participar. Si quieres seguir viviendo la fiebre mundialista, puedes sumarte a la Nueva Quiniela: una dinámica aparte para seguir pronosticando y jugando por diversión. Pasa la voz.',
     primaryCta: 'Nueva Quiniela',
-    secondaryCta: 'Ver Quiniela RH',
+    secondaryCta: 'Ver histórico RH',
     tertiaryCta: 'Cerrar'
   }
 };
@@ -134,7 +134,7 @@ export default function RhTransitionPopup({ settings, activeTab, goToTab, isAdmi
         <div className="transition-popup-actions">
           <button className="transition-popup-primary" onClick={goNew}>{copy.primaryCta || 'Nueva Quiniela'}</button>
           {popupState.phase === 'after_close' && (
-            <button className="transition-popup-secondary" onClick={goRh}>{copy.secondaryCta || 'Ver Quiniela RH'}</button>
+            <button className="transition-popup-secondary" onClick={goRh}>{copy.secondaryCta || 'Ver histórico RH'}</button>
           )}
           <button className="transition-popup-secondary muted" onClick={() => close('close')}>
             {popupState.phase === 'after_close' ? (copy.tertiaryCta || 'Cerrar') : (copy.secondaryCta || 'Cerrar')}
