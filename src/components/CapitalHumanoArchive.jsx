@@ -17,11 +17,10 @@ export default function CapitalHumanoArchive({ initialArchive = null, fallbackSt
   if (!frozenStandings.length) {
     return (
       <section className="archive-page">
-        <div className="archive-hero">
-          <span className="archive-status">Quiniela RH</span>
-          <h2>Quiniela RH · Fase de grupos</h2>
-          <p>El histórico RH todavía no ha sido cerrado.</p>
-          <button className="phase-submit-btn" onClick={onGoNew}>Ir a Nueva Quiniela</button>
+        <div className="rh-archive-hero">
+          <span className="rh-archive-kicker">Quiniela RH</span>
+          <h2 className="rh-archive-title">Quiniela RH · Fase de grupos</h2>
+          <p className="rh-archive-message">El histórico RH todavía no ha sido cerrado por el administrador.</p>
         </div>
       </section>
     );
@@ -29,14 +28,16 @@ export default function CapitalHumanoArchive({ initialArchive = null, fallbackSt
 
   return (
     <section className="archive-page archive-dashboard-page">
-      <div className="archive-hero">
-        <span className="archive-status">Histórico RH</span>
-        <h2>{archive?.title || 'Quiniela RH · Fase de grupos'}</h2>
-        <p>Tabla final de la Quiniela RH. Esta vista conserva el cierre de la fase de grupos.</p>
+      <div className="rh-archive-hero">
+        <span className="rh-archive-kicker">Histórico RH</span>
+        <h2 className="rh-archive-title">{archive?.title || 'Quiniela RH · Fase de grupos'}</h2>
+        <p className="rh-archive-message">
+          ¡Gracias por participar! Capital Humano contactará a los ganadores.<br />
+          Estos son los resultados finales de la Quiniela RH.
+        </p>
         {archive?.frozenAt && (
-          <small>Congelado: {new Date(archive.frozenAt).toLocaleString('es-MX')}</small>
+          <small className="rh-archive-date">Cerrado el {new Date(archive.frozenAt).toLocaleString('es-MX', { dateStyle: 'long', timeStyle: 'short' })}</small>
         )}
-        <button className="phase-submit-btn" onClick={onGoNew}>Ir a Nueva Quiniela</button>
       </div>
 
       <Dashboard

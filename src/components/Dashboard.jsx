@@ -166,6 +166,7 @@ export default function Dashboard({ standings, matches = [], chatMessages = [], 
     [podiumGroups]
   );
   const [selected, setSelected] = useState(null);
+  const [pulseOpen, setPulseOpen] = useState(true);
 
   const openCard = (player) => {
     const d = new Date();
@@ -173,19 +174,37 @@ export default function Dashboard({ standings, matches = [], chatMessages = [], 
     setSelected({ player, todayKey });
   };
 
+  const showPulse = dashboardMode !== 'rh_archive';
+
   return (
     <div className="command-grid">
       <Podium podiumGroups={podiumGroups} onSelect={openCard} legend={legend} reactions={podiumReactions} onReact={onPodiumReaction} />
 
-      <LivePulse
-        matches={matches}
-        participants={standings}
-        support={support}
-        chatMessages={chatMessages}
-        onSendMessage={onSendMessage}
-        onReaction={onReaction}
-        onOpenPredictionsForMatch={onOpenPredictionsForMatch}
-      />
+      {showPulse && (
+        <div className="pulse-panel-wrapper">
+          <button
+            type="button"
+            className="pulse-collapse-toggle"
+            onClick={() => setPulseOpen(o => !o)}
+            aria-expanded={pulseOpen}
+            aria-label={pulseOpen ? 'Ocultar pulso en vivo' : 'Mostrar pulso en vivo'}
+          >
+            <span>⚡ Pulso en vivo</span>
+            <span className="pulse-toggle-caret">{pulseOpen ? '▲' : '▼'}</span>
+          </button>
+          {pulseOpen && (
+            <LivePulse
+              matches={matches}
+              participants={standings}
+              support={support}
+              chatMessages={chatMessages}
+              onSendMessage={onSendMessage}
+              onReaction={onReaction}
+              onOpenPredictionsForMatch={onOpenPredictionsForMatch}
+            />
+          )}
+        </div>
+      )}
 
       <div className="command-right">
         <TeamRivalryBar standings={standings} />

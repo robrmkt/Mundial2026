@@ -892,13 +892,13 @@ export default function App() {
               <button
                 className={`nav-btn nav-btn-rh-archive ${activeTab === 'capitalHumano' ? 'active' : ''}`}
                 onClick={() => goToTab('capitalHumano')}
-                aria-label="Quiniela RH"
-                title="Quiniela RH"
+                aria-label="Resultados Quiniela RH"
+                title="Resultados Quiniela RH"
               >
                 <Trophy size={15} />
                 <span className="nav-btn-text">
-                  <span className="desktop-label">Quiniela RH</span>
-                  <span className="mobile-label">RH</span>
+                  <span className="desktop-label">Resultados Quiniela RH</span>
+                  <span className="mobile-label">Quiniela RH</span>
                 </span>
               </button>
             )}
