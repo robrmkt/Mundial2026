@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { CheckCircle2, ChevronDown, Save } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, ChevronDown, Save, X } from 'lucide-react';
 import { fetchContinuationProfile, inferTeamFromEmail, teamLabel } from '../services/continuation';
 import { fetchPredictionWindows, fetchPhaseSubmissions, getWindowStatus, savePhaseSubmission, recordPhaseProgress } from '../services/predictionWindows';
 import { getMatchKickoff, isMatchConfirmed, isMatchLocked, LOCK_MINUTES_BEFORE_KICKOFF } from '../services/matchLock';
@@ -119,6 +119,8 @@ export default function NewQuinielaPage({ matches = [], settings = {} }) {
   const [filter, setFilter] = useState('open');
   const [draftRestorePrompt, setDraftRestorePrompt] = useState(null);
   const [hasSeenSaveHint, setHasSeenSaveHint] = useState(false);
+  const [showSaveModal, setShowSaveModal] = useState(false);
+  const [postSubmit, setPostSubmit] = useState(null); // { filledCount, totalOpen, lockedWithoutPred }
   const emailRef = useRef(null);
 
   useEffect(() => { emailRef.current?.focus(); }, []);
@@ -183,6 +185,24 @@ export default function NewQuinielaPage({ matches = [], settings = {} }) {
     const p = predictions[m.id];
     return p?.home !== '' && p?.home !== undefined && p?.away !== '' && p?.away !== undefined;
   }).length, [openMatches, predictions]);
+
+  const missingOpenMatches = useMemo(() => openMatches.filter(m => {
+    const p = predictions[m.id];
+    return !(p?.home !== '' && p?.home !== undefined && p?.away !== '' && p?.away !== undefined);
+  }), [openMatches, predictions]);
+
+  const lockedWithoutPred = useMemo(() => lockedMatches.filter(m => {
+    const p = predictions[m.id];
+    return !(p?.home !== '' && p?.home !== undefined && p?.away !== '' && p?.away !== undefined);
+  }).length, [lockedMatches, predictions]);
+
+  // Matches closing within 30 minutes
+  const closingSoon = useMemo(() => openMatches.filter(m => {
+    const kickoff = getMatchKickoff(m);
+    if (!kickoff) return false;
+    const minsUntil = (Date.parse(kickoff) - Date.now()) / 60000 - LOCK_MINUTES_BEFORE_KICKOFF;
+    return minsUntil > 0 && minsUntil <= 30;
+  }), [openMatches]);
 
   const loadExistingSubmission = async (targetEmail, windowId) => {
     if (!windowId) return;
@@ -255,7 +275,14 @@ export default function NewQuinielaPage({ matches = [], settings = {} }) {
     });
   };
 
+  const openSaveModal = () => {
+    if (!activeWindow?.id || !profile) { save(); return; }
+    if (missingOpenMatches.length > 0) { setShowSaveModal(true); return; }
+    save();
+  };
+
   const save = async () => {
+    setShowSaveModal(false);
     if (!activeWindow?.id || !profile) {
       setError('No hay una ventana de pronósticos activa. El administrador debe abrir una ventana primero.');
       return;
@@ -276,6 +303,7 @@ export default function NewQuinielaPage({ matches = [], settings = {} }) {
       if (draftKey) localStorage.removeItem(draftKey);
       recordPhaseProgress({ windowId: activeWindow.id, email: profile.email, participantName, team, userType: profile.userType, status: 'submitted', predictionCount: filled.length });
       document.activeElement?.blur?.();
+      setPostSubmit({ filledCount: filled.length, totalOpen: openMatches.length, lockedWithoutPred });
     } catch (err) {
       setError(err.message);
     } finally {
@@ -287,6 +315,19 @@ export default function NewQuinielaPage({ matches = [], settings = {} }) {
     p => p?.home !== '' && p?.home !== undefined && p?.away !== '' && p?.away !== undefined
   );
   const canSave = dirty && hasPredictions && !saving;
+
+  const submissionStatusLabel = {
+    pending: 'Pendiente de revisión',
+    approved: 'Aprobada ✓',
+    rejected: 'Rechazada',
+    edited: 'Actualizada · pendiente'
+  };
+  const submissionStatusClass = {
+    pending: 'badge-pending',
+    approved: 'badge-approved',
+    rejected: 'badge-rejected',
+    edited: 'badge-edited'
+  };
 
   const displayProfile = profile ? {
     name: profile.userType === 'new' ? (newUser.name || 'Nuevo participante') : profile.name,
@@ -312,9 +353,53 @@ export default function NewQuinielaPage({ matches = [], settings = {} }) {
     );
   }
 
+  // Save confirmation modal
+  const SaveModal = showSaveModal && (
+    <div className="newq-modal-overlay" onClick={() => setShowSaveModal(false)}>
+      <div className="newq-modal" onClick={e => e.stopPropagation()}>
+        <button className="newq-modal-close" onClick={() => setShowSaveModal(false)} aria-label="Cerrar"><X size={18} /></button>
+        <div className="newq-modal-icon"><AlertTriangle size={28} /></div>
+        <h3 className="newq-modal-title">{completedCount} de {openMatches.length} partidos capturados</h3>
+        <p className="newq-modal-body">Hay {missingOpenMatches.length} partido{missingOpenMatches.length !== 1 ? 's' : ''} sin pronóstico:</p>
+        <ul className="newq-modal-missing-list">
+          {missingOpenMatches.slice(0, 8).map(m => (
+            <li key={m.id}>{m.homeTeam} vs {m.awayTeam}</li>
+          ))}
+          {missingOpenMatches.length > 8 && <li>…y {missingOpenMatches.length - 8} más</li>}
+        </ul>
+        <div className="newq-modal-actions">
+          <button className="newq-btn-secondary" onClick={() => { setShowSaveModal(false); setFilter('open'); }}>
+            Volver a completar
+          </button>
+          <button className="newq-btn-primary" onClick={save}>
+            Enviar de todos modos
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+
+  // Post-submit summary screen
+  const PostSubmitScreen = postSubmit && (
+    <div className="newq-post-submit">
+      <div className="newq-post-submit-icon">✅</div>
+      <h3>¡Quiniela guardada!</h3>
+      <div className="newq-post-submit-stats">
+        <div className="newq-post-stat"><strong>{postSubmit.filledCount}</strong><span>pronósticos capturados</span></div>
+        <div className="newq-post-stat"><strong>{postSubmit.totalOpen - postSubmit.filledCount}</strong><span>partidos abiertos sin dato</span></div>
+        {postSubmit.lockedWithoutPred > 0 && (
+          <div className="newq-post-stat warn"><strong>{postSubmit.lockedWithoutPred}</strong><span>cerrados sin pronóstico</span></div>
+        )}
+      </div>
+      <p className="newq-post-submit-hint">El administrador revisará tu quiniela. Cuando sea aprobada aparecerás en la tabla general.</p>
+      <button className="newq-btn-secondary" onClick={() => setPostSubmit(null)}>Ver mis apuestas</button>
+    </div>
+  );
+
   return (
     <section className="new-quiniela-page">
       <div className="newq-shell">
+      {SaveModal}
 
         {/* Hero */}
         <div className="newq-hero">
@@ -376,8 +461,9 @@ export default function NewQuinielaPage({ matches = [], settings = {} }) {
         {/* Profile + Board */}
         {displayProfile && step === 'board' && (
           <>
+            {postSubmit && PostSubmitScreen}
             {/* Profile card */}
-            <div className="newq-profile-card">
+            {!postSubmit && <div className="newq-profile-card">
               <div className="newq-profile-main">
                 <div className="newq-profile-avatar">
                   {displayProfile.photo
@@ -387,8 +473,31 @@ export default function NewQuinielaPage({ matches = [], settings = {} }) {
                 <div className="newq-profile-info">
                   <h2>{displayProfile.name}</h2>
                   <p>{displayProfile.email}</p>
-                  {displayProfile.team && (
-                    <span className={`newq-team-chip ${displayProfile.team}`}>{teamLabel(displayProfile.team)}</span>
+                  <div className="newq-profile-chips">
+                    {displayProfile.team && (
+                      <span className={`newq-team-chip ${displayProfile.team}`}>{teamLabel(displayProfile.team)}</span>
+                    )}
+                    {existingSubmission && (
+                      <span className={`newq-submission-badge ${submissionStatusClass[existingSubmission.status] || 'badge-pending'}`}>
+                        {submissionStatusLabel[existingSubmission.status] || 'Pendiente'}
+                      </span>
+                    )}
+                  </div>
+                  {/* Progress bar */}
+                  <div className="newq-progress-bar-wrap">
+                    <div className="newq-progress-bar-track">
+                      <div
+                        className="newq-progress-bar-fill"
+                        style={{ width: openMatches.length > 0 ? `${Math.round(completedCount / openMatches.length * 100)}%` : '0%' }}
+                      />
+                    </div>
+                    <span className="newq-progress-label">{completedCount}/{openMatches.length} pronósticos capturados</span>
+                  </div>
+                  {lockedWithoutPred > 0 && (
+                    <p className="newq-profile-warn"><AlertTriangle size={12} /> {lockedWithoutPred} partido{lockedWithoutPred !== 1 ? 's' : ''} cerrado{lockedWithoutPred !== 1 ? 's' : ''} sin pronóstico</p>
+                  )}
+                  {closingSoon.length > 0 && (
+                    <p className="newq-profile-warn closing-soon"><AlertTriangle size={12} /> {closingSoon.length} partido{closingSoon.length !== 1 ? 's' : ''} cierra pronto</p>
                   )}
                 </div>
               </div>
@@ -396,7 +505,7 @@ export default function NewQuinielaPage({ matches = [], settings = {} }) {
                 <CapitalHumanoSummary history={profile.capitalHumano} />
                 <NuevaQuinielaSummary submission={existingSubmission} />
               </div>
-            </div>
+            </div>}
 
             {/* Draft restore prompt */}
             {draftRestorePrompt && (
@@ -456,7 +565,7 @@ export default function NewQuinielaPage({ matches = [], settings = {} }) {
                       {savedAt && !dirty && !saving && <span className="newq-saved">✓ Guardado correctamente</span>}
                       {!dirty && !savedAt && !saving && <span className="newq-neutral">Sin cambios</span>}
                     </div>
-                    <button className="newq-btn-primary newq-inline-save" onClick={save} disabled={!canSave}>
+                    <button className="newq-btn-primary newq-inline-save" onClick={openSaveModal} disabled={!canSave}>
                       {saving ? 'Guardando…' : 'Guardar cambios'}
                     </button>
                   </div>

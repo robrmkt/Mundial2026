@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo, useRef } from 'react';
 import { AlertTriangle, CalendarClock, Check, CheckCircle2, Eye, Plus, RefreshCw, Trash2, X, XCircle } from 'lucide-react';
 import { fetchPredictionWindows, savePredictionWindow, deletePredictionWindow, getWindowStatus, formatWindowDate, fetchPhaseSubmissions, deletePhaseSubmission, approvePhaseSubmission, rejectPhaseSubmission, freezeCapitalHumanoArchive, updateContinuationSettings } from '../../services/predictionWindows';
 import { PARTICIPANT_EMAIL_ROSTER } from '../../services/participantEmails';
+import { LOCK_MINUTES_BEFORE_KICKOFF, getMatchKickoff } from '../../services/matchLock';
 import PhasePredictionForm from '../PhasePredictionForm';
 
 const STATUS_LABEL = { draft: 'Borrador', scheduled: 'Programada', open: 'Abierta', closed: 'Cerrada' };
@@ -447,6 +448,156 @@ export default function AdminPredictionExtension({ participants, standings = [],
               <ul className="audit-warnings-list">
                 {warnings.map((w, i) => <li key={i}>{w}</li>)}
               </ul>
+            );
+          })()}
+        </div>
+      )}
+
+      {/* === AUDITORÍA POR PARTICIPANTE === */}
+      {activeWindow && (
+        <div className="admin-card">
+          <h3 className="admin-section-title">Auditoría por participante</h3>
+          {(() => {
+            const windowMatchIds = (activeWindow.matchIds || []).map(String);
+            const totalMatches = windowMatchIds.length || matches.length;
+
+            function isMatchLockedLocal(m) {
+              const kickoff = getMatchKickoff(m);
+              if (!kickoff) return false;
+              return (Date.parse(kickoff) - Date.now()) / 60000 <= LOCK_MINUTES_BEFORE_KICKOFF;
+            }
+
+            const lockedMatchIds = matches
+              .filter(m => isMatchLockedLocal(m) && (windowMatchIds.length ? windowMatchIds.includes(String(m.id)) : true))
+              .map(m => String(m.id));
+
+            const rows2 = windowSubs.map(sub => {
+              const preds = sub.status === 'edited' && sub.approvedPredictions
+                ? sub.approvedPredictions
+                : sub.predictions || {};
+              const filled = Object.keys(preds).length;
+              const missing = Math.max(0, totalMatches - filled);
+              const closedNoPred = lockedMatchIds.filter(id => !preds[id]).length;
+              return { sub, filled, missing, closedNoPred };
+            });
+
+            if (!rows2.length) return <p className="admin-ext-hint">No hay submissions en esta ventana.</p>;
+
+            return (
+              <div className="crm-table-wrap" style={{ marginTop: '0.5rem' }}>
+                <table className="crm-table">
+                  <thead>
+                    <tr>
+                      <th>Participante</th>
+                      <th className="crm-th-center" style={{ width: 90 }}>Estado</th>
+                      <th className="crm-th-center" style={{ width: 70 }}>Llenos</th>
+                      <th className="crm-th-center" style={{ width: 70 }}>Faltantes</th>
+                      <th className="crm-th-center" style={{ width: 80 }}>Cerrados sin dato</th>
+                      <th>Último guardado</th>
+                      <th className="crm-th-center" style={{ width: 90 }}>Acciones</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {rows2.map(({ sub, filled, missing, closedNoPred }) => (
+                      <tr key={sub.id} className="crm-row">
+                        <td>
+                          <span className="crm-name">{sub.participantName || sub.email}</span>
+                          <span className="crm-email" style={{ display: 'block' }}>{sub.email}</span>
+                        </td>
+                        <td className="crm-th-center">
+                          <span className={`phase-status-badge status-${sub.status || 'pending'}`}>
+                            {SUB_STATUS_LABEL[sub.status] || 'Pendiente'}
+                          </span>
+                        </td>
+                        <td className="crm-th-center"><span className="crm-count">{filled}</span></td>
+                        <td className="crm-th-center"><span className={`crm-count ${missing > 0 ? 'audit-warn' : ''}`}>{missing}</span></td>
+                        <td className="crm-th-center"><span className={`crm-count ${closedNoPred > 0 ? 'audit-warn' : ''}`}>{closedNoPred}</span></td>
+                        <td><span className="crm-email">{sub.updatedAt ? new Date(sub.updatedAt).toLocaleString('es-MX', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : '—'}</span></td>
+                        <td>
+                          <div className="crm-actions">
+                            <button className="crm-action-btn" title="Aprobar" disabled={reviewingId === sub.id || sub.status === 'approved'} onClick={() => handleApprove(sub.id)}>
+                              <Check size={13} />
+                            </button>
+                            <button className="crm-action-btn danger" title="Rechazar" disabled={reviewingId === sub.id} onClick={() => handleReject(sub.id)}>
+                              <X size={13} />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            );
+          })()}
+        </div>
+      )}
+
+      {/* === AUDITORÍA POR PARTIDO === */}
+      {activeWindow && matches.length > 0 && (
+        <div className="admin-card">
+          <h3 className="admin-section-title">Auditoría por partido</h3>
+          {(() => {
+            const windowMatchIds = (activeWindow.matchIds || []).map(String);
+            const auditMatches = windowMatchIds.length
+              ? matches.filter(m => windowMatchIds.includes(String(m.id)))
+              : matches;
+
+            function isMatchLockedLocal2(m) {
+              const kickoff = getMatchKickoff(m);
+              if (!kickoff) return false;
+              return (Date.parse(kickoff) - Date.now()) / 60000 <= LOCK_MINUTES_BEFORE_KICKOFF;
+            }
+
+            return (
+              <div className="crm-table-wrap" style={{ marginTop: '0.5rem' }}>
+                <table className="crm-table">
+                  <thead>
+                    <tr>
+                      <th>Partido</th>
+                      <th className="crm-th-center" style={{ width: 80 }}>Estado</th>
+                      <th className="crm-th-center" style={{ width: 80 }}>Con pronóst.</th>
+                      <th className="crm-th-center" style={{ width: 80 }}>Sin pronóst.</th>
+                      <th className="crm-th-center" style={{ width: 80 }}>Cobertura</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {auditMatches.slice(0, 30).map(m => {
+                      const matchIdStr = String(m.id);
+                      const locked = isMatchLockedLocal2(m);
+                      const withPred = windowSubs.filter(s => {
+                        const preds = s.predictions || {};
+                        return [matchIdStr, String(m.feedId ?? ''), String(m.espnId ?? '')].filter(Boolean).some(k => preds[k] != null);
+                      }).length;
+                      const total = windowSubs.length;
+                      const coverage = total > 0 ? Math.round(withPred / total * 100) : 0;
+                      return (
+                        <tr key={m.id} className="crm-row">
+                          <td>
+                            <span className="crm-name">{m.homeTeam} vs {m.awayTeam}</span>
+                            <span className="crm-email" style={{ display: 'block' }}>
+                              {getMatchKickoff(m) ? new Date(getMatchKickoff(m)).toLocaleString('es-MX', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : '—'}
+                            </span>
+                          </td>
+                          <td className="crm-th-center">
+                            <span className={`phase-status-badge ${locked ? 'status-approved' : 'status-pending'}`}>
+                              {locked ? 'Cerrado' : 'Abierto'}
+                            </span>
+                          </td>
+                          <td className="crm-th-center"><span className="crm-count">{withPred}</span></td>
+                          <td className="crm-th-center"><span className={`crm-count ${total - withPred > 0 ? 'audit-warn' : ''}`}>{total - withPred}</span></td>
+                          <td className="crm-th-center">
+                            <div className="effectiveness-cell">
+                              <span className="effectiveness-percentage">{coverage}%</span>
+                              <div className="effectiveness-bar-bg"><div className="effectiveness-bar-fill" style={{ width: `${coverage}%` }} /></div>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
             );
           })()}
         </div>

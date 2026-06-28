@@ -28,10 +28,16 @@ const PODIUM_META = {
   3: { medal: '🥉', label: 'III', cls: 'bronze' }
 };
 
+const TIE_PREVIEW_LIMIT = 3; // más de este número → colapsar lista
+
 function Podium({ podiumGroups, onSelect, legend, reactions = {}, onReact }) {
-  const triggerReaction = (playerName, reaction) => {
-    onReact?.(playerName, reaction);
-  };
+  const [expandedRanks, setExpandedRanks] = useState(new Set());
+  const triggerReaction = (playerName, reaction) => { onReact?.(playerName, reaction); };
+  const toggleExpand = (rank) => setExpandedRanks(prev => {
+    const next = new Set(prev);
+    next.has(rank) ? next.delete(rank) : next.add(rank);
+    return next;
+  });
 
   const groupsByRank = {
     1: podiumGroups.find(g => g.rank === 1),
@@ -46,7 +52,52 @@ function Podium({ podiumGroups, onSelect, legend, reactions = {}, onReact }) {
       return <div className={`podium-step ${meta.cls} empty`}><div className="podium-block">{meta.label}</div></div>;
     }
 
-    // Empate: tarjeta compacta con la lista de empatados (cada uno abre su ficha).
+    // Empate masivo: tarjeta colapsada cuando hay más de TIE_PREVIEW_LIMIT empatados
+    if (group.players.length > TIE_PREVIEW_LIMIT) {
+      const isOpen = expandedRanks.has(place);
+      return (
+        <div className={`podium-step ${meta.cls} tied`}>
+          <div className="podium-card podium-card-tied podium-card-collapsed">
+            <span className="podium-medal">{meta.medal}</span>
+            <span className="podium-tie-label">Empate en {rankLabel(place)}</span>
+            <span className="podium-points">{group.points} <small>PTS</small></span>
+            <span className="podium-tie-count">{group.players.length} participantes</span>
+            <button
+              type="button"
+              className="podium-tie-expand-btn"
+              onClick={() => toggleExpand(place)}
+              aria-expanded={isOpen}
+            >
+              {isOpen ? 'Ocultar' : 'Ver participantes'}
+            </button>
+            {isOpen && (
+              <div className="podium-tie-list" aria-label={`Empatados en ${rankLabel(place)}`}>
+                {group.players.map(player => (
+                  <button
+                    key={player.name}
+                    type="button"
+                    className="podium-tie-player"
+                    onClick={() => onSelect(player)}
+                    title={`Ver ficha de ${player.name}`}
+                  >
+                    {player.photo ? (
+                      <span className="podium-tie-avatar has-photo"><img src={player.photo} alt="" /></span>
+                    ) : (
+                      <span className="podium-tie-avatar">{player.avatar}</span>
+                    )}
+                    <span className="podium-tie-name">{player.name}</span>
+                    <TeamBadge team={player.team} className="podium-tie-team" />
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+          <div className="podium-block">{meta.label}</div>
+        </div>
+      );
+    }
+
+    // Empate normal (2-3): tarjeta compacta con lista visible
     if (group.players.length > 1) {
       return (
         <div className={`podium-step ${meta.cls} tied`}>
