@@ -994,7 +994,7 @@ export default function App() {
           />
         )}
         {activeTab === 'capitalHumano' && (
-          <CapitalHumanoArchive initialArchive={capitalHumanoArchive} fallbackStandings={standings} onGoNew={() => goToTab('nuevaQuiniela')} />
+          <CapitalHumanoArchive initialArchive={capitalHumanoArchive} fallbackStandings={rhStandings} onGoNew={() => goToTab('nuevaQuiniela')} />
         )}
         {activeTab === 'admin' && (
           session ? (

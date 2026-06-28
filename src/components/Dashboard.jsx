@@ -153,7 +153,14 @@ function Podium({ podiumGroups, onSelect, legend, reactions = {}, onReact }) {
 }
 
 export default function Dashboard({ standings, matches = [], chatMessages = [], support = {}, podiumReactions = {}, movement = {}, podiumMs = {}, legend = null, onSendMessage, onReaction, onPodiumReaction, onOpenPredictionsForMatch, dashboardMode = 'rh_current', dashboardTitle, onGoNewQuiniela }) {
-  const podiumGroups = useMemo(() => getPodiumGroups(standings, 3), [standings]);
+  // En Nueva Quiniela nadie entra al podio hasta que haya puntos reales (>0):
+  // si todos están en 0, el podio queda vacío (placeholders) en vez de empatar a todos en 1º.
+  const podiumEligibleStandings = useMemo(() => {
+    if (dashboardMode !== 'new_quiniela') return standings;
+    return standings.filter(player => Number(player.points || 0) > 0);
+  }, [dashboardMode, standings]);
+
+  const podiumGroups = useMemo(() => getPodiumGroups(podiumEligibleStandings, 3), [podiumEligibleStandings]);
   const podiumNames = useMemo(
     () => new Set(podiumGroups.flatMap(g => g.players.map(p => p.name))),
     [podiumGroups]
