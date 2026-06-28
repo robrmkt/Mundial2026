@@ -426,6 +426,7 @@ export default function AdminPredictionExtension({ participants, standings = [],
               <option value="rh_current">Quiniela RH actual</option>
               <option value="rh_archive">Quiniela RH histórica</option>
               <option value="new_quiniela">Nueva Quiniela</option>
+              <option value="combined">Acumulado RH + Nueva Quiniela</option>
             </select>
           </label>
           {settings.emergencyMode && (

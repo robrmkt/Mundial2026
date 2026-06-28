@@ -1,5 +1,5 @@
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { getDashboardMode } from './services/standingsMode';
+import { getDashboardMode, DEFAULT_NEW_QUINIELA_START_AT } from './services/standingsMode';
 import { buildContinuationStandings } from './services/continuationStandings';
 import { buildSafeCombinedStandings } from './services/combinedStandings';
 import { assignDenseRanksByPoints, getDensePodiumNames } from './services/ranking';
@@ -532,13 +532,23 @@ export default function App() {
   const standings = useMemo(() => {
     if (dashboardMode === 'rh_archive') return capitalHumanoArchive?.standings || rhStandings;
     if (dashboardMode === 'rh_current') return rhStandings;
-    // new_quiniela, combined, auto: siempre usar tabla combinada para no ocultar participantes RH
-    return safeCombinedStandings;
-  }, [dashboardMode, safeCombinedStandings, capitalHumanoArchive, rhStandings]);
+    if (dashboardMode === 'new_quiniela') return newQuinielaStandings; // independiente, desde cero
+    if (dashboardMode === 'combined') return safeCombinedStandings;     // acumulado (opción manual)
+    return newQuinielaStandings;
+  }, [dashboardMode, safeCombinedStandings, newQuinielaStandings, capitalHumanoArchive, rhStandings]);
 
   const dashboardTitle = dashboardMode === 'rh_current' || dashboardMode === 'rh_archive'
     ? 'Tabla General · Quiniela RH'
-    : 'Tabla General · Continuación Mundialista';
+    : dashboardMode === 'combined'
+      ? 'Tabla General · Acumulado Mundialista'
+      : 'Tabla General · Nueva Quiniela';
+
+  // Transición automática a las 23:00 del 27 jun: antes muestra RH, después Nueva.
+  const newQuinielaStarted = useMemo(() => {
+    const startAt = Date.parse(continuationSettings?.startAt || DEFAULT_NEW_QUINIELA_START_AT);
+    return Number.isFinite(startAt) && nowTs >= startAt;
+  }, [continuationSettings?.startAt, nowTs]);
+  const showRhArchiveTab = Boolean(capitalHumanoArchive) || newQuinielaStarted;
 
   const pendingAdminCount = useMemo(() =>
     phaseSubmissions.filter(s => !s.status || s.status === 'pending').length,
@@ -866,6 +876,20 @@ export default function App() {
                 <span className="nav-btn-text">
                   <span className="desktop-label">Nueva quiniela</span>
                   <span className="mobile-label">Nueva</span>
+                </span>
+              </button>
+            )}
+            {showRhArchiveTab && (
+              <button
+                className={`nav-btn nav-btn-rh-archive ${activeTab === 'capitalHumano' ? 'active' : ''}`}
+                onClick={() => goToTab('capitalHumano')}
+                aria-label="Quiniela RH"
+                title="Quiniela RH"
+              >
+                <Trophy size={15} />
+                <span className="nav-btn-text">
+                  <span className="desktop-label">Quiniela RH</span>
+                  <span className="mobile-label">RH</span>
                 </span>
               </button>
             )}

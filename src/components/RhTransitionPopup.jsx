@@ -4,7 +4,7 @@ import { readRhPopupState, writeRhPopupState } from '../services/transitionNotic
 const POPUP_MIN_VERSION = 3;
 const DEFAULT_MAX_VIEWS = 10;
 const DEFAULT_COOLDOWN_HOURS = 0.33;
-const RH_CLOSE_AT = '2026-06-27T21:15:00-06:00';
+const RH_CLOSE_AT = '2026-06-27T23:00:00-06:00';
 
 const DEFAULT_COPY = {
   before_close: {
