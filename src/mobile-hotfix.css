@@ -157,3 +157,29 @@
 .command-grid .podium-reactions {
   display: none !important;
 }
+
+/* Podium proportion cleanup: cards should visually belong to their podium column. */
+.command-grid .podium-step {
+  align-items: stretch !important;
+  min-width: 0;
+}
+
+.command-grid .podium-card {
+  width: 100% !important;
+  max-width: none !important;
+  min-width: 0 !important;
+  align-self: stretch !important;
+}
+
+.command-grid .podium-name,
+.command-grid .podium-player-name {
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  text-align: center;
+}
+
+.command-grid .podium-legend-tag {
+  max-width: 100%;
+  white-space: normal;
+  text-align: center;
+}
