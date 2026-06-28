@@ -2,8 +2,8 @@ import { useEffect, useState } from 'react';
 import Dashboard from './Dashboard';
 import { fetchCapitalHumanoArchive } from '../services/predictionWindows';
 
-// Vista histórica de la Quiniela RH: reutiliza el tablero (Dashboard) pero con
-// los datos CONGELADOS del cierre (modo rh_archive). Es una fotografía, no se mueve.
+// Vista histórica de la Quiniela RH: reutiliza el tablero con datos guardados
+// del cierre y se mantiene en modo solo lectura.
 export default function CapitalHumanoArchive({ initialArchive = null, fallbackStandings = [], onGoNew }) {
   const [archive, setArchive] = useState(initialArchive);
 
