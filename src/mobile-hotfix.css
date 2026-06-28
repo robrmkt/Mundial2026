@@ -151,3 +151,9 @@
     white-space: nowrap;
   }
 }
+
+/* Podium cleanup: keep the structure but hide optional interaction and stats UI. */
+.command-grid .podium-mini-stats,
+.command-grid .podium-reactions {
+  display: none !important;
+}
