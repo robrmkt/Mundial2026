@@ -1,4 +1,5 @@
 import { assignDenseRanksByPoints } from './ranking';
+import { getPredictionByMatch } from './phaseContext';
 
 function normalizeSubmissionPredictions(predictions) {
   const result = {};
@@ -13,10 +14,12 @@ function normalizeSubmissionPredictions(predictions) {
 
 function computeScore(predictions, matches) {
   let points = 0, exactHits = 0, outcomeHits = 0, playedAndPredicted = 0;
+  const playerObj = { predictions };
 
   matches.forEach(m => {
     if (m.status === 'SCHEDULED') return;
-    const pred = predictions[String(m.id)];
+    // Multi-key lookup: cubre mismatch entre id local y el que guardó el feed
+    const pred = getPredictionByMatch(playerObj, m);
     if (!pred) return;
     const pHome = parseInt(pred.homeScore, 10);
     const pAway = parseInt(pred.awayScore, 10);
@@ -37,10 +40,15 @@ function computeScore(predictions, matches) {
 }
 
 export function buildContinuationStandings({ participants, phaseSubmissions, matches }) {
-  const approved = (phaseSubmissions || []).filter(s => s.status === 'approved');
+  // Incluir submissions aprobadas Y submissions editadas que conservan approvedPredictions.
+  // Un usuario aprobado que edita su quiniela no desaparece de la tabla oficial.
+  const officialSubmissions = (phaseSubmissions || []).filter(s =>
+    s.status === 'approved' || (s.status === 'edited' && s.approvedPredictions && Object.keys(s.approvedPredictions).length > 0)
+  );
+
   const byEmail = new Map();
 
-  approved.forEach(sub => {
+  officialSubmissions.forEach(sub => {
     const email = String(sub.email || '').toLowerCase();
     if (!email) return;
 
@@ -58,9 +66,14 @@ export function buildContinuationStandings({ participants, phaseSubmissions, mat
       predictions: {}
     };
 
+    // Usar approvedPredictions si el status es 'edited' (versión oficial congelada)
+    const sourcePredictions = sub.status === 'edited' && sub.approvedPredictions
+      ? sub.approvedPredictions
+      : sub.predictions;
+
     existing.predictions = {
       ...existing.predictions,
-      ...normalizeSubmissionPredictions(sub.predictions)
+      ...normalizeSubmissionPredictions(sourcePredictions)
     };
 
     byEmail.set(email, existing);

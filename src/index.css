@@ -3218,6 +3218,63 @@ img {
   opacity: 0.85;
 }
 
+.pred-badge.is-missing {
+  opacity: 0.4;
+  border-style: dashed;
+  color: var(--text-faint);
+}
+
+/* Barra de auditoría sobre la matriz en Nueva Quiniela */
+.matrix-audit-bar {
+  font-size: 0.78rem;
+  color: var(--text-secondary);
+  padding: 0.42rem 0.85rem;
+  background: var(--surface-soft);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  margin: 0 0 0.65rem;
+}
+.matrix-audit-bar strong { color: var(--text-primary); }
+
+/* Sección de auditoría admin */
+.admin-audit-grid { display: grid; gap: 0.35rem; margin-bottom: 0.8rem; }
+.admin-audit-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.32rem 0.6rem;
+  background: var(--surface-soft);
+  border-radius: 7px;
+  font-size: 0.82rem;
+}
+.audit-label { color: var(--text-secondary); }
+.audit-val { font-weight: 700; }
+.audit-ok { color: var(--green); }
+.audit-warn { color: var(--accent, #f59e0b); }
+.audit-status-chip {
+  display: inline-block;
+  font-size: 0.66rem;
+  font-weight: 800;
+  padding: 0.1rem 0.42rem;
+  border-radius: 999px;
+  margin-left: 0.4rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.audit-open { background: var(--green-soft); color: var(--green); }
+.audit-draft { background: #fff4dc; color: #9a5a00; }
+.audit-scheduled { background: #e0f2fe; color: #0369a1; }
+.audit-closed { background: var(--surface); color: var(--text-faint); }
+.audit-ok-msg { font-size: 0.8rem; color: var(--green); margin: 0; }
+.audit-warnings-list {
+  margin: 0;
+  padding: 0 0 0 1.1em;
+  display: grid;
+  gap: 0.28rem;
+  font-size: 0.8rem;
+  color: var(--accent, #f59e0b);
+}
+
 .no-results-cell {
   text-align: center;
   color: var(--text-faint);

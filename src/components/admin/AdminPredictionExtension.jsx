@@ -385,6 +385,73 @@ export default function AdminPredictionExtension({ participants, standings = [],
         </div>
       )}
 
+      {/* === AUDITORÍA NUEVA QUINIELA === */}
+      {activeWindow && (
+        <div className="admin-card">
+          <h3 className="admin-section-title">Auditoría · Nueva Quiniela</h3>
+          <div className="admin-audit-grid">
+            <div className="admin-audit-row">
+              <span className="audit-label">Ventana activa</span>
+              <span className="audit-val">{activeWindow.name || activeWindow.id} <em className={`audit-status-chip audit-${getWindowStatus(activeWindow)}`}>{getWindowStatus(activeWindow)}</em></span>
+            </div>
+            <div className="admin-audit-row">
+              <span className="audit-label">Partidos en ventana</span>
+              <span className="audit-val">{(activeWindow.matchIds || []).length || 'Todos los configurados'}</span>
+            </div>
+            <div className="admin-audit-row">
+              <span className="audit-label">Submissions totales</span>
+              <span className="audit-val">{metrics.total}</span>
+            </div>
+            <div className="admin-audit-row">
+              <span className="audit-label">Aprobados</span>
+              <span className="audit-val audit-ok">{metrics.approved}</span>
+            </div>
+            <div className="admin-audit-row">
+              <span className="audit-label">Pendientes</span>
+              <span className={`audit-val ${metrics.pending > 0 ? 'audit-warn' : ''}`}>{metrics.pending}</span>
+            </div>
+            <div className="admin-audit-row">
+              <span className="audit-label">Editados (requieren revisión)</span>
+              <span className={`audit-val ${metrics.edited > 0 ? 'audit-warn' : ''}`}>{metrics.edited}</span>
+            </div>
+            <div className="admin-audit-row">
+              <span className="audit-label">Rechazados</span>
+              <span className="audit-val">{metrics.rejected}</span>
+            </div>
+          </div>
+          {/* Inconsistencias detectadas */}
+          {(() => {
+            const approved = windowSubs.filter(s => s.status === 'approved' || (s.status === 'edited' && s.approvedPredictions));
+            const matchIds = (activeWindow.matchIds || []).map(String);
+            const warnings = [];
+            approved.forEach(sub => {
+              const preds = sub.approvedPredictions || sub.predictions || {};
+              if (!Object.keys(preds).length) {
+                warnings.push(`⚠ ${sub.participantName || sub.email} está aprobado pero sin pronósticos guardados.`);
+              }
+              if (matchIds.length) {
+                const outsideWindow = Object.keys(preds).filter(k => !matchIds.includes(String(k)));
+                if (outsideWindow.length) {
+                  warnings.push(`⚠ ${sub.participantName || sub.email} tiene ${outsideWindow.length} pronóstico(s) con IDs fuera de la ventana activa.`);
+                }
+              }
+            });
+            const approvedEmails = new Set(approved.map(s => String(s.email || '').toLowerCase()));
+            standings.forEach(p => {
+              if (p.email && !approvedEmails.has(String(p.email).toLowerCase())) {
+                warnings.push(`⚠ ${p.name} aparece en tabla pero su submission no está aprobada.`);
+              }
+            });
+            if (!warnings.length) return <p className="audit-ok-msg">✓ Sin inconsistencias detectadas.</p>;
+            return (
+              <ul className="audit-warnings-list">
+                {warnings.map((w, i) => <li key={i}>{w}</li>)}
+              </ul>
+            );
+          })()}
+        </div>
+      )}
+
       {/* === CONTROL DE PUBLICACIÓN === */}
       <div className="admin-card">
         <h3 className="admin-section-title">Control de publicación</h3>

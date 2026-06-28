@@ -40,10 +40,23 @@ function getFeaturedMatch(matches, preferredMatchId) {
     .sort((a, b) => b.id - a.id)[0] || null;
 }
 
+function getPredictionForParticipant(participant, match) {
+  // Multi-key: busca por id local, feedId, espnId, externalId y continuationPredictions
+  const stores = [participant.predictions, participant.continuationPredictions];
+  const keys = [String(match.id ?? ''), String(match.feedId ?? ''), String(match.espnId ?? ''), String(match.externalId ?? '')].filter(Boolean);
+  for (const store of stores) {
+    if (!store) continue;
+    for (const key of keys) {
+      if (store[key] != null) return store[key];
+    }
+  }
+  return null;
+}
+
 function getPredictionsForMatch(match, participants) {
   if (!match) return [];
   return participants
-    .map(participant => ({ participant, prediction: participant.predictions?.[match.id] }))
+    .map(participant => ({ participant, prediction: getPredictionForParticipant(participant, match) }))
     .filter(item => item.prediction);
 }
 

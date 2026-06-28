@@ -1089,6 +1089,9 @@ const server = createServer(async (request, response) => {
           userType: existingParticipant ? 'existing' : (parsed.userType || 'new'),
           status: existing >= 0 && previous.status === 'approved' ? 'edited' : 'pending',
           predictions: nextPredictions,
+          approvedPredictions: existing >= 0
+            ? (previous.status === 'approved' ? previous.predictions : previous.approvedPredictions || {})
+            : {},
           createdAt: existing >= 0 ? subs[existing].createdAt : new Date().toISOString(),
           updatedAt: new Date().toISOString(),
           reviewedAt: existing >= 0 ? previous.reviewedAt || '' : '',
@@ -1135,7 +1138,7 @@ const server = createServer(async (request, response) => {
           createdFrom: 'continuation_submission'
         });
       }
-      subs[idx] = { ...sub, status: 'approved', reviewedAt: new Date().toISOString(), reviewedBy: 'admin', audit: [...asArray(sub.audit), { type: 'approved', by: 'admin', at: new Date().toISOString() }] };
+      subs[idx] = { ...sub, status: 'approved', approvedPredictions: approvedPredictions, reviewedAt: new Date().toISOString(), reviewedBy: 'admin', audit: [...asArray(sub.audit), { type: 'approved', by: 'admin', at: new Date().toISOString() }] };
       const registeredUsers = asArray(base.registeredUsers);
       if (!registeredUsers.some(u => normalizeEmailValue(u.email) === normalizeEmailValue(sub.email))) {
         registeredUsers.push({ name: sub.participantName, email: normalizeEmailValue(sub.email), team: sub.team, userType: sub.userType, createdAt: new Date().toISOString() });

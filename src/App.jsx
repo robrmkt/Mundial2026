@@ -2,6 +2,7 @@ import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } fro
 import { getDashboardMode, DEFAULT_NEW_QUINIELA_START_AT } from './services/standingsMode';
 import { buildContinuationStandings } from './services/continuationStandings';
 import { buildSafeCombinedStandings } from './services/combinedStandings';
+import { isNewQuinielaMode, getActivePredictionWindow, getPhaseMatches, getPredictionParticipants } from './services/phaseContext';
 import { assignDenseRanksByPoints, getDensePodiumNames } from './services/ranking';
 import { Trophy, Square, Users, MonitorPlay, RefreshCw, Wifi, WifiOff } from 'lucide-react';
 import AdminLogin from './components/AdminLogin';
@@ -543,14 +544,23 @@ export default function App() {
       ? 'Tabla General · Acumulado Mundialista'
       : 'Tabla General · Nueva Quiniela';
 
-  // Pronósticos: en Nueva Quiniela / Acumulado usa participantes de la nueva fase,
-  // para que el contador refleje los registros aprobados (no los 28 RH).
-  const predictionParticipants = useMemo(() => {
-    if (dashboardMode === 'new_quiniela' || dashboardMode === 'combined') {
-      return newQuinielaStandings;
-    }
-    return participants;
-  }, [dashboardMode, newQuinielaStandings, participants]);
+  // Fuente única de contexto de fase (phaseContext.js)
+  const isNewMode = useMemo(() => isNewQuinielaMode(dashboardMode), [dashboardMode]);
+
+  const activePredictionWindow = useMemo(
+    () => getActivePredictionWindow(predictionWindows),
+    [predictionWindows]
+  );
+
+  const phaseMatches = useMemo(
+    () => getPhaseMatches({ matches, settings: continuationSettings || {}, predictionWindows, dashboardMode }),
+    [matches, continuationSettings, predictionWindows, dashboardMode]
+  );
+
+  const predictionParticipants = useMemo(
+    () => getPredictionParticipants({ dashboardMode, participants, newQuinielaStandings }),
+    [dashboardMode, participants, newQuinielaStandings]
+  );
 
   // Transición automática a las 23:00 del 27 jun: antes muestra RH, después Nueva.
   const newQuinielaStarted = useMemo(() => {
@@ -990,7 +1000,13 @@ export default function App() {
             <p className="prediction-page-subtitle">
               Consulta qué marcador apostó la oficina para el partido actual o el siguiente.
             </p>
-            <PredictionGrid matches={matches} participants={predictionParticipants} />
+            <PredictionGrid
+              matches={matches}
+              phaseMatches={phaseMatches}
+              participants={predictionParticipants}
+              dashboardMode={dashboardMode}
+              activeWindow={activePredictionWindow}
+            />
           </div>
         )}
         {activeTab === 'matches' && (

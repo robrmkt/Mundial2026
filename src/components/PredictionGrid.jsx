@@ -1,9 +1,10 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Calendar, Download } from 'lucide-react';
 import PredictionMoment from './PredictionMoment';
 import PredictionWindowCard from './PredictionWindowCard';
 import FlagIcon from './FlagIcon';
 import { exportParticipantQuiniela } from '../services/quinielaExport';
+import { getPredictionByMatch } from '../services/phaseContext';
 
 function predictionClass(pred, match) {
   if (!match || match.status === 'SCHEDULED') return '';
@@ -22,29 +23,70 @@ function defaultHistoryOpen() {
   return !window.matchMedia('(max-width: 760px)').matches;
 }
 
-export default function PredictionGrid({ matches, participants }) {
-  const [selectedTab, setSelectedTab] = useState('J1');
+export default function PredictionGrid({
+  matches,
+  participants,
+  dashboardMode = 'rh_current',
+  phaseMatches = [],
+  activeWindow = null
+}) {
+  const isNewMode = dashboardMode === 'new_quiniela' || dashboardMode === 'combined';
+  const matrixMatchesSource = isNewMode ? phaseMatches : matches;
+
+  const [selectedTab, setSelectedTab] = useState(() => isNewMode ? 'NEW' : 'J1');
   const [historyOpen, setHistoryOpen] = useState(defaultHistoryOpen);
   const [preferredMatchId] = useState(() => {
-    try {
-      return window.sessionStorage.getItem('preferred_prediction_match_id');
-    } catch {
-      return null;
-    }
+    try { return window.sessionStorage.getItem('preferred_prediction_match_id'); } catch { return null; }
   });
 
-  const filteredMatches = useMemo(() => matches.filter(m => {
-    if (selectedTab === 'J1') return m.id >= 1 && m.id <= 24;
-    if (selectedTab === 'J2') return m.id >= 25 && m.id <= 48;
-    if (selectedTab === 'J3') return m.id >= 49 && m.id <= 72;
-    return true;
-  }), [matches, selectedTab]);
+  // Sincroniza tab cuando cambia el modo (ej: admin cambia dashboardMode)
+  useEffect(() => {
+    if (isNewMode && selectedTab !== 'NEW') setSelectedTab('NEW');
+    if (!isNewMode && selectedTab === 'NEW') setSelectedTab('J1');
+  }, [isNewMode, selectedTab]);
+
+  const matrixTabs = useMemo(() => {
+    if (isNewMode) {
+      return [{ id: 'NEW', label: 'Nueva fase', desc: `${matrixMatchesSource.length} partidos` }];
+    }
+    return [
+      { id: 'J1', label: 'Jornada 1', desc: '1-24' },
+      { id: 'J2', label: 'Jornada 2', desc: '25-48' },
+      { id: 'J3', label: 'Jornada 3', desc: '49-72' }
+    ];
+  }, [isNewMode, matrixMatchesSource.length]);
+
+  const filteredMatches = useMemo(() => {
+    if (isNewMode) return matrixMatchesSource;
+    return matches.filter(m => {
+      if (selectedTab === 'J1') return Number(m.id) >= 1 && Number(m.id) <= 24;
+      if (selectedTab === 'J2') return Number(m.id) >= 25 && Number(m.id) <= 48;
+      if (selectedTab === 'J3') return Number(m.id) >= 49 && Number(m.id) <= 72;
+      return true;
+    });
+  }, [matches, matrixMatchesSource, selectedTab, isNewMode]);
+
+  // Auditoría: cuántos participantes tienen pronóstico para cada partido filtrado
+  const matrixAudit = useMemo(() => {
+    if (!isNewMode || !filteredMatches.length || !participants.length) return null;
+    const withPrediction = filteredMatches.reduce((sum, match) => {
+      return sum + participants.filter(p => getPredictionByMatch(p, match)).length;
+    }, 0);
+    const avgCoverage = Math.round(withPrediction / filteredMatches.length);
+    return {
+      totalParticipants: participants.length,
+      totalMatches: filteredMatches.length,
+      avgCoverage
+    };
+  }, [isNewMode, filteredMatches, participants]);
+
+  const momentMatches = isNewMode ? phaseMatches : matches;
 
   return (
     <div className="prediction-grid-wrapper">
       <PredictionWindowCard />
       <PredictionMoment
-        matches={matches}
+        matches={momentMatches}
         participants={participants}
         preferredMatchId={preferredMatchId}
       />
@@ -52,7 +94,9 @@ export default function PredictionGrid({ matches, participants }) {
       <section className={`prediction-history ${historyOpen ? 'open' : ''}`}>
         <div className="prediction-history-head">
           <div>
-            <span className="section-kicker">Histórico completo</span>
+            <span className="section-kicker">
+              {isNewMode ? 'Nueva fase' : 'Histórico completo'}
+            </span>
             <h3>Matriz comparativa</h3>
           </div>
           <button
@@ -64,14 +108,20 @@ export default function PredictionGrid({ matches, participants }) {
           </button>
         </div>
 
+        {isNewMode && matrixAudit && (
+          <div className="matrix-audit-bar">
+            <span>
+              <strong>{matrixAudit.totalParticipants}</strong> aprobados ·{' '}
+              <strong>{matrixAudit.totalMatches}</strong> partidos ·{' '}
+              promedio <strong>{matrixAudit.avgCoverage}</strong> pronósticos por partido
+            </span>
+          </div>
+        )}
+
         <div className="prediction-history-content">
           <div className="grid-controls">
             <div className="grid-tabs">
-              {[
-                { id: 'J1', label: 'Jornada 1', desc: '1-24' },
-                { id: 'J2', label: 'Jornada 2', desc: '25-48' },
-                { id: 'J3', label: 'Jornada 3', desc: '49-72' }
-              ].map(tab => (
+              {matrixTabs.map(tab => (
                 <button
                   key={tab.id}
                   onClick={() => setSelectedTab(tab.id)}
@@ -87,7 +137,11 @@ export default function PredictionGrid({ matches, participants }) {
 
           <div className="grid-table-container">
             {filteredMatches.length === 0 ? (
-              <div className="empty-grid-state">No se encontraron partidos para esta jornada.</div>
+              <div className="empty-grid-state">
+                {isNewMode
+                  ? 'No hay partidos configurados para la nueva fase.'
+                  : 'No se encontraron partidos para esta jornada.'}
+              </div>
             ) : (
               <table className="matrix-table">
                 <thead>
@@ -100,7 +154,7 @@ export default function PredictionGrid({ matches, participants }) {
                         <th
                           key={m.id}
                           className={`match-header-cell ${isLive ? 'col-live' : ''}`}
-                          title={`${m.homeTeam} vs ${m.awayTeam} (${m.date}) - Marcador: ${isLive || isFinished ? `${m.homeScore}-${m.awayScore}` : 'Por jugar'}`}
+                          title={`${m.homeTeam} vs ${m.awayTeam} — ${isLive || isFinished ? `${m.homeScore}-${m.awayScore}` : 'Por jugar'}`}
                         >
                           <div className="match-col-header-content">
                             <span className="match-id-tag">#{m.id}</span>
@@ -132,7 +186,7 @@ export default function PredictionGrid({ matches, participants }) {
                           <button
                             type="button"
                             className="participant-export-btn"
-                            onClick={() => exportParticipantQuiniela(p, matches)}
+                            onClick={() => exportParticipantQuiniela(p, isNewMode ? phaseMatches : matches)}
                             title={`Descargar quiniela de ${p.name}`}
                             aria-label={`Descargar quiniela de ${p.name}`}
                           >
@@ -141,12 +195,13 @@ export default function PredictionGrid({ matches, participants }) {
                         </div>
                       </td>
                       {filteredMatches.map(m => {
-                        const pred = p.predictions[m.id];
+                        const pred = getPredictionByMatch(p, m);
                         const predClass = predictionClass(pred, m);
+                        const isMissing = !pred;
                         return (
                           <td key={m.id} className="pred-cell">
-                            <span className={`pred-badge ${predClass}`}>
-                              {pred ? `${pred.homeScore}-${pred.awayScore}` : '-'}
+                            <span className={`pred-badge ${predClass} ${isMissing ? 'is-missing' : ''}`}>
+                              {pred ? `${pred.homeScore}-${pred.awayScore}` : '—'}
                             </span>
                           </td>
                         );
