@@ -798,7 +798,7 @@ export default function App() {
     : '—';
 
   return (
-    <div className={`app-container ${activeTab === 'dashboard' ? 'dashboard-active' : ''}`}>
+    <div className={`app-container ${activeTab === 'dashboard' ? 'dashboard-active' : ''} ${activeTab === 'capitalHumano' ? 'archive-active' : ''}`}>
       {/* Toast Goal Alerts */}
       <div className="toast-container">
         {toasts.map(t => (

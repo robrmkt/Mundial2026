@@ -7600,43 +7600,103 @@ details[open] .newq-acc-chevron { transform: rotate(180deg); }
 /* Vista histórica RH: tablero congelado, sin interacciones en vivo en el podio. */
 .archive-dashboard-page .podium-reactions { display: none; }
 
-/* RH archive: scroll libre (no usa dashboard-active pero por si acaso) */
-.archive-page, .archive-dashboard-page {
-  overflow: visible !important;
-  height: auto !important;
-  min-height: 0;
-}
-
-/* RH archive en desktop: podio más grande aprovechando el espacio sin LivePulse */
-@media (min-width: 1024px) {
-  .archive-dashboard-page .command-grid {
+/* ===== RH Archive en laptop: scroll bloqueado igual que Tabla General ===== */
+@media (min-width: 1024px) and (max-height: 939px) {
+  .app-container.archive-active {
+    height: 100dvh;
+    overflow: hidden;
+  }
+  .app-container.archive-active .header-inner {
+    padding-block: 0.42rem;
+  }
+  .app-container.archive-active .match-ticker {
+    padding-block: 0.34rem;
+  }
+  .app-container.archive-active .main-content-area {
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    padding-top: 0.75rem;
+    padding-bottom: 0.45rem;
+  }
+  .app-container.archive-active .archive-page {
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+  /* Hero: altura fija compacta */
+  .app-container.archive-active .rh-archive-hero {
+    flex-shrink: 0;
+    padding: 1rem 1.6rem 0.9rem;
+    margin-bottom: 0.7rem;
+  }
+  .app-container.archive-active .rh-archive-title {
+    font-size: clamp(1.1rem, 2.5vw, 1.6rem);
+  }
+  .app-container.archive-active .rh-archive-message {
+    font-size: 0.82rem;
+  }
+  /* command-grid ocupa el espacio restante */
+  .app-container.archive-active .archive-dashboard-page .command-grid {
+    flex: 1;
+    min-height: 0;
+    height: 100%;
     grid-template-columns: 1fr 1fr;
     grid-template-areas:
       "podium standings"
       "podium standings";
-    align-items: start;
-    height: auto;
-    overflow: visible;
+    grid-template-rows: 1fr;
+    gap: 0.75rem;
   }
-  .archive-dashboard-page .command-grid .podium-section {
+  .app-container.archive-active .archive-dashboard-page .command-grid .podium-section {
     grid-area: podium;
-    position: sticky;
-    top: 1rem;
+    min-height: 0;
+    overflow: auto;
+    padding-top: 0;
   }
-  /* Avatares del podio más grandes en la vista archivo */
-  .archive-dashboard-page .podium-avatar {
-    width: 80px;
-    height: 80px;
-    font-size: 2.2rem;
+  .app-container.archive-active .archive-dashboard-page .command-grid .command-right {
+    grid-area: standings;
+    height: 100%;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
   }
-  .archive-dashboard-page .podium-step.gold .podium-avatar {
-    width: 96px;
-    height: 96px;
-    font-size: 2.6rem;
+  .app-container.archive-active .archive-dashboard-page .command-grid .standings-card {
+    flex: 1;
+    min-height: 0;
+    padding: 0.75rem;
   }
-  .archive-dashboard-page .podium-name { font-size: 1rem; }
-  .archive-dashboard-page .podium-points { font-size: 1.1rem; }
-  .archive-dashboard-page .podium-medal { font-size: 2rem; }
+  .app-container.archive-active .archive-dashboard-page .command-grid .standings-table-container {
+    flex: 1;
+    min-height: 0;
+    overflow: auto;
+    margin-top: 0.35rem;
+  }
+  .app-container.archive-active .archive-dashboard-page .command-grid .standings-table th {
+    padding-block: 0.42rem;
+  }
+  .app-container.archive-active .archive-dashboard-page .command-grid .standings-table td {
+    padding-block: 0.42rem;
+  }
+  /* Podio más grande al tener toda la columna izquierda */
+  .app-container.archive-active .archive-dashboard-page .podium-avatar {
+    width: 72px;
+    height: 72px;
+    font-size: 2rem;
+  }
+  .app-container.archive-active .archive-dashboard-page .podium-step.gold .podium-avatar {
+    width: 88px;
+    height: 88px;
+    font-size: 2.4rem;
+  }
+  .app-container.archive-active .app-footer {
+    padding: 0.28rem 1rem;
+    font-size: 0.66rem;
+  }
 }
 
 /* =====================
