@@ -7600,6 +7600,45 @@ details[open] .newq-acc-chevron { transform: rotate(180deg); }
 /* Vista histórica RH: tablero congelado, sin interacciones en vivo en el podio. */
 .archive-dashboard-page .podium-reactions { display: none; }
 
+/* RH archive: scroll libre (no usa dashboard-active pero por si acaso) */
+.archive-page, .archive-dashboard-page {
+  overflow: visible !important;
+  height: auto !important;
+  min-height: 0;
+}
+
+/* RH archive en desktop: podio más grande aprovechando el espacio sin LivePulse */
+@media (min-width: 1024px) {
+  .archive-dashboard-page .command-grid {
+    grid-template-columns: 1fr 1fr;
+    grid-template-areas:
+      "podium standings"
+      "podium standings";
+    align-items: start;
+    height: auto;
+    overflow: visible;
+  }
+  .archive-dashboard-page .command-grid .podium-section {
+    grid-area: podium;
+    position: sticky;
+    top: 1rem;
+  }
+  /* Avatares del podio más grandes en la vista archivo */
+  .archive-dashboard-page .podium-avatar {
+    width: 80px;
+    height: 80px;
+    font-size: 2.2rem;
+  }
+  .archive-dashboard-page .podium-step.gold .podium-avatar {
+    width: 96px;
+    height: 96px;
+    font-size: 2.6rem;
+  }
+  .archive-dashboard-page .podium-name { font-size: 1rem; }
+  .archive-dashboard-page .podium-points { font-size: 1.1rem; }
+  .archive-dashboard-page .podium-medal { font-size: 2rem; }
+}
+
 /* =====================
    RH ARCHIVE HERO — banner de reconocimiento elegante
    ===================== */
@@ -7610,6 +7649,8 @@ details[open] .newq-acc-chevron { transform: rotate(180deg); }
   padding: 2rem 2.2rem 1.8rem;
   display: flex;
   flex-direction: column;
+  align-items: center;
+  text-align: center;
   gap: 0.55rem;
   position: relative;
   overflow: hidden;
