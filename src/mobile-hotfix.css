@@ -158,13 +158,13 @@
   display: none !important;
 }
 
-/* Podium proportion cleanup: cards should visually belong to their podium column. */
+/* Podium proportion cleanup: regular cards should visually belong to their podium column. */
 .command-grid .podium-step {
   align-items: stretch !important;
   min-width: 0;
 }
 
-.command-grid .podium-card {
+.command-grid .podium-step:not(.tied) .podium-card {
   width: 100% !important;
   max-width: none !important;
   min-width: 0 !important;
@@ -182,4 +182,77 @@
   max-width: 100%;
   white-space: normal;
   text-align: center;
+}
+
+/* Tied podium cleanup: prevent team shields from inflating the card. */
+.command-grid .podium-step.tied .podium-card,
+.command-grid .podium-card-tied {
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+  align-self: stretch !important;
+  overflow: hidden !important;
+  padding: 0.72rem 0.58rem 0.62rem !important;
+}
+
+.command-grid .podium-tie-list {
+  width: 100% !important;
+  max-width: 100% !important;
+  display: grid !important;
+  gap: 0.32rem !important;
+  margin-top: 0.24rem !important;
+  overflow: hidden !important;
+}
+
+.command-grid .podium-tie-player {
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+  min-height: 34px !important;
+  display: grid !important;
+  grid-template-columns: 24px minmax(0, 1fr) 28px !important;
+  align-items: center !important;
+  gap: 0.32rem !important;
+  padding: 0.24rem 0.34rem !important;
+  border-radius: 999px !important;
+  overflow: hidden !important;
+}
+
+.command-grid .podium-tie-avatar {
+  width: 24px !important;
+  height: 24px !important;
+  min-width: 24px !important;
+  max-width: 24px !important;
+  flex: 0 0 24px !important;
+  overflow: hidden !important;
+}
+
+.command-grid .podium-tie-avatar img {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+}
+
+.command-grid .podium-tie-name {
+  display: block !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+  text-align: left !important;
+  font-size: 0.72rem !important;
+  line-height: 1.1 !important;
+}
+
+.command-grid .podium-tie-player .team-badge,
+.command-grid .podium-tie-team {
+  width: 28px !important;
+  height: 28px !important;
+  min-width: 28px !important;
+  max-width: 28px !important;
+  max-height: 28px !important;
+  object-fit: contain !important;
+  transform: none !important;
+  justify-self: end !important;
 }
