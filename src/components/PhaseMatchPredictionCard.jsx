@@ -52,6 +52,7 @@ export default function PhaseMatchPredictionCard({ match, pred = {}, onChange, v
     else                         { statusLabel = 'Pendiente'; statusCls = 'status-needs-pred'; }
 
     return (
+      <>
       <div className={`newq-match-row${locked ? ' is-locked' : ''}`}>
         <div className="newq-match-row-left">
           <div className="newq-match-row-teams">
@@ -85,6 +86,31 @@ export default function PhaseMatchPredictionCard({ match, pred = {}, onChange, v
           )}
         </div>
       </div>
+      {!locked &&
+       pred.home !== '' && pred.home !== undefined &&
+       pred.away !== '' && pred.away !== undefined &&
+       Number(pred.home) === Number(pred.away) && (
+        <div className="newq-tiebreaker-row newq-tiebreaker-row--compact">
+          <span className="newq-tiebreaker-label">¿Quién avanza?</span>
+          <div className="newq-tiebreaker-btns">
+            <button
+              className={`newq-tiebreaker-btn${pred.tiebreaker === 'home' ? ' selected' : ''}`}
+              onClick={() => onChange(match.id, 'tiebreaker', pred.tiebreaker === 'home' ? null : 'home')}
+              type="button"
+            >
+              {match.homeTeam}
+            </button>
+            <button
+              className={`newq-tiebreaker-btn${pred.tiebreaker === 'away' ? ' selected' : ''}`}
+              onClick={() => onChange(match.id, 'tiebreaker', pred.tiebreaker === 'away' ? null : 'away')}
+              type="button"
+            >
+              {match.awayTeam}
+            </button>
+          </div>
+        </div>
+      )}
+      </>
     );
   }
 
