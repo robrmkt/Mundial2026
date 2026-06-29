@@ -135,15 +135,47 @@ export default function PhaseMatchPredictionCard({ match, pred = {}, onChange, v
           <Lock size={13} />
           <span>Cerrado para pronósticos</span>
           {hasPred && (
-            <span className="newq-locked-pred">{pred.home} – {pred.away}</span>
+            <span className="newq-locked-pred">
+              {pred.home} – {pred.away}
+              {pred.tiebreaker && (
+                <span className="newq-locked-tiebreaker">
+                  · avanza {pred.tiebreaker === 'home' ? match.homeTeam : match.awayTeam}
+                </span>
+              )}
+            </span>
           )}
         </div>
       ) : (
-        <div className="newq-score-box">
-          <ScoreInput value={pred.home} onChange={v => onChange(match.id, 'home', v)} />
-          <span className="newq-score-sep">–</span>
-          <ScoreInput value={pred.away} onChange={v => onChange(match.id, 'away', v)} />
-        </div>
+        <>
+          <div className="newq-score-box">
+            <ScoreInput value={pred.home} onChange={v => onChange(match.id, 'home', v)} />
+            <span className="newq-score-sep">–</span>
+            <ScoreInput value={pred.away} onChange={v => onChange(match.id, 'away', v)} />
+          </div>
+          {pred.home !== '' && pred.home !== undefined &&
+           pred.away !== '' && pred.away !== undefined &&
+           Number(pred.home) === Number(pred.away) && (
+            <div className="newq-tiebreaker-row">
+              <span className="newq-tiebreaker-label">¿Quién avanza?</span>
+              <div className="newq-tiebreaker-btns">
+                <button
+                  className={`newq-tiebreaker-btn${pred.tiebreaker === 'home' ? ' selected' : ''}`}
+                  onClick={() => onChange(match.id, 'tiebreaker', pred.tiebreaker === 'home' ? null : 'home')}
+                  type="button"
+                >
+                  {match.homeTeam}
+                </button>
+                <button
+                  className={`newq-tiebreaker-btn${pred.tiebreaker === 'away' ? ' selected' : ''}`}
+                  onClick={() => onChange(match.id, 'tiebreaker', pred.tiebreaker === 'away' ? null : 'away')}
+                  type="button"
+                >
+                  {match.awayTeam}
+                </button>
+              </div>
+            </div>
+          )}
+        </>
       )}
     </div>
   );

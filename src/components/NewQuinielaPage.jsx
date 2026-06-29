@@ -266,7 +266,8 @@ export default function NewQuinielaPage({ matches = [], settings = {} }) {
     setDirty(true);
     setSavedAt(null);
     setPredictions(prev => {
-      const next = { ...prev, [matchId]: { ...prev[matchId], [side]: scoreValue(value) } };
+      const fieldValue = side === 'tiebreaker' ? value : scoreValue(value);
+      const next = { ...prev, [matchId]: { ...prev[matchId], [side]: fieldValue } };
       if (profile?.email && activeWindow?.id) {
         const count = Object.values(next).filter(p => p?.home !== '' && p?.home !== undefined && p?.away !== '' && p?.away !== undefined).length;
         recordPhaseProgress({ windowId: activeWindow.id, email: profile.email, status: 'editing', predictionCount: count });
@@ -294,7 +295,7 @@ export default function NewQuinielaPage({ matches = [], settings = {} }) {
     if (!participantName) { setError('Captura tu nombre completo.'); setStep('new'); return; }
     const filled = Object.entries(predictions).filter(([, p]) => p?.home !== '' && p?.home !== undefined && p?.away !== '' && p?.away !== undefined);
     if (!filled.length) { setError('Ingresa al menos un pronóstico.'); return; }
-    const payloadPreds = Object.fromEntries(filled.map(([id, p]) => [id, { homeScore: Number(p.home), awayScore: Number(p.away) }]));
+    const payloadPreds = Object.fromEntries(filled.map(([id, p]) => [id, { homeScore: Number(p.home), awayScore: Number(p.away), tiebreaker: p.tiebreaker || null }]));
     const matchMeta = Object.fromEntries(continuationMatches.map(m => [String(m.id), m]));
     setSaving(true); setError('');
     try {

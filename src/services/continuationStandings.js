@@ -6,14 +6,15 @@ function normalizeSubmissionPredictions(predictions) {
   Object.entries(predictions || {}).forEach(([matchId, p]) => {
     result[matchId] = {
       homeScore: Number(p.homeScore ?? p.home ?? ''),
-      awayScore: Number(p.awayScore ?? p.away ?? '')
+      awayScore: Number(p.awayScore ?? p.away ?? ''),
+      tiebreaker: p.tiebreaker || null
     };
   });
   return result;
 }
 
 function computeScore(predictions, matches) {
-  let points = 0, exactHits = 0, outcomeHits = 0, playedAndPredicted = 0;
+  let points = 0, exactHits = 0, outcomeHits = 0, tiebreakerHits = 0, playedAndPredicted = 0;
   const playerObj = { predictions };
 
   matches.forEach(m => {
@@ -27,16 +28,38 @@ function computeScore(predictions, matches) {
     const mAway = parseInt(m.awayScore, 10);
     if ([pHome, pAway, mHome, mAway].some(Number.isNaN)) return;
     playedAndPredicted++;
+
     const exact = pHome === mHome && pAway === mAway;
-    const outcome = Math.sign(pHome - pAway) === Math.sign(mHome - mAway);
-    if (exact) { points += 3; exactHits++; }
-    else if (outcome) { points += 1; outcomeHits++; }
+    const tbWinner = m.tiebreakerWinner || null;
+    const predTb = pred.tiebreaker || null;
+    const correctTb = tbWinner && predTb && predTb === tbWinner;
+
+    if (exact) {
+      exactHits++;
+      if (tbWinner) {
+        points += correctTb ? 4 : 2;
+        if (correctTb) tiebreakerHits++;
+      } else {
+        points += 3;
+      }
+    } else if (tbWinner) {
+      // Knockout draw: only reward if predicted draw AND correct tiebreaker
+      const predictedDraw = pHome === pAway;
+      if (predictedDraw && correctTb) {
+        points += 1;
+        outcomeHits++;
+        tiebreakerHits++;
+      }
+    } else {
+      const outcome = Math.sign(pHome - pAway) === Math.sign(mHome - mAway);
+      if (outcome) { points += 1; outcomeHits++; }
+    }
   });
 
   const effectiveness = playedAndPredicted > 0
     ? Math.round(((exactHits + outcomeHits) / playedAndPredicted) * 100)
     : 0;
-  return { points, exactHits, outcomeHits, playedAndPredicted, effectiveness };
+  return { points, exactHits, outcomeHits, tiebreakerHits, playedAndPredicted, effectiveness };
 }
 
 export function buildContinuationStandings({ participants, phaseSubmissions, matches }) {

@@ -51,6 +51,13 @@ export async function fetchScoreboard() {
     if (!home || !away) return null;
 
     const statusType = comp.status?.type;
+    const hScore = Number.parseInt(home.score ?? '0', 10) || 0;
+    const aScore = Number.parseInt(away.score ?? '0', 10) || 0;
+    const st = mapState(statusType);
+    const isDraw = hScore === aScore;
+    const tiebreakerWinner = (st === 'FINISHED' && isDraw && (home.winner === true || away.winner === true))
+      ? (home.winner === true ? 'home' : 'away')
+      : null;
     return {
       espnId: event.id,
       kickoff: comp.date || event.date,
@@ -58,17 +65,18 @@ export async function fetchScoreboard() {
       awayNorm: normalizeTeam(away.team?.displayName),
       homeTeam: home.team?.displayName || 'Por definir',
       awayTeam: away.team?.displayName || 'Por definir',
-      homeScore: Number.parseInt(home.score ?? '0', 10) || 0,
-      awayScore: Number.parseInt(away.score ?? '0', 10) || 0,
+      homeScore: hScore,
+      awayScore: aScore,
       homeLogo: home.team?.logo || '',
       awayLogo: away.team?.logo || '',
-      status: mapState(statusType),
+      status: st,
       statusDetail: statusType?.detail || '',
       isHalftime: statusType?.name === 'STATUS_HALFTIME',
       displayClock: comp.status?.displayClock || '',
       minute: parseMinute(comp.status?.displayClock),
       venue: comp.venue?.fullName || '',
-      city: comp.venue?.address?.city || ''
+      city: comp.venue?.address?.city || '',
+      tiebreakerWinner
     };
   }).filter(Boolean);
 }
@@ -100,6 +108,7 @@ function buildMatchFromEspnEvent(ev, fallbackIndex) {
     minute: ev.minute,
     venue: ev.venue,
     city: ev.city,
+    tiebreakerWinner: ev.tiebreakerWinner || null,
     source: 'espn'
   };
 }
@@ -175,7 +184,8 @@ export function mergeScoreboard(matches, espnEvents) {
       displayClock: ev.displayClock,
       minute: ev.minute,
       venue: ev.venue,
-      city: ev.city
+      city: ev.city,
+      tiebreakerWinner: ev.tiebreakerWinner ? (swapped ? (ev.tiebreakerWinner === 'home' ? 'away' : 'home') : ev.tiebreakerWinner) : (match.tiebreakerWinner || null)
     };
 
     if (JSON.stringify(next) !== JSON.stringify(match)) changed = true;

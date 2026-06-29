@@ -8489,4 +8489,61 @@ details.newq-mobile-section-details[open] .newq-acc-chevron { transform: rotate(
 }
 .newq-mobile-save-bar:not(.is-active) {
   opacity: 0.6;
+
+/* ── Tiebreaker toggle ─────────────────────────────────────────────── */
+.newq-tiebreaker-row {
+  margin-top: 0.5rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.newq-tiebreaker-label {
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+}
+
+.newq-tiebreaker-btns {
+  display: flex;
+  gap: 0.5rem;
+  width: 100%;
+}
+
+.newq-tiebreaker-btn {
+  flex: 1;
+  padding: 0.45rem 0.5rem;
+  border-radius: 10px;
+  border: 1.5px solid var(--border);
+  background: var(--surface);
+  color: var(--text-primary);
+  font-size: 0.8rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.newq-tiebreaker-btn.selected {
+  background: var(--accent, #2563eb);
+  border-color: var(--accent, #2563eb);
+  color: #fff;
+  font-weight: 700;
+}
+
+.newq-tiebreaker-btn:not(.selected):hover {
+  border-color: var(--accent, #2563eb);
+  color: var(--accent, #2563eb);
+}
+
+.newq-locked-tiebreaker {
+  font-size: 0.78rem;
+  color: var(--text-secondary);
+  margin-left: 0.25rem;
 }

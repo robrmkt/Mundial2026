@@ -1099,6 +1099,7 @@ const server = createServer(async (request, response) => {
           nextPredictions[matchId] = {
             homeScore: Number(pred.homeScore),
             awayScore: Number(pred.awayScore),
+            tiebreaker: pred.tiebreaker === 'home' || pred.tiebreaker === 'away' ? pred.tiebreaker : null,
             savedAt: new Date().toISOString(),
             lockedAt: getMatchLockAtValue(meta, settings.lockMinutesBeforeKickoff)
           };
