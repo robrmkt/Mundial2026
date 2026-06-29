@@ -25,7 +25,11 @@ export function getPhaseMatches({ matches = [], settings = {}, predictionWindows
     });
 
   if (matchIds.length) {
-    return sortByKickoff(matches.filter(m => matchIds.includes(String(m.id))));
+    // Also match by espnId for ESPN-sourced matches with string IDs
+    return sortByKickoff(matches.filter(m =>
+      matchIds.includes(String(m.id)) ||
+      (m.espnId && matchIds.includes(String(m.espnId)))
+    ));
   }
 
   const startAt = Date.parse(settings?.startAt || '');
@@ -36,7 +40,11 @@ export function getPhaseMatches({ matches = [], settings = {}, predictionWindows
 
   if (byStartAt.length) return sortByKickoff(byStartAt);
 
-  return sortByKickoff(matches.filter(m => Number(m.id) >= 73));
+  // Include integer id >= 73 OR ESPN-sourced matches (espn_* string ids from mergeScoreboard)
+  return sortByKickoff(matches.filter(m => {
+    const numId = Number(m.id);
+    return (Number.isFinite(numId) && numId >= 73) || m.source === 'espn';
+  }));
 }
 
 export function getPredictionParticipants({ dashboardMode, participants = [], newQuinielaStandings = [] }) {

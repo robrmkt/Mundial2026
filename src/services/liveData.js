@@ -152,10 +152,19 @@ export function mergeScoreboard(matches, espnEvents) {
       });
     }
 
+    const espnHome = swapped ? ev.awayTeam : ev.homeTeam;
+    const espnAway = swapped ? ev.homeTeam : ev.awayTeam;
+    // Update team names from ESPN when ESPN has confirmed real names (overrides 'Por definir')
+    const isPlaceholder = (name) => !name || /por definir|tbd|round of|winner|loser|ganador|perdedor/i.test(name);
+    const resolvedHome = !isPlaceholder(espnHome) ? espnHome : match.homeTeam;
+    const resolvedAway = !isPlaceholder(espnAway) ? espnAway : match.awayTeam;
+
     const next = {
       ...match,
       espnId: ev.espnId,
       kickoff: ev.kickoff,
+      homeTeam: resolvedHome,
+      awayTeam: resolvedAway,
       homeLogo: swapped ? ev.awayLogo : ev.homeLogo,
       awayLogo: swapped ? ev.homeLogo : ev.awayLogo,
       homeScore: ev.status === 'SCHEDULED' ? 0 : newHome,
