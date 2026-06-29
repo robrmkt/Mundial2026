@@ -30,11 +30,17 @@ const COPY_BY_MODE = {
 };
 
 // Frecuencia por modo: primer overlay, repetición y mínimo entre overlays.
+// Muy espaciados a propósito: el banner de México debe ser un detalle ocasional,
+// no algo que interrumpa cada rato.
 const FREQ_BY_MODE = {
-  tomorrow: { first: [10_000, 18_000], repeat: [8 * 60_000, 14 * 60_000], minGap: 5 * 60_000 },
-  today:    { first: [30_000, 60_000], repeat: [15 * 60_000, 25 * 60_000], minGap: 12 * 60_000 },
-  live:     { first: [15_000, 25_000], repeat: [ 8 * 60_000, 14 * 60_000], minGap:  6 * 60_000 }
+  tomorrow: { first: [90_000, 150_000], repeat: [45 * 60_000, 75 * 60_000], minGap: 40 * 60_000 },
+  today:    { first: [90_000, 150_000], repeat: [40 * 60_000, 60 * 60_000], minGap: 35 * 60_000 },
+  live:     { first: [60_000, 120_000], repeat: [30 * 60_000, 50 * 60_000], minGap: 25 * 60_000 }
 };
+
+// Tope duro de apariciones por carga de página (sesión). Aunque pase el tiempo,
+// nunca se muestra más de esto, para que jamás se sienta invasivo.
+const MAX_PER_SESSION = 2;
 
 function getLocalDateKey(date = new Date()) {
   return [
@@ -110,9 +116,12 @@ function reducedMotion() {
 export default function useMexicoHype({ matches, activeTab, enqueueOverlay }) {
   // El mínimo entre overlays se conserva aunque cambie el modo (today -> live).
   const lastShownRef = useRef(0);
+  // Cuántas veces se ha mostrado en esta carga de página (tope duro).
+  const shownCountRef = useRef(0);
 
   useEffect(() => {
     if (activeTab === 'admin' || reducedMotion()) return undefined;
+    if (shownCountRef.current >= MAX_PER_SESSION) return undefined;
 
     const ctx = getMexicoMatchContext(matches);
     // Solo hay alertas automáticas si México juega hoy, mañana o está en vivo.
@@ -127,6 +136,8 @@ export default function useMexicoHype({ matches, activeTab, enqueueOverlay }) {
       const [lo, hi] = initial ? freq.first : freq.repeat;
       timer = setTimeout(() => {
         if (cancelled) return;
+        // Tope alcanzado: no programamos más.
+        if (shownCountRef.current >= MAX_PER_SESSION) return;
         // Si la pestaña está oculta, no encolamos: reintentamos más tarde.
         if (document.hidden) { schedule(false); return; }
 
@@ -146,9 +157,10 @@ export default function useMexicoHype({ matches, activeTab, enqueueOverlay }) {
               }
             });
             lastShownRef.current = now;
+            shownCountRef.current += 1;
           }
         }
-        schedule(false);
+        if (shownCountRef.current < MAX_PER_SESSION) schedule(false);
       }, rand(lo, hi));
     };
 
