@@ -403,15 +403,25 @@ export default function NewQuinielaPage({ matches = [], settings = {} }) {
       <div className="newq-shell">
       {SaveModal}
 
-        {/* Hero */}
-        <div className="newq-hero">
-          <div>
-            <span className="newq-kicker">Continuación Mundialista</span>
-            <h1>Nueva quiniela mundialista</h1>
-            <p className="newq-hero-copy desktop-copy">Continúa con tus pronósticos para la siguiente fase del Mundial. Si ya participaste en la Quiniela RH, ingresa con tu correo corporativo vinculado a tu usuario. Si eres nuevo, escribe tu correo y completa tu nombre para registrarte.</p>
-            <p className="newq-hero-copy mobile-copy">Si ya jugaste, entra con tu correo corporativo. Si eres nuevo, registra tu correo y nombre.</p>
+        {/* Header — hero when not logged in, compact header when logged in */}
+        {!displayProfile ? (
+          <div className="newq-hero">
+            <div>
+              <span className="newq-kicker">Continuación Mundialista</span>
+              <h1>Nueva quiniela mundialista</h1>
+              <p className="newq-hero-copy desktop-copy">Continúa con tus pronósticos para la siguiente fase del Mundial. Si ya participaste en la Quiniela RH, ingresa con tu correo corporativo vinculado a tu usuario. Si eres nuevo, escribe tu correo y completa tu nombre para registrarte.</p>
+              <p className="newq-hero-copy mobile-copy">Si ya jugaste, entra con tu correo corporativo. Si eres nuevo, registra tu correo y nombre.</p>
+            </div>
           </div>
-        </div>
+        ) : (
+          <div className="newq-compact-header">
+            <div>
+              <span className="newq-kicker">Continuación Mundialista</span>
+              <h1>Nueva quiniela mundialista</h1>
+            </div>
+            <p>Completa o revisa tus pronósticos de la fase activa.</p>
+          </div>
+        )}
 
         {/* Step: email */}
         {step === 'email' && (
@@ -464,155 +474,163 @@ export default function NewQuinielaPage({ matches = [], settings = {} }) {
         {displayProfile && step === 'board' && (
           <>
             {postSubmit && PostSubmitScreen}
-            {/* Profile card */}
-            {!postSubmit && <div className="newq-profile-card">
-              <div className="newq-profile-main">
-                <div className="newq-profile-avatar">
-                  {displayProfile.photo
-                    ? <img src={displayProfile.photo} alt={displayProfile.name} />
-                    : <span>{displayProfile.avatar}</span>}
-                </div>
-                <div className="newq-profile-info">
-                  <h2>{displayProfile.name}</h2>
-                  <p>{displayProfile.email}</p>
-                  <div className="newq-profile-chips">
-                    {displayProfile.team && (
-                      <span className={`newq-team-chip ${displayProfile.team}`}>{teamLabel(displayProfile.team)}</span>
-                    )}
-                    {existingSubmission && (
-                      <span className={`newq-submission-badge ${submissionStatusClass[existingSubmission.status] || 'badge-pending'}`}>
-                        {submissionStatusLabel[existingSubmission.status] || 'Pendiente'}
-                      </span>
-                    )}
-                  </div>
-                  {/* Progress bar */}
-                  <div className="newq-progress-bar-wrap">
-                    <div className="newq-progress-bar-track">
-                      <div
-                        className="newq-progress-bar-fill"
-                        style={{ width: openMatches.length > 0 ? `${Math.round(completedCount / openMatches.length * 100)}%` : '0%' }}
-                      />
-                    </div>
-                    <span className="newq-progress-label">{completedCount}/{openMatches.length} pronósticos capturados</span>
-                  </div>
-                  {lockedWithoutPred > 0 && (
-                    <p className="newq-profile-warn"><AlertTriangle size={12} /> {lockedWithoutPred} partido{lockedWithoutPred !== 1 ? 's' : ''} cerrado{lockedWithoutPred !== 1 ? 's' : ''} sin pronóstico</p>
-                  )}
-                  {closingSoon.length > 0 && (
-                    <p className="newq-profile-warn closing-soon"><AlertTriangle size={12} /> {closingSoon.length} partido{closingSoon.length !== 1 ? 's' : ''} cierra pronto</p>
-                  )}
-                </div>
-              </div>
-              <div className="newq-profile-stats">
-                <CapitalHumanoSummary history={profile.capitalHumano} />
-                <NuevaQuinielaSummary submission={existingSubmission} />
-              </div>
-            </div>}
-
-            {/* Draft restore prompt */}
-            {draftRestorePrompt && (
-              <div className="newq-draft-banner">
-                <span>Encontramos cambios sin guardar en este dispositivo.</span>
-                <div className="newq-draft-actions">
-                  <button className="newq-btn-secondary" onClick={() => {
-                    setPredictions(draftRestorePrompt.draft);
-                    setDirty(true);
-                    setDraftRestorePrompt(null);
-                  }}>Restaurar</button>
-                  <button className="newq-btn-secondary muted" onClick={() => {
-                    if (draftKey) localStorage.removeItem(draftKey);
-                    setDraftRestorePrompt(null);
-                  }}>Descartar</button>
-                </div>
-              </div>
-            )}
-
-            {/* Submission status */}
-            {existingSubmission && !dirty && (
-              <div className={`newq-submission-status status-${existingSubmission.status || 'pending'}`}>
-                {(existingSubmission.status === 'pending' || !existingSubmission.status) && (
-                  <><CheckCircle2 size={16} /> Tus pronósticos están <strong>pendientes de revisión</strong>. Puedes volver más tarde para ver si ya fueron aprobados.</>
-                )}
-                {existingSubmission.status === 'approved' && (
-                  <><CheckCircle2 size={16} /> Tu quiniela fue <strong>aprobada</strong> y ya aparece en la tabla general.</>
-                )}
-                {existingSubmission.status === 'edited' && (
-                  <><CheckCircle2 size={16} /> Tu quiniela actualizada está <strong>pendiente de revisión</strong>.</>
-                )}
-                {existingSubmission.status === 'rejected' && (
-                  <>Tu quiniela fue <strong>rechazada</strong>.{existingSubmission.rejectedReason ? ` Motivo: ${existingSubmission.rejectedReason}` : ''} Puedes corregir y volver a guardar.</>
-                )}
-              </div>
-            )}
-
-            {/* No active window warning */}
-            {!activeWindow && (
-              <div className="newq-error" style={{ marginBottom: '1rem', padding: '0.85rem 1rem', borderRadius: '12px', background: 'var(--error-bg, #fef2f2)' }}>
-                No hay una ventana de pronósticos activa. El administrador debe crear o abrir una ventana para habilitar el guardado.
-              </div>
-            )}
-
-            {/* Board — Desktop */}
-            <div className="newq-desktop-board">
-              <div className="newq-board">
-                <div className="newq-board-header">
-                  <div>
-                    <h2>Mis apuestas</h2>
-                    <p>Cierre {LOCK_MINUTES_BEFORE_KICKOFF} minutos antes de cada partido.</p>
-                  </div>
-                  <div className="newq-board-actions">
-                    <div className="newq-save-status">
-                      {dirty && !saving && <span className="newq-unsaved">Cambios sin guardar</span>}
-                      {saving && <span className="newq-saving">Guardando...</span>}
-                      {savedAt && !dirty && !saving && <span className="newq-saved">✓ Guardado correctamente</span>}
-                      {!dirty && !savedAt && !saving && <span className="newq-neutral">Sin cambios</span>}
-                    </div>
-                    <button className="newq-btn-primary newq-inline-save" onClick={openSaveModal} disabled={!canSave}>
-                      {saving ? 'Guardando…' : 'Guardar cambios'}
-                    </button>
-                  </div>
-                </div>
-
-                {/* Filters */}
-                <div className="newq-filters">
-                  {FILTERS.map(f => (
-                    <button
-                      key={f.key}
-                      className={`newq-filter-btn${filter === f.key ? ' active' : ''}`}
-                      onClick={() => setFilter(f.key)}
-                    >
-                      {f.label}
-                      {counts[f.key] > 0 && <span className="newq-filter-count">{counts[f.key]}</span>}
-                    </button>
-                  ))}
-                </div>
-
-                {/* Matches grouped by date */}
-                {filteredMatches.length === 0 ? (
-                  <div className="newq-empty">
-                    {filter === 'open' ? 'No hay partidos abiertos para pronosticar en este momento.' : 'Sin partidos en esta categoría.'}
-                  </div>
-                ) : (
-                  Object.entries(groupMatchesByDate(filteredMatches)).map(([dateLabel, items]) => (
-                    <section key={dateLabel} className="newq-date-group">
-                      <h3 className="newq-date-label">{dateLabel}</h3>
-                      <div className="newq-match-grid">
-                        {items.map(match => (
-                          <PhaseMatchPredictionCard
-                            key={match.id}
-                            match={match}
-                            pred={predictions[match.id] || {}}
-                            onChange={handleScore}
-                          />
-                        ))}
+            {!postSubmit && (
+              <div className="newq-desktop-app">
+                {/* SIDEBAR */}
+                <aside className="newq-side-panel">
+                  {/* Profile card — vertical */}
+                  <div className="newq-profile-card">
+                    <div className="newq-profile-main">
+                      <div className="newq-profile-avatar">
+                        {displayProfile.photo
+                          ? <img src={displayProfile.photo} alt={displayProfile.name} />
+                          : <span>{displayProfile.avatar}</span>}
                       </div>
-                    </section>
-                  ))
-                )}
+                      <div className="newq-profile-info">
+                        <h2>{displayProfile.name}</h2>
+                        <p>{displayProfile.email}</p>
+                        <div className="newq-profile-chips">
+                          {displayProfile.team && (
+                            <span className={`newq-team-chip ${displayProfile.team}`}>{teamLabel(displayProfile.team)}</span>
+                          )}
+                          {existingSubmission && (
+                            <span className={`newq-submission-badge ${submissionStatusClass[existingSubmission.status] || 'badge-pending'}`}>
+                              {submissionStatusLabel[existingSubmission.status] || 'Pendiente'}
+                            </span>
+                          )}
+                        </div>
+                        {/* Progress bar */}
+                        <div className="newq-progress-bar-wrap">
+                          <div className="newq-progress-bar-track">
+                            <div
+                              className="newq-progress-bar-fill"
+                              style={{ width: openMatches.length > 0 ? `${Math.round(completedCount / openMatches.length * 100)}%` : '0%' }}
+                            />
+                          </div>
+                          <span className="newq-progress-label">{completedCount}/{openMatches.length} pronósticos capturados</span>
+                        </div>
+                        {lockedWithoutPred > 0 && (
+                          <p className="newq-profile-warn"><AlertTriangle size={12} /> {lockedWithoutPred} partido{lockedWithoutPred !== 1 ? 's' : ''} cerrado{lockedWithoutPred !== 1 ? 's' : ''} sin pronóstico</p>
+                        )}
+                        {closingSoon.length > 0 && (
+                          <p className="newq-profile-warn closing-soon"><AlertTriangle size={12} /> {closingSoon.length} partido{closingSoon.length !== 1 ? 's' : ''} cierra pronto</p>
+                        )}
+                      </div>
+                    </div>
+                    {/* Stats stacked vertically */}
+                    <div className="newq-profile-stats">
+                      <CapitalHumanoSummary history={profile.capitalHumano} />
+                      <NuevaQuinielaSummary submission={existingSubmission} />
+                    </div>
+                  </div>
 
-                {error && <p className="newq-error" style={{ marginTop: '0.75rem' }}>{error}</p>}
+                  {/* Draft restore — in sidebar */}
+                  {draftRestorePrompt && (
+                    <div className="newq-draft-banner">
+                      <span>Encontramos cambios sin guardar en este dispositivo.</span>
+                      <div className="newq-draft-actions">
+                        <button className="newq-btn-secondary" onClick={() => {
+                          setPredictions(draftRestorePrompt.draft);
+                          setDirty(true);
+                          setDraftRestorePrompt(null);
+                        }}>Restaurar</button>
+                        <button className="newq-btn-secondary muted" onClick={() => {
+                          if (draftKey) localStorage.removeItem(draftKey);
+                          setDraftRestorePrompt(null);
+                        }}>Descartar</button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Submission status chip */}
+                  {existingSubmission && !dirty && (
+                    <div className={`newq-submission-status status-${existingSubmission.status || 'pending'}`}>
+                      {(existingSubmission.status === 'pending' || !existingSubmission.status) && (
+                        <><CheckCircle2 size={16} /> Tus pronósticos están <strong>pendientes de revisión</strong>. Puedes volver más tarde para ver si ya fueron aprobados.</>
+                      )}
+                      {existingSubmission.status === 'approved' && (
+                        <><CheckCircle2 size={16} /> Tu quiniela fue <strong>aprobada</strong> y ya aparece en la tabla general.</>
+                      )}
+                      {existingSubmission.status === 'edited' && (
+                        <><CheckCircle2 size={16} /> Tu quiniela actualizada está <strong>pendiente de revisión</strong>.</>
+                      )}
+                      {existingSubmission.status === 'rejected' && (
+                        <>Tu quiniela fue <strong>rechazada</strong>.{existingSubmission.rejectedReason ? ` Motivo: ${existingSubmission.rejectedReason}` : ''} Puedes corregir y volver a guardar.</>
+                      )}
+                    </div>
+                  )}
+
+                  {/* No window warning */}
+                  {!activeWindow && (
+                    <div className="newq-error" style={{ marginBottom: '1rem', padding: '0.85rem 1rem', borderRadius: '12px', background: 'var(--error-bg, #fef2f2)' }}>
+                      No hay una ventana de pronósticos activa. El administrador debe crear o abrir una ventana para habilitar el guardado.
+                    </div>
+                  )}
+                </aside>
+
+                {/* MAIN PANEL */}
+                <main className="newq-main-panel">
+                  <div className="newq-board-header">
+                    <div>
+                      <h2>Mis apuestas</h2>
+                      <p>Cierre {LOCK_MINUTES_BEFORE_KICKOFF} minutos antes de cada partido.</p>
+                    </div>
+                    <div className="newq-board-actions">
+                      <div className="newq-save-status">
+                        {dirty && !saving && <span className="newq-unsaved">Cambios sin guardar</span>}
+                        {saving && <span className="newq-saving">Guardando...</span>}
+                        {savedAt && !dirty && !saving && <span className="newq-saved">✓ Guardado correctamente</span>}
+                        {!dirty && !savedAt && !saving && <span className="newq-neutral">Sin cambios</span>}
+                      </div>
+                      <button className="newq-btn-primary newq-inline-save" onClick={openSaveModal} disabled={!canSave}>
+                        {saving ? 'Guardando…' : 'Guardar cambios'}
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Filters */}
+                  <div className="newq-filters">
+                    {FILTERS.map(f => (
+                      <button
+                        key={f.key}
+                        className={`newq-filter-btn${filter === f.key ? ' active' : ''}`}
+                        onClick={() => setFilter(f.key)}
+                      >
+                        {f.label}
+                        {counts[f.key] > 0 && <span className="newq-filter-count">{counts[f.key]}</span>}
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Scrollable matches area */}
+                  <div className="newq-board-scroll">
+                    {filteredMatches.length === 0 ? (
+                      <div className="newq-empty">
+                        {filter === 'open' ? 'No hay partidos abiertos para pronosticar en este momento.' : 'Sin partidos en esta categoría.'}
+                      </div>
+                    ) : (
+                      Object.entries(groupMatchesByDate(filteredMatches)).map(([dateLabel, items]) => (
+                        <section key={dateLabel} className="newq-date-group">
+                          <h3 className="newq-date-label">{dateLabel}</h3>
+                          <div className="newq-match-grid">
+                            {items.map(match => (
+                              <PhaseMatchPredictionCard
+                                key={match.id}
+                                match={match}
+                                pred={predictions[match.id] || {}}
+                                onChange={handleScore}
+                              />
+                            ))}
+                          </div>
+                        </section>
+                      ))
+                    )}
+
+                    {error && <p className="newq-error" style={{ marginTop: '0.75rem' }}>{error}</p>}
+                  </div>
+                </main>
               </div>
-            </div>
+            )}
 
             {/* Board — Mobile (compact rows por sección) */}
             <div className="newq-mobile-board">
