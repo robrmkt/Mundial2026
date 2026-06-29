@@ -431,10 +431,34 @@ function getMatchLockAtValue(match, lockMinutes) {
   return new Date(ms - lockMinutes * 60 * 1000).toISOString();
 }
 
+function isPlaceholderTeamName(name) {
+  const value = String(name || '').toLowerCase();
+  return (
+    !value ||
+    value.includes('tbd') ||
+    value.includes('to be determined') ||
+    value.includes('por definir') ||
+    value.includes('third place') ||
+    value.includes('mejor 3er') ||
+    value.includes('winner group') ||
+    value.includes('group winner') ||
+    value.includes('runner-up group') ||
+    value.includes('2nd place') ||
+    value.includes('winner of') ||
+    value.includes('loser of')
+  );
+}
+
 function isConfirmedMatch(match) {
   const home = String(match?.homeTeam || '').trim();
   const away = String(match?.awayTeam || '').trim();
-  return Boolean(home && away && !/por definir|tbd|to be determined/i.test(`${home} ${away}`) && getMatchKickoffValue(match));
+  return Boolean(
+    home &&
+    away &&
+    !isPlaceholderTeamName(home) &&
+    !isPlaceholderTeamName(away) &&
+    getMatchKickoffValue(match)
+  );
 }
 
 function isSubmissionMatchLocked(match, settings) {

@@ -30,7 +30,7 @@ function ScoreInput({ value, onChange, disabled }) {
   );
 }
 
-export default function PhaseMatchPredictionCard({ match, pred = {}, onChange }) {
+export default function PhaseMatchPredictionCard({ match, pred = {}, onChange, variant = 'card' }) {
   const kickoff = getMatchKickoff(match);
   const lockAt = getMatchLockAt(match);
   const locked = isMatchLocked(match);
@@ -38,6 +38,57 @@ export default function PhaseMatchPredictionCard({ match, pred = {}, onChange })
   const awayPlaceholder = isPlaceholderTeam(match.awayTeam);
   const isPending = homePlaceholder || awayPlaceholder;
 
+  const hasPred = pred.home !== undefined && pred.home !== '' && pred.away !== undefined && pred.away !== '';
+
+  // ── COMPACT variant (mobile rows) ──
+  if (variant === 'compact') {
+    if (isPending) return null; // pending matches shown by PendingRoundsSummary, not here
+
+    let statusLabel = '';
+    let statusCls = '';
+    if (locked && hasPred)       { statusLabel = 'Capturado'; statusCls = 'status-captured'; }
+    else if (locked && !hasPred) { statusLabel = 'Cerrado sin dato'; statusCls = 'status-closed-no-pred'; }
+    else if (!locked && hasPred) { statusLabel = 'Capturado'; statusCls = 'status-captured'; }
+    else                         { statusLabel = 'Pendiente'; statusCls = 'status-needs-pred'; }
+
+    return (
+      <div className={`newq-match-row${locked ? ' is-locked' : ''}`}>
+        <div className="newq-match-row-left">
+          <div className="newq-match-row-teams">
+            <span className="newq-row-team">
+              <FlagIcon team={match.homeTeam} size={16} />
+              {displayTeamName(match.homeTeam)}
+            </span>
+            <span className="newq-row-vs">vs</span>
+            <span className="newq-row-team">
+              {displayTeamName(match.awayTeam)}
+              <FlagIcon team={match.awayTeam} size={16} />
+            </span>
+          </div>
+          <div className="newq-match-row-meta">
+            {kickoff && <span>{new Date(kickoff).toLocaleString('es-MX', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</span>}
+            {lockAt && !locked && <span className="newq-row-closes"> · Cierra {formatShortTime(lockAt)}</span>}
+            <span className={`newq-row-status ${statusCls}`}>{statusLabel}</span>
+          </div>
+        </div>
+        <div className="newq-row-score">
+          {locked ? (
+            <span className="newq-row-score-locked">
+              {hasPred ? `${pred.home} – ${pred.away}` : <Lock size={13} />}
+            </span>
+          ) : (
+            <>
+              <ScoreInput value={pred.home} onChange={v => onChange(match.id, 'home', v)} disabled={false} />
+              <span className="newq-row-sep">–</span>
+              <ScoreInput value={pred.away} onChange={v => onChange(match.id, 'away', v)} disabled={false} />
+            </>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  // ── CARD variant (desktop / default) ──
   if (isPending) {
     return (
       <div className="newq-match-card is-pending">
@@ -83,7 +134,7 @@ export default function PhaseMatchPredictionCard({ match, pred = {}, onChange })
         <div className="newq-locked-row">
           <Lock size={13} />
           <span>Cerrado para pronósticos</span>
-          {(pred.home !== undefined && pred.away !== undefined && pred.home !== '' && pred.away !== '') && (
+          {hasPred && (
             <span className="newq-locked-pred">{pred.home} – {pred.away}</span>
           )}
         </div>

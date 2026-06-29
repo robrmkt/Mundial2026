@@ -1,3 +1,5 @@
+import { isPlaceholderTeam } from './teamDisplay';
+
 export const LOCK_MINUTES_BEFORE_KICKOFF = 10;
 
 export function getMatchKickoff(match) {
@@ -21,5 +23,11 @@ export function isMatchLocked(match, now = Date.now(), lockMinutes = LOCK_MINUTE
 export function isMatchConfirmed(match) {
   const home = String(match?.homeTeam || '').trim();
   const away = String(match?.awayTeam || '').trim();
-  return Boolean(home && away && !/por definir|tbd|to be determined/i.test(`${home} ${away}`) && getMatchKickoff(match));
+  return Boolean(
+    home &&
+    away &&
+    !isPlaceholderTeam(home) &&
+    !isPlaceholderTeam(away) &&
+    getMatchKickoff(match)
+  );
 }

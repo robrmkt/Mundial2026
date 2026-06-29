@@ -1,9 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { AlertTriangle, CheckCircle2, ChevronDown, Save, X } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, ChevronDown, Lock, Save, X } from 'lucide-react';
 import { fetchContinuationProfile, inferTeamFromEmail, teamLabel } from '../services/continuation';
 import { fetchPredictionWindows, fetchPhaseSubmissions, getWindowStatus, savePhaseSubmission, recordPhaseProgress } from '../services/predictionWindows';
 import { getMatchKickoff, isMatchConfirmed, isMatchLocked, LOCK_MINUTES_BEFORE_KICKOFF } from '../services/matchLock';
+import { ROUND_LABELS, getMatchRound, getActiveRound, groupMatchesByRound, ROUND_ORDER } from '../services/phaseRounds';
 import PhaseMatchPredictionCard from './PhaseMatchPredictionCard';
+import PendingRoundsSummary from './PendingRoundsSummary';
 
 function initials(nameOrEmail) {
   return String(nameOrEmail || 'NQ').split('@')[0].replace(/[._-]+/g, ' ').split(/\s+/).filter(Boolean).slice(0, 2).map(p => p[0]?.toUpperCase()).join('') || 'NQ';
@@ -612,85 +614,97 @@ export default function NewQuinielaPage({ matches = [], settings = {} }) {
               </div>
             </div>
 
-            {/* Board — Mobile snap carrusel */}
+            {/* Board — Mobile (compact rows por sección) */}
             <div className="newq-mobile-board">
-              <div className="newq-mobile-board-header">
-                <span className="newq-mobile-progress">
-                  {completedCount} de {openMatches.length} partidos llenados
-                </span>
-                <div className="newq-save-status">
-                  {dirty && !saving && <span className="newq-unsaved">Sin guardar</span>}
-                  {saving && <span className="newq-saving">Guardando...</span>}
-                  {savedAt && !dirty && !saving && <span className="newq-saved">✓ Guardado</span>}
+
+              {/* Summary header por ronda activa */}
+              {(() => {
+                const activeRound = getActiveRound(continuationMatches, isMatchConfirmed, isMatchLocked);
+                const roundLabel = ROUND_LABELS[activeRound] || 'Partidos';
+                return (
+                  <div className="newq-mobile-phase-summary">
+                    <div className="newq-mps-round">{roundLabel}</div>
+                    <div className="newq-mps-stats">
+                      <span>{completedCount} de {openMatches.length} abiertos capturados</span>
+                      {lockedWithoutPred > 0 && <span className="newq-mps-warn"> · {lockedWithoutPred} cerrado{lockedWithoutPred !== 1 ? 's' : ''} sin dato</span>}
+                      {pendingMatches.length > 0 && <span className="newq-mps-muted"> · {pendingMatches.length} por confirmar</span>}
+                    </div>
+                    {/* Progress bar */}
+                    {openMatches.length > 0 && (
+                      <div className="newq-mps-bar-track">
+                        <div className="newq-mps-bar-fill" style={{ width: `${Math.round(completedCount / openMatches.length * 100)}%` }} />
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
+
+              {/* Sección: Abiertos */}
+              {openMatches.length > 0 && (
+                <div className="newq-mobile-section">
+                  <div className="newq-mobile-section-header">
+                    <span>Abiertos</span>
+                    <span className="newq-mobile-section-count">{openMatches.length}</span>
+                  </div>
+                  <div className="newq-match-row-list">
+                    {openMatches.map(match => (
+                      <PhaseMatchPredictionCard
+                        key={match.id}
+                        match={match}
+                        pred={predictions[match.id] || {}}
+                        onChange={handleScore}
+                        variant="compact"
+                      />
+                    ))}
+                  </div>
                 </div>
-              </div>
+              )}
 
-              <div className="newq-match-snap-list">
-                {openMatches.length === 0 && (
-                  <div className="newq-match-snap-item">
-                    <div className="newq-empty">No hay partidos abiertos para pronosticar.</div>
-                  </div>
-                )}
-                {openMatches.map((match, idx) => (
-                  <div key={match.id} className="newq-match-snap-item">
-                    <span className="newq-snap-counter">Partido {idx + 1} de {openMatches.length}</span>
-                    <PhaseMatchPredictionCard
-                      match={match}
-                      pred={predictions[match.id] || {}}
-                      onChange={handleScore}
-                    />
-                  </div>
-                ))}
+              {openMatches.length === 0 && lockedMatches.length === 0 && (
+                <div className="newq-empty" style={{ padding: '2rem 1rem' }}>No hay partidos abiertos para pronosticar.</div>
+              )}
 
-                {/* Pending matches accordion */}
-                {pendingMatches.length > 0 && (
-                  <div className="newq-match-snap-item newq-snap-accordion-item">
-                    <details className="newq-snap-accordion">
-                      <summary>
-                        Por confirmar ({pendingMatches.length})
-                        <ChevronDown size={16} className="newq-acc-chevron" />
-                      </summary>
-                      <div className="newq-acc-body">
-                        {pendingMatches.map(match => (
-                          <PhaseMatchPredictionCard
-                            key={match.id}
-                            match={match}
-                            pred={predictions[match.id] || {}}
-                            onChange={handleScore}
-                          />
-                        ))}
-                      </div>
-                    </details>
-                  </div>
-                )}
+              {/* Sección: Cerrados (colapsable) */}
+              {lockedMatches.length > 0 && (
+                <div className="newq-mobile-section">
+                  <details className="newq-mobile-section-details">
+                    <summary className="newq-mobile-section-header">
+                      <span>Cerrados</span>
+                      <span className="newq-mobile-section-count">{lockedMatches.length}</span>
+                      <ChevronDown size={14} className="newq-acc-chevron" />
+                    </summary>
+                    <div className="newq-match-row-list">
+                      {lockedMatches.map(match => (
+                        <PhaseMatchPredictionCard
+                          key={match.id}
+                          match={match}
+                          pred={predictions[match.id] || {}}
+                          onChange={handleScore}
+                          variant="compact"
+                        />
+                      ))}
+                    </div>
+                  </details>
+                </div>
+              )}
 
-                {/* Locked matches accordion */}
-                {lockedMatches.length > 0 && (
-                  <div className="newq-match-snap-item newq-snap-accordion-item">
-                    <details className="newq-snap-accordion">
-                      <summary>
-                        Cerrados ({lockedMatches.length})
-                        <ChevronDown size={16} className="newq-acc-chevron" />
-                      </summary>
-                      <div className="newq-acc-body">
-                        {lockedMatches.map(match => (
-                          <PhaseMatchPredictionCard
-                            key={match.id}
-                            match={match}
-                            pred={predictions[match.id] || {}}
-                            onChange={handleScore}
-                          />
-                        ))}
-                      </div>
-                    </details>
-                  </div>
-                )}
-              </div>
+              {/* Sección: Por confirmar (colapsada, sin tarjetas gigantes) */}
+              {pendingMatches.length > 0 && (
+                <div className="newq-mobile-section">
+                  <details className="newq-mobile-section-details">
+                    <summary className="newq-mobile-section-header">
+                      <span>Por confirmar</span>
+                      <span className="newq-mobile-section-count">{pendingMatches.length}</span>
+                      <ChevronDown size={14} className="newq-acc-chevron" />
+                    </summary>
+                    <PendingRoundsSummary matches={pendingMatches} />
+                  </details>
+                </div>
+              )}
 
               {error && <p className="newq-error" style={{ margin: '0 1rem 1rem' }}>{error}</p>}
 
-              {/* Single mobile save bar */}
-              <MobileSaveBar dirty={dirty} saving={saving} savedAt={savedAt} canSave={canSave} onSave={save} />
+              <MobileSaveBar dirty={dirty} saving={saving} savedAt={savedAt} canSave={canSave} onSave={openSaveModal} />
             </div>
           </>
         )}
