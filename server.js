@@ -1080,6 +1080,8 @@ const server = createServer(async (request, response) => {
         const subs = asArray(base.phaseSubmissions);
         const existing = subs.findIndex(s => normalizeEmailValue(s.email) === email && s.windowId === parsed.windowId);
         const previous = existing >= 0 ? subs[existing] : null;
+        // ¿El usuario ya pasó la revisión inicial del admin? (status approved o edited)
+        const wasReviewed = !!previous && (previous.status === 'approved' || previous.status === 'edited');
         const nextPredictions = {};
         const audit = asArray(previous?.audit);
         for (const [matchId, pred] of Object.entries(asObject(parsed.predictions))) {
@@ -1109,21 +1111,23 @@ const server = createServer(async (request, response) => {
           participantName: String(parsed.participantName || existingParticipant?.name || email).trim(),
           team: parsed.team || existingParticipant?.team || inferTeamFromEmail(email),
           userType: existingParticipant ? 'existing' : (parsed.userType || 'new'),
-          status: existing >= 0 && previous.status === 'approved' ? 'edited' : 'pending',
+          // Una vez que pasó la revisión inicial (approved/edited), las ediciones
+          // del propio usuario siguen contando automáticamente: la versión que cuenta
+          // (approvedPredictions) se actualiza con lo último guardado. Solo la PRIMERA
+          // vez queda 'pending' a la espera de revisión del admin.
+          status: wasReviewed ? 'approved' : 'pending',
           predictions: nextPredictions,
-          approvedPredictions: existing >= 0
-            ? (previous.status === 'approved' ? previous.predictions : previous.approvedPredictions || {})
-            : {},
+          approvedPredictions: wasReviewed ? nextPredictions : {},
           createdAt: existing >= 0 ? subs[existing].createdAt : new Date().toISOString(),
           updatedAt: new Date().toISOString(),
-          reviewedAt: existing >= 0 ? previous.reviewedAt || '' : '',
-          reviewedBy: existing >= 0 ? previous.reviewedBy || '' : '',
+          reviewedAt: wasReviewed ? (previous.reviewedAt || new Date().toISOString()) : '',
+          reviewedBy: wasReviewed ? (previous.reviewedBy || 'admin') : '',
           rejectedReason: '',
           audit: [...audit, { type: existing >= 0 ? 'public_update' : 'public_create', at: new Date().toISOString() }]
         };
         if (existing >= 0) subs[existing] = entry; else subs.push(entry);
         const savedState = writeState({ ...base, phaseSubmissions: subs });
-        sendJson(response, 200, { submission: entry, status: entry.status, message: 'Tus pronósticos fueron recibidos y quedarán pendientes de revisión.', updated: existing >= 0 });
+        sendJson(response, 200, { submission: entry, status: entry.status, message: wasReviewed ? 'Tus pronósticos fueron actualizados y ya cuentan en la tabla.' : 'Tus pronósticos fueron recibidos y quedarán pendientes de revisión.', updated: existing >= 0 });
         try { notifyAdminNewSubmission(entry, savedState); } catch { /* notification is best-effort */ }
         return;
       }
