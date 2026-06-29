@@ -31,9 +31,9 @@ const COPY_BY_MODE = {
 
 // Frecuencia por modo: primer overlay, repetición y mínimo entre overlays.
 const FREQ_BY_MODE = {
-  tomorrow: { first: [5000, 8000], repeat: [4 * 60_000, 8 * 60_000], minGap: 90_000 },
-  today: { first: [4000, 7000], repeat: [2 * 60_000, 5 * 60_000], minGap: 75_000 },
-  live: { first: [3000, 6000], repeat: [90_000, 3 * 60_000], minGap: 60_000 }
+  tomorrow: { first: [10_000, 18_000], repeat: [8 * 60_000, 14 * 60_000], minGap: 5 * 60_000 },
+  today:    { first: [30_000, 60_000], repeat: [15 * 60_000, 25 * 60_000], minGap: 12 * 60_000 },
+  live:     { first: [15_000, 25_000], repeat: [ 8 * 60_000, 14 * 60_000], minGap:  6 * 60_000 }
 };
 
 function getLocalDateKey(date = new Date()) {
@@ -145,7 +145,6 @@ export default function useMexicoHype({ matches, activeTab, enqueueOverlay }) {
                 awayTeam: ctx.match?.awayTeam
               }
             });
-            celebrateMexicoHype();
             lastShownRef.current = now;
           }
         }
