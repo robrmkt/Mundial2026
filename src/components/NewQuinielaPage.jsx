@@ -546,16 +546,16 @@ export default function NewQuinielaPage({ matches = [], settings = {} }) {
                   {existingSubmission && !dirty && (
                     <div className={`newq-submission-status status-${existingSubmission.status || 'pending'}`}>
                       {(existingSubmission.status === 'pending' || !existingSubmission.status) && (
-                        <><CheckCircle2 size={16} /> Tus pronósticos están <strong>pendientes de revisión</strong>. Puedes volver más tarde para ver si ya fueron aprobados.</>
+                        <><CheckCircle2 size={16} className="newq-status-icon" /><span>Tus pronósticos están <strong>pendientes de revisión</strong>. Puedes volver más tarde para ver si ya fueron aprobados.</span></>
                       )}
                       {existingSubmission.status === 'approved' && (
-                        <><CheckCircle2 size={16} /> Tu quiniela fue <strong>aprobada</strong> y ya aparece en la tabla general.</>
+                        <><CheckCircle2 size={16} className="newq-status-icon" /><span>Tu quiniela fue <strong>aprobada</strong> y ya aparece en la tabla general.</span></>
                       )}
                       {existingSubmission.status === 'edited' && (
-                        <><CheckCircle2 size={16} /> Tu quiniela actualizada está <strong>pendiente de revisión</strong>.</>
+                        <><CheckCircle2 size={16} className="newq-status-icon" /><span>Tu quiniela actualizada está <strong>pendiente de revisión</strong>.</span></>
                       )}
                       {existingSubmission.status === 'rejected' && (
-                        <>Tu quiniela fue <strong>rechazada</strong>.{existingSubmission.rejectedReason ? ` Motivo: ${existingSubmission.rejectedReason}` : ''} Puedes corregir y volver a guardar.</>
+                        <span>Tu quiniela fue <strong>rechazada</strong>.{existingSubmission.rejectedReason ? ` Motivo: ${existingSubmission.rejectedReason}` : ''} Puedes corregir y volver a guardar.</span>
                       )}
                     </div>
                   )}

@@ -7484,9 +7484,17 @@ details[open] .newq-acc-chevron { transform: rotate(180deg); }
   gap: 0.5rem;
   padding: 0.85rem 1rem;
   border-radius: 14px;
-  font-size: 0.9rem;
-  line-height: 1.4;
+  font-size: 0.85rem;
+  line-height: 1.45;
   margin-bottom: 0.75rem;
+}
+.newq-status-icon {
+  flex-shrink: 0;
+  margin-top: 0.1em;
+}
+.newq-submission-status span {
+  flex: 1;
+  min-width: 0;
 }
 
 .newq-submission-status.status-pending,
