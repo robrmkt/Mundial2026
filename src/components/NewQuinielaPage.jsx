@@ -399,7 +399,7 @@ export default function NewQuinielaPage({ matches = [], settings = {} }) {
   );
 
   return (
-    <section className="new-quiniela-page">
+    <section className={`new-quiniela-page${step !== 'board' ? ' is-login' : ''}`}>
       <div className="newq-shell">
       {SaveModal}
 
