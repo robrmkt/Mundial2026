@@ -29,14 +29,19 @@ export default function CapitalHumanoArchive({ initialArchive = null, fallbackSt
   return (
     <section className="archive-page archive-dashboard-page">
       <div className="rh-archive-hero">
-        <span className="rh-archive-kicker">Histórico RH</span>
-        <h2 className="rh-archive-title">{archive?.title || 'Quiniela RH · Fase de grupos'}</h2>
+        <span className="rh-archive-kicker">Quiniela RH anterior</span>
+        <h2 className="rh-archive-title">Resultados Quiniela RH anterior</h2>
         <p className="rh-archive-message">
-          ¡Gracias por participar! Capital Humano contactará a los ganadores.<br />
-          Estos son los resultados finales de la Quiniela RH.
+          Esta tabla corresponde a la Quiniela RH de fase de grupos. Ya está cerrada y no se mezcla con la Nueva Quiniela.<br />
+          <strong>Estos resultados no se borraron</strong>: aquí puedes consultar la tabla final de RH.
         </p>
         {archive?.frozenAt && (
           <small className="rh-archive-date">Cerrado el {new Date(archive.frozenAt).toLocaleString('es-MX', { dateStyle: 'long', timeStyle: 'short' })}</small>
+        )}
+        {onGoNew && (
+          <button className="rh-archive-back-btn" onClick={onGoNew} type="button">
+            Volver a Nueva Tabla
+          </button>
         )}
       </div>
 
@@ -54,7 +59,8 @@ export default function CapitalHumanoArchive({ initialArchive = null, fallbackSt
         onPodiumReaction={() => {}}
         onOpenPredictionsForMatch={() => {}}
         dashboardMode="rh_archive"
-        dashboardTitle="Tabla Final · Quiniela RH"
+        dashboardTitle="Resultados Quiniela RH anterior"
+        dashboardSubtitle="Tabla final cerrada de la Quiniela RH."
         onGoNewQuiniela={onGoNew}
       />
     </section>

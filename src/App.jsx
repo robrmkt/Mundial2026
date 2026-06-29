@@ -15,6 +15,7 @@ import PredictionGrid from './components/PredictionGrid';
 import NewQuinielaPage from './components/NewQuinielaPage';
 import CapitalHumanoArchive from './components/CapitalHumanoArchive';
 import RhTransitionPopup from './components/RhTransitionPopup';
+import PhaseEducationBanner from './components/PhaseEducationBanner';
 import LiveMatches from './components/LiveMatches';
 import GlobalEventOverlay from './components/GlobalEventOverlay';
 import MatchTicker from './components/MatchTicker';
@@ -539,10 +540,16 @@ export default function App() {
   }, [dashboardMode, safeCombinedStandings, newQuinielaStandings, capitalHumanoArchive, rhStandings]);
 
   const dashboardTitle = dashboardMode === 'rh_current' || dashboardMode === 'rh_archive'
-    ? 'Tabla General · Quiniela RH'
+    ? 'Resultados Quiniela RH anterior'
     : dashboardMode === 'combined'
-      ? 'Tabla General · Acumulado Mundialista'
-      : 'Tabla General · Nueva Quiniela';
+      ? 'Acumulado RH + Nueva Quiniela'
+      : 'Tabla Nueva Quiniela';
+
+  const dashboardSubtitle = dashboardMode === 'rh_current' || dashboardMode === 'rh_archive'
+    ? 'Tabla final cerrada de la Quiniela RH.'
+    : dashboardMode === 'combined'
+      ? 'Vista administrativa combinada. No es la tabla principal pública.'
+      : 'Esta fase inicia desde cero. Los resultados RH anteriores están en Resultados RH anterior.';
 
   // Fuente única de contexto de fase (phaseContext.js)
   const isNewMode = useMemo(() => isNewQuinielaMode(dashboardMode), [dashboardMode]);
@@ -568,6 +575,11 @@ export default function App() {
     return Number.isFinite(startAt) && nowTs >= startAt;
   }, [continuationSettings?.startAt, nowTs]);
   const showRhArchiveTab = Boolean(capitalHumanoArchive) || newQuinielaStarted;
+
+  // Resaltar el botón RH en modo Nueva Quiniela público (no admin, no estando ya en RH),
+  // para que la gente encuentre fácil sus resultados anteriores. Glow suave, no agresivo.
+  const rhNeedsAttention = isNewMode && showRhArchiveTab && activeTab !== 'capitalHumano' && activeTab !== 'admin'
+    && continuationSettings?.phaseEducation?.highlightRhButton !== false;
 
   const pendingAdminCount = useMemo(() =>
     phaseSubmissions.filter(s => !s.status || s.status === 'pending').length,
@@ -851,13 +863,13 @@ export default function App() {
             <button
               className={`nav-btn ${activeTab === 'dashboard' ? 'active' : ''}`}
               onClick={() => goToTab('dashboard')}
-              aria-label="Tabla General"
-              title="Tabla General"
+              aria-label={isNewMode ? 'Tabla Nueva Quiniela' : 'Tabla General'}
+              title={isNewMode ? 'Tabla Nueva Quiniela' : 'Tabla General'}
             >
               <Trophy size={15} />
               <span className="nav-btn-text">
-                <span className="desktop-label">Tabla General</span>
-                <span className="mobile-label">Tabla</span>
+                <span className="desktop-label">{isNewMode ? 'Tabla Nueva Quiniela' : 'Tabla General'}</span>
+                <span className="mobile-label">{isNewMode ? 'Nueva Tabla' : 'Tabla'}</span>
               </span>
             </button>
             <button
@@ -888,27 +900,27 @@ export default function App() {
               <button
                 className={`nav-btn nav-btn-newq ${activeTab === 'nuevaQuiniela' ? 'active' : ''}`}
                 onClick={() => goToTab('nuevaQuiniela')}
-                aria-label="Nueva Quiniela"
-                title="Nueva Quiniela"
+                aria-label="Capturar Nueva Quiniela"
+                title="Capturar Nueva Quiniela"
               >
                 <Users size={15} />
                 <span className="nav-btn-text">
-                  <span className="desktop-label">Nueva quiniela</span>
-                  <span className="mobile-label">Nueva</span>
+                  <span className="desktop-label">Capturar Nueva</span>
+                  <span className="mobile-label">Capturar</span>
                 </span>
               </button>
             )}
             {showRhArchiveTab && (
               <button
-                className={`nav-btn nav-btn-rh-archive ${activeTab === 'capitalHumano' ? 'active' : ''}`}
+                className={`nav-btn nav-btn-rh-archive ${rhNeedsAttention ? 'needs-attention' : ''} ${activeTab === 'capitalHumano' ? 'active' : ''}`}
                 onClick={() => goToTab('capitalHumano')}
-                aria-label="Resultados Quiniela RH"
-                title="Resultados Quiniela RH"
+                aria-label="Ver resultados anteriores de la Quiniela RH"
+                title="Ver resultados anteriores de la Quiniela RH"
               >
                 <Trophy size={15} />
                 <span className="nav-btn-text">
-                  <span className="desktop-label">Resultados Quiniela RH</span>
-                  <span className="mobile-label">Quiniela RH</span>
+                  <span className="desktop-label">Resultados RH anterior</span>
+                  <span className="mobile-label">Histórico RH</span>
                 </span>
               </button>
             )}
@@ -988,18 +1000,25 @@ export default function App() {
             onOpenPredictionsForMatch={openPredictionsForMatch}
             dashboardMode={dashboardMode}
             dashboardTitle={dashboardTitle}
+            dashboardSubtitle={dashboardSubtitle}
             onGoNewQuiniela={() => goToTab('nuevaQuiniela')}
+            onGoRhArchive={showRhArchiveTab ? () => goToTab('capitalHumano') : undefined}
           />
         )}
         {activeTab === 'predictions' && (
           <div className="page-card">
             <h2 className="section-title">
               <Users size={20} />
-              Pronósticos
+              {isNewMode ? 'Pronósticos · Nueva Quiniela' : 'Pronósticos'}
             </h2>
             <p className="prediction-page-subtitle">
-              Consulta qué marcador apostó la oficina para el partido actual o el siguiente.
+              {isNewMode
+                ? 'Estos pronósticos corresponden a la nueva fase. La Quiniela RH anterior está en Resultados RH anterior.'
+                : 'Consulta qué marcador apostó la oficina para el partido actual o el siguiente.'}
             </p>
+            {isNewMode && showRhArchiveTab && (
+              <PhaseEducationBanner variant="compact" storageScope="predictions" onGoRh={() => goToTab('capitalHumano')} />
+            )}
             <PredictionGrid
               matches={matches}
               phaseMatches={phaseMatches}
@@ -1016,6 +1035,7 @@ export default function App() {
           <NewQuinielaPage
             matches={matches}
             settings={continuationSettings || {}}
+            onGoRhArchive={showRhArchiveTab ? () => goToTab('capitalHumano') : undefined}
           />
         )}
         {activeTab === 'capitalHumano' && (

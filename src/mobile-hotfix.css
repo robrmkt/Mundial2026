@@ -256,3 +256,30 @@
   transform: none !important;
   justify-self: end !important;
 }
+
+/* ============================================================
+   ANTI-CONFUSIÓN RH vs Nueva Quiniela — mobile
+   ============================================================ */
+@media (max-width: 760px) {
+  .phase-education-banner {
+    align-items: stretch;
+    flex-direction: column;
+    padding: 0.8rem;
+  }
+  .phase-education-title { font-size: 1rem; }
+  .phase-education-text { font-size: 0.82rem; }
+  .phase-education-actions { display: grid; grid-template-columns: 1fr auto; }
+  .phase-education-banner:not(.compact) .phase-education-actions { grid-template-columns: 1fr; }
+  .phase-education-banner:not(.compact) .phase-education-rh-btn,
+  .phase-education-banner:not(.compact) .phase-education-dismiss {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .phase-zero-state { flex-direction: column; align-items: flex-start; gap: 0.6rem; }
+  .phase-zero-state-btn { width: 100%; justify-content: center; }
+
+  .transition-popup-cards { grid-template-columns: 1fr; }
+
+  .nav-btn-rh-archive.needs-attention::after { top: -7px; right: 10px; }
+}

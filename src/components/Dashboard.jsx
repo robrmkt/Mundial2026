@@ -5,6 +5,8 @@ import PlayerCard from './PlayerCard';
 import RankMovement from './RankMovement';
 import TeamBadge from './TeamBadge';
 import TeamRivalryBar from './TeamRivalryBar';
+import PhaseEducationBanner from './PhaseEducationBanner';
+import PhaseZeroStateNotice from './PhaseZeroStateNotice';
 import { formatPodiumTime } from '../services/podiumTime';
 import { getPodiumGroups } from '../services/ranking';
 
@@ -203,7 +205,11 @@ function Podium({ podiumGroups, onSelect, legend, reactions = {}, onReact }) {
   );
 }
 
-export default function Dashboard({ standings, matches = [], chatMessages = [], support = {}, podiumReactions = {}, movement = {}, podiumMs = {}, legend = null, onSendMessage, onReaction, onPodiumReaction, onOpenPredictionsForMatch, dashboardMode = 'rh_current', dashboardTitle, onGoNewQuiniela }) {
+export default function Dashboard({ standings, matches = [], chatMessages = [], support = {}, podiumReactions = {}, movement = {}, podiumMs = {}, legend = null, onSendMessage, onReaction, onPodiumReaction, onOpenPredictionsForMatch, dashboardMode = 'rh_current', dashboardTitle, dashboardSubtitle, onGoNewQuiniela, onGoRhArchive }) {
+  const allZero = useMemo(
+    () => standings.length > 0 && standings.every(p => Number(p.points || 0) === 0),
+    [standings]
+  );
   // En Nueva Quiniela nadie entra al podio hasta que haya puntos reales (>0):
   // si todos están en 0, el podio queda vacío (placeholders) en vez de empatar a todos en 1º.
   const podiumEligibleStandings = useMemo(() => {
@@ -261,12 +267,22 @@ export default function Dashboard({ standings, matches = [], chatMessages = [], 
         <TeamRivalryBar standings={standings} />
         <div className="page-card standings-card">
         <div className="standings-table-header">
-          <h3 className="section-title">
-            <Medal size={20} />
-            {dashboardTitle || 'Tabla General de Posiciones'}
-          </h3>
+          <div className="standings-title-block">
+            <h3 className="section-title">
+              <Medal size={20} />
+              {dashboardTitle || 'Tabla General de Posiciones'}
+            </h3>
+            {dashboardSubtitle && <p className="standings-subtitle">{dashboardSubtitle}</p>}
+          </div>
           <span className="standings-participants-count">{standings.length} participantes</span>
         </div>
+
+        {dashboardMode === 'new_quiniela' && (
+          <PhaseEducationBanner variant="full" storageScope="dashboard" onGoRh={onGoRhArchive} />
+        )}
+        {dashboardMode === 'new_quiniela' && allZero && (
+          <PhaseZeroStateNotice onGoRh={onGoRhArchive} />
+        )}
 
         {dashboardMode === 'new_quiniela' && standings.length === 0 && (
           <div className="dashboard-empty-state">

@@ -6,6 +6,7 @@ import { getMatchKickoff, isMatchConfirmed, isMatchLocked, LOCK_MINUTES_BEFORE_K
 import { ROUND_LABELS, getMatchRound, getActiveRound, groupMatchesByRound, ROUND_ORDER } from '../services/phaseRounds';
 import PhaseMatchPredictionCard from './PhaseMatchPredictionCard';
 import PendingRoundsSummary from './PendingRoundsSummary';
+import PhaseEducationBanner from './PhaseEducationBanner';
 
 function initials(nameOrEmail) {
   return String(nameOrEmail || 'NQ').split('@')[0].replace(/[._-]+/g, ' ').split(/\s+/).filter(Boolean).slice(0, 2).map(p => p[0]?.toUpperCase()).join('') || 'NQ';
@@ -106,7 +107,7 @@ function MobileSaveBar({ dirty, saving, savedAt, canSave, onSave }) {
   );
 }
 
-export default function NewQuinielaPage({ matches = [], settings = {} }) {
+export default function NewQuinielaPage({ matches = [], settings = {}, onGoRhArchive }) {
   const [step, setStep] = useState('email');
   const [email, setEmail] = useState('');
   const [profile, setProfile] = useState(null);
@@ -408,20 +409,24 @@ export default function NewQuinielaPage({ matches = [], settings = {} }) {
         {!displayProfile ? (
           <div className="newq-hero">
             <div>
-              <span className="newq-kicker">Continuación Mundialista</span>
+              <span className="newq-kicker">Nueva Quiniela · empieza desde cero</span>
               <h1>Nueva quiniela mundialista</h1>
-              <p className="newq-hero-copy desktop-copy">Continúa con tus pronósticos para la siguiente fase del Mundial. Si ya participaste en la Quiniela RH, ingresa con tu correo corporativo vinculado a tu usuario. Si eres nuevo, escribe tu correo y completa tu nombre para registrarte.</p>
-              <p className="newq-hero-copy mobile-copy">Si ya jugaste, entra con tu correo corporativo. Si eres nuevo, registra tu correo y nombre.</p>
+              <p className="newq-hero-copy desktop-copy">Esta es una dinámica nueva para la siguiente fase del Mundial y <strong>empieza desde cero</strong>: no modifica tus resultados de la Quiniela RH anterior. Si ya participaste en RH, ingresa con tu correo corporativo vinculado a tu usuario. Si eres nuevo, escribe tu correo y completa tu nombre para registrarte.</p>
+              <p className="newq-hero-copy mobile-copy">Dinámica nueva, empieza desde cero (no toca tu Quiniela RH anterior). Si ya jugaste, entra con tu correo; si eres nuevo, registra correo y nombre.</p>
             </div>
           </div>
         ) : (
           <div className="newq-compact-header">
             <div>
-              <span className="newq-kicker">Continuación Mundialista</span>
+              <span className="newq-kicker">Nueva Quiniela · empieza desde cero</span>
               <h1>Nueva quiniela mundialista</h1>
             </div>
-            <p>Completa o revisa tus pronósticos de la fase activa.</p>
+            <p>Completa o revisa tus pronósticos de la fase activa. Esto no modifica la Quiniela RH anterior.</p>
           </div>
+        )}
+
+        {onGoRhArchive && (
+          <PhaseEducationBanner variant="compact" storageScope="nuevaQuiniela" onGoRh={onGoRhArchive} />
         )}
 
         {/* Step: email */}

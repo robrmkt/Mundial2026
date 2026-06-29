@@ -8566,3 +8566,176 @@ details.newq-mobile-section-details[open] .newq-acc-chevron { transform: rotate(
   border-bottom: 1px solid var(--border);
   margin-top: -1px;
 }
+
+/* ============================================================
+   ANTI-CONFUSIÓN RH vs Nueva Quiniela
+   ============================================================ */
+
+/* Subtítulo bajo el título del tablero */
+.standings-title-block { display: flex; flex-direction: column; gap: 0.15rem; min-width: 0; }
+.standings-subtitle {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  line-height: 1.3;
+  margin: 0;
+}
+
+/* Cintillo persistente (dismissable) */
+.phase-education-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.9rem;
+  border: 1px solid rgba(29, 78, 216, 0.22);
+  background: linear-gradient(135deg, #eff6ff, #ecfdf5);
+  color: var(--text-primary);
+  border-radius: 16px;
+  padding: 0.85rem 1rem;
+  margin-bottom: 0.9rem;
+  box-shadow: var(--shadow-card);
+}
+.phase-education-banner.compact {
+  padding: 0.6rem 0.85rem;
+  border-radius: 12px;
+}
+.phase-education-banner strong { font-weight: 900; }
+.phase-education-copy { display: flex; flex-direction: column; gap: 0.16rem; line-height: 1.25; min-width: 0; }
+.phase-education-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-family: var(--font-display);
+  font-size: 1.08rem;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.phase-education-text { font-size: 0.88rem; color: var(--text-secondary); }
+.phase-education-banner.compact .phase-education-text { font-size: 0.82rem; }
+.phase-education-actions { display: flex; align-items: center; gap: 0.45rem; flex-shrink: 0; }
+.phase-education-rh-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  border: 1px solid rgba(200, 147, 10, 0.5);
+  background: var(--gold-soft);
+  color: #6b4e00;
+  border-radius: 999px;
+  padding: 0.5rem 0.85rem;
+  font-weight: 900;
+  font-size: 0.82rem;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.phase-education-rh-btn:hover { background: var(--gold-bright); color: #2b1b00; }
+.phase-education-dismiss {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text-secondary);
+  border-radius: 999px;
+  padding: 0.5rem 0.75rem;
+  font-weight: 800;
+  font-size: 0.82rem;
+  cursor: pointer;
+}
+.phase-education-dismiss:hover { background: var(--surface-soft); }
+
+/* Zero-state: tabla en ceros recién iniciada */
+.phase-zero-state {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  border: 1px dashed rgba(14, 124, 74, 0.35);
+  background: linear-gradient(135deg, #ecfdf5, #f0fdfa);
+  border-radius: 16px;
+  padding: 0.9rem 1rem;
+  margin-bottom: 0.9rem;
+}
+.phase-zero-state-icon {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 40px; height: 40px; flex-shrink: 0;
+  border-radius: 12px; background: rgba(14, 124, 74, 0.12); color: #0E7C4A;
+}
+.phase-zero-state-copy { flex: 1; min-width: 0; }
+.phase-zero-state-copy h4 {
+  margin: 0 0 0.15rem; font-family: var(--font-display);
+  font-size: 1.05rem; font-weight: 900; text-transform: uppercase; letter-spacing: 0.03em;
+}
+.phase-zero-state-copy p { margin: 0; font-size: 0.85rem; color: var(--text-secondary); line-height: 1.3; }
+.phase-zero-state-copy strong { font-weight: 900; color: var(--text-primary); }
+.phase-zero-state-btn {
+  display: inline-flex; align-items: center; gap: 0.35rem; flex-shrink: 0;
+  border: 1px solid rgba(200, 147, 10, 0.5); background: var(--gold-soft); color: #6b4e00;
+  border-radius: 999px; padding: 0.5rem 0.85rem; font-weight: 900; font-size: 0.82rem; cursor: pointer;
+}
+.phase-zero-state-btn:hover { background: var(--gold-bright); color: #2b1b00; }
+
+/* Botón RH destacado (glow suave + badge "Anterior") */
+.nav-btn-rh-archive.needs-attention {
+  position: relative;
+  animation: rhArchiveGlow 1.8s ease-in-out infinite;
+}
+.nav-btn-rh-archive.needs-attention::after {
+  content: 'Anterior';
+  position: absolute;
+  top: -8px;
+  right: -6px;
+  background: var(--gold-bright);
+  color: #2b1b00;
+  border-radius: 999px;
+  padding: 0.08rem 0.38rem;
+  font-size: 0.52rem;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  pointer-events: none;
+}
+@keyframes rhArchiveGlow {
+  0%, 100% { box-shadow: 0 0 0 rgba(244, 180, 0, 0); }
+  50% { box-shadow: 0 0 16px rgba(244, 180, 0, 0.6); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .nav-btn-rh-archive.needs-attention { animation: none; box-shadow: 0 0 12px rgba(244, 180, 0, 0.45); }
+}
+
+/* Botón "Volver a Nueva Tabla" en página RH */
+.rh-archive-back-btn {
+  margin-top: 0.75rem;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text-secondary);
+  border-radius: 999px;
+  padding: 0.5rem 1rem;
+  font-weight: 800;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+.rh-archive-back-btn:hover { background: var(--surface-soft); }
+
+/* Popup: dos tarjetas de decisión */
+.transition-popup-cards {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.6rem;
+  margin: 0.4rem 0 0.2rem;
+}
+.transition-popup-choice {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  text-align: left;
+  border: 1.5px solid var(--border);
+  background: var(--surface);
+  border-radius: 14px;
+  padding: 0.85rem;
+  cursor: pointer;
+  transition: border-color 0.15s, transform 0.12s, box-shadow 0.15s;
+}
+.transition-popup-choice:hover { transform: translateY(-2px); box-shadow: var(--shadow-card); }
+.transition-popup-choice.is-new:hover { border-color: #0E7C4A; }
+.transition-popup-choice.is-rh:hover { border-color: var(--gold); }
+.transition-popup-choice-icon { font-size: 1.4rem; }
+.transition-popup-choice-title { font-weight: 900; font-size: 0.95rem; }
+.transition-popup-choice-sub { font-size: 0.74rem; color: var(--text-secondary); line-height: 1.25; }

@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
 import { readRhPopupState, writeRhPopupState } from '../services/transitionNotice';
 
-const POPUP_MIN_VERSION = 3;
-const DEFAULT_MAX_VIEWS = 10;
-const DEFAULT_COOLDOWN_HOURS = 0.33;
+const POPUP_MIN_VERSION = 4;
+const DEFAULT_MAX_VIEWS = 2;
+const DEFAULT_COOLDOWN_HOURS = 4;
 const RH_CLOSE_AT = '2026-06-27T23:00:00-06:00';
 
 const DEFAULT_COPY = {
@@ -14,11 +14,11 @@ const DEFAULT_COPY = {
     secondaryCta: 'Cerrar'
   },
   after_close: {
-    title: 'La Quiniela RH ya finalizó',
-    body: 'La Quiniela RH cerró con la fase de grupos y sus resultados quedaron guardados como histórico. Gracias por participar. Si quieres seguir viviendo la fiebre mundialista, puedes sumarte a la Nueva Quiniela: una dinámica aparte para seguir pronosticando y jugando por diversión. Pasa la voz.',
-    primaryCta: 'Nueva Quiniela',
-    secondaryCta: 'Ver histórico RH',
-    tertiaryCta: 'Cerrar'
+    title: 'La Quiniela RH NO se borró',
+    body: 'Ahora estás viendo la Nueva Quiniela. Esta nueva tabla empieza desde cero para la siguiente fase. Los resultados de la Quiniela RH anterior siguen guardados y puedes verlos cuando quieras.',
+    primaryCta: 'Ver Nueva Tabla',
+    secondaryCta: 'Ver Resultados RH anterior',
+    tertiaryCta: 'Entendido'
   }
 };
 
@@ -128,17 +128,36 @@ export default function RhTransitionPopup({ settings, activeTab, goToTab, isAdmi
   return (
     <div className="transition-popup-overlay" role="dialog" aria-modal="true" aria-labelledby="rh-popup-title">
       <div className="transition-popup-card">
-        <span className="transition-popup-badge">{popupState.phase === 'after_close' ? 'Histórico RH' : 'Nueva etapa'}</span>
+        <span className="transition-popup-badge">{popupState.phase === 'after_close' ? 'Nueva fase' : 'Nueva etapa'}</span>
         <h2 id="rh-popup-title">{copy.title}</h2>
         <p>{copy.body}</p>
+        {popupState.phase === 'after_close' && (
+          <div className="transition-popup-cards">
+            <button className="transition-popup-choice is-new" onClick={goNew} type="button">
+              <span className="transition-popup-choice-icon">🟢</span>
+              <span className="transition-popup-choice-title">Nueva Quiniela</span>
+              <span className="transition-popup-choice-sub">Empieza desde cero · Ver tabla actual</span>
+            </button>
+            <button className="transition-popup-choice is-rh" onClick={goRh} type="button">
+              <span className="transition-popup-choice-icon">🏆</span>
+              <span className="transition-popup-choice-title">Quiniela RH anterior</span>
+              <span className="transition-popup-choice-sub">Resultados ya cerrados · Ver resultados RH</span>
+            </button>
+          </div>
+        )}
         <div className="transition-popup-actions">
-          <button className="transition-popup-primary" onClick={goNew}>{copy.primaryCta || 'Nueva Quiniela'}</button>
-          {popupState.phase === 'after_close' && (
-            <button className="transition-popup-secondary" onClick={goRh}>{copy.secondaryCta || 'Ver histórico RH'}</button>
+          {popupState.phase === 'after_close' ? (
+            <button className="transition-popup-secondary muted" onClick={() => close('close')}>
+              {copy.tertiaryCta || 'Entendido'}
+            </button>
+          ) : (
+            <>
+              <button className="transition-popup-primary" onClick={goNew}>{copy.primaryCta || 'Nueva Quiniela'}</button>
+              <button className="transition-popup-secondary muted" onClick={() => close('close')}>
+                {copy.secondaryCta || 'Cerrar'}
+              </button>
+            </>
           )}
-          <button className="transition-popup-secondary muted" onClick={() => close('close')}>
-            {popupState.phase === 'after_close' ? (copy.tertiaryCta || 'Cerrar') : (copy.secondaryCta || 'Cerrar')}
-          </button>
         </div>
       </div>
     </div>
