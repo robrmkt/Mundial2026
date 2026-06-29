@@ -1085,16 +1085,13 @@ const server = createServer(async (request, response) => {
         for (const [matchId, pred] of Object.entries(asObject(parsed.predictions))) {
           const meta = matchMeta[String(matchId)] || matchMeta[matchId];
           if (!meta || !isConfirmedMatch(meta)) {
-            sendJson(response, 400, { error: 'match_unconfirmed', matchId, message: 'Este cruce se activará cuando se confirmen los equipos.' });
-            return;
+            continue; // partido sin equipos confirmados: omitir silenciosamente
           }
           if (isSubmissionMatchLocked(meta, settings)) {
             if (previous?.predictions?.[matchId]) {
               nextPredictions[matchId] = previous.predictions[matchId];
-              continue;
             }
-            sendJson(response, 400, { error: 'match_locked', matchId, message: 'Este partido ya cerró para pronósticos.' });
-            return;
+            continue; // partido cerrado: preservar predicción previa si existe, omitir si no
           }
           nextPredictions[matchId] = {
             homeScore: Number(pred.homeScore),
