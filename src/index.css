@@ -7220,10 +7220,35 @@ img {
   }
 }
 
-/* Login step — centrar contenido en shell full-width */
+/* Login step — pantalla centrada, sin grid estirado */
+.new-quiniela-page.is-login {
+  justify-content: center;
+  align-items: center;
+}
 .new-quiniela-page.is-login .newq-shell {
-  max-width: 860px;
+  max-width: 500px;
+  width: 100%;
+  flex: unset;
+  height: auto;
+  min-height: unset;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
   margin: 0 auto;
+  align-items: center;
+  text-align: center;
+}
+.new-quiniela-page.is-login .newq-hero {
+  width: 100%;
+  padding: 0;
+}
+.new-quiniela-page.is-login .newq-hero p {
+  max-width: none;
+  margin: 0 auto;
+}
+.new-quiniela-page.is-login .newq-email-card {
+  width: 100%;
+  text-align: left;
 }
 
 /* Mobile: ocultar desktop-app, mostrar mobile-board */
