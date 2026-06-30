@@ -38,11 +38,6 @@ export default function CapitalHumanoArchive({ initialArchive = null, fallbackSt
         {archive?.frozenAt && (
           <small className="rh-archive-date">Cerrado el {new Date(archive.frozenAt).toLocaleString('es-MX', { dateStyle: 'long', timeStyle: 'short' })}</small>
         )}
-        {onGoNew && (
-          <button className="rh-archive-back-btn" onClick={onGoNew} type="button">
-            Volver a Nueva Tabla
-          </button>
-        )}
       </div>
 
       <Dashboard

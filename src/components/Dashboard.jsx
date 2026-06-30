@@ -232,10 +232,17 @@ export default function Dashboard({ standings, matches = [], chatMessages = [], 
   };
 
   const showPulse = dashboardMode !== 'rh_archive';
+  const isArchive = dashboardMode === 'rh_archive';
 
   return (
     <div className="command-grid">
       <Podium podiumGroups={podiumGroups} onSelect={openCard} legend={legend} reactions={podiumReactions} onReact={onPodiumReaction} />
+
+      {isArchive && (
+        <div className="archive-rivalry-slot">
+          <TeamRivalryBar standings={standings} />
+        </div>
+      )}
 
       {showPulse && (
         <div className="pulse-panel-wrapper">
@@ -264,7 +271,7 @@ export default function Dashboard({ standings, matches = [], chatMessages = [], 
       )}
 
       <div className="command-right">
-        <TeamRivalryBar standings={standings} />
+        {!isArchive && <TeamRivalryBar standings={standings} />}
         <div className="page-card standings-card">
         <div className="standings-table-header">
           <div className="standings-title-block">

@@ -7874,7 +7874,9 @@ details[open] .newq-acc-chevron { transform: rotate(180deg); }
   .app-container.archive-active .rh-archive-message {
     font-size: 0.82rem;
   }
-  /* command-grid ocupa el espacio restante */
+  /* command-grid ocupa el espacio restante.
+     Layout: podio arriba-izq, derbi debajo del podio (izq), tabla ocupa
+     toda la columna derecha para que tenga máxima altura visible. */
   .app-container.archive-active .archive-dashboard-page .command-grid {
     flex: 1;
     min-height: 0;
@@ -7882,8 +7884,8 @@ details[open] .newq-acc-chevron { transform: rotate(180deg); }
     grid-template-columns: 1fr 1fr;
     grid-template-areas:
       "podium standings"
-      "podium standings";
-    grid-template-rows: 1fr;
+      "rivalry standings";
+    grid-template-rows: minmax(0, 1fr) auto;
     gap: 0.75rem;
   }
   .app-container.archive-active .archive-dashboard-page .command-grid .podium-section {
@@ -7891,6 +7893,13 @@ details[open] .newq-acc-chevron { transform: rotate(180deg); }
     min-height: 0;
     overflow: auto;
     padding-top: 0;
+  }
+  .app-container.archive-active .archive-dashboard-page .command-grid .archive-rivalry-slot {
+    grid-area: rivalry;
+    min-width: 0;
+  }
+  .app-container.archive-active .archive-dashboard-page .command-grid .archive-rivalry-slot .rivalry-bar-card {
+    margin-bottom: 0;
   }
   .app-container.archive-active .archive-dashboard-page .command-grid .command-right {
     grid-area: standings;
@@ -8699,20 +8708,6 @@ details.newq-mobile-section-details[open] .newq-acc-chevron { transform: rotate(
 @media (prefers-reduced-motion: reduce) {
   .nav-btn-rh-archive.needs-attention { animation: none; box-shadow: 0 0 12px rgba(244, 180, 0, 0.45); }
 }
-
-/* Botón "Volver a Nueva Tabla" en página RH */
-.rh-archive-back-btn {
-  margin-top: 0.75rem;
-  border: 1px solid var(--border);
-  background: var(--surface);
-  color: var(--text-secondary);
-  border-radius: 999px;
-  padding: 0.5rem 1rem;
-  font-weight: 800;
-  font-size: 0.85rem;
-  cursor: pointer;
-}
-.rh-archive-back-btn:hover { background: var(--surface-soft); }
 
 /* Popup: dos tarjetas de decisión */
 .transition-popup-cards {
