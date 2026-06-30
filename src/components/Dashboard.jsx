@@ -238,12 +238,6 @@ export default function Dashboard({ standings, matches = [], chatMessages = [], 
     <div className="command-grid">
       <Podium podiumGroups={podiumGroups} onSelect={openCard} legend={legend} reactions={podiumReactions} onReact={onPodiumReaction} />
 
-      {isArchive && (
-        <div className="archive-rivalry-slot">
-          <TeamRivalryBar standings={standings} />
-        </div>
-      )}
-
       {showPulse && (
         <div className="pulse-panel-wrapper">
           <button
