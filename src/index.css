@@ -8727,3 +8727,21 @@ details.newq-mobile-section-details[open] .newq-acc-chevron { transform: rotate(
 .transition-popup-choice-icon { font-size: 1.4rem; }
 .transition-popup-choice-title { font-weight: 900; font-size: 0.95rem; }
 .transition-popup-choice-sub { font-size: 0.74rem; color: var(--text-secondary); line-height: 1.25; }
+
+/* ============================================================
+   Header en una sola línea en laptops (evita que los chips de
+   estado se bajen y empujen el tablero hacia abajo).
+   ============================================================ */
+@media (min-width: 960px) and (max-width: 1560px) {
+  .header-inner {
+    flex-wrap: nowrap;
+    gap: 0.7rem;
+  }
+  .brand-section { flex-shrink: 0; }
+  .header-status { flex-shrink: 0; }
+  /* "X en vivo" es redundante: el botón Partidos ya muestra el contador. */
+  .header-live-pill { display: none; }
+  /* Nav un poco más compacto para que quepa con los nombres largos. */
+  .nav-tabs { gap: 0.15rem; padding: 0.22rem; }
+  .nav-btn { padding: 0.4rem 0.68rem; font-size: 0.8rem; }
+}
