@@ -1082,7 +1082,11 @@ const server = createServer(async (request, response) => {
         const previous = existing >= 0 ? subs[existing] : null;
         // ¿El usuario ya pasó la revisión inicial del admin? (status approved o edited)
         const wasReviewed = !!previous && (previous.status === 'approved' || previous.status === 'edited');
-        const nextPredictions = {};
+        // IMPORTANTE: partir de las predicciones previas para NO borrar rondas
+        // anteriores. El cliente solo envía los partidos de la ronda activa
+        // (p.ej. octavos), así que si empezáramos de {} se perderían los 16vos
+        // ya guardados. Copiamos lo previo y el loop sobrescribe/añade lo nuevo.
+        const nextPredictions = { ...(previous && previous.predictions ? previous.predictions : {}) };
         const audit = asArray(previous?.audit);
         for (const [matchId, pred] of Object.entries(asObject(parsed.predictions))) {
           const meta = matchMeta[String(matchId)] || matchMeta[matchId];
