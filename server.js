@@ -1,5 +1,5 @@
 import { createServer } from 'node:http';
-import { createReadStream, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { createReadStream, existsSync, mkdirSync, readFileSync, writeFileSync, renameSync, copyFileSync, readdirSync, unlinkSync } from 'node:fs';
 import { extname, join, normalize, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -280,7 +280,18 @@ function readState() {
   try {
     return coerceState(JSON.parse(readFileSync(stateFile, 'utf8')));
   } catch (error) {
-    console.error('Unable to read shared state:', error);
+    console.error('Unable to read shared state, intentando respaldo .bak:', error);
+    // Recuperación automática ante archivo corrupto: leer la versión anterior.
+    try {
+      const bak = stateFile + '.bak';
+      if (existsSync(bak)) {
+        const recovered = coerceState(JSON.parse(readFileSync(bak, 'utf8')));
+        console.error('Estado recuperado desde .bak');
+        return recovered;
+      }
+    } catch (e2) {
+      console.error('El respaldo .bak tampoco se pudo leer:', e2);
+    }
     return coerceState(defaultState);
   }
 }
@@ -340,8 +351,35 @@ function writeState(nextState) {
   ensureDataFile();
   const merged = pruneState(coerceState(nextState));
   merged.updatedAt = new Date().toISOString();
-  writeFileSync(stateFile, JSON.stringify(merged, null, 2));
+  const json = JSON.stringify(merged, null, 2);
+  // 1) Respaldo de la versión anterior (recuperación ante corrupción).
+  try { if (existsSync(stateFile)) copyFileSync(stateFile, stateFile + '.bak'); } catch (e) { console.error('No se pudo crear .bak:', e); }
+  // 2) Escritura atómica: escribir a temporal y renombrar. rename es atómico,
+  //    así un crash o redeploy a media escritura nunca deja el archivo corrupto.
+  const tmp = stateFile + '.tmp';
+  writeFileSync(tmp, json);
+  renameSync(tmp, stateFile);
   return merged;
+}
+
+// Respaldo diario de quinielas (red de seguridad ante errores lógicos). Guarda
+// un snapshot por día en data/backups/ y conserva los últimos 30 días.
+function snapshotSubmissions(state) {
+  try {
+    const dir = resolve(dataDir, 'backups');
+    if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
+    const day = new Date().toISOString().slice(0, 10);
+    const file = resolve(dir, `submissions-${day}.json`);
+    writeFileSync(file, JSON.stringify({
+      savedAt: new Date().toISOString(),
+      phaseSubmissions: asArray(state.phaseSubmissions),
+      participants: asArray(state.participants)
+    }, null, 2));
+    const files = readdirSync(dir).filter(f => f.startsWith('submissions-') && f.endsWith('.json')).sort();
+    while (files.length > 30) { try { unlinkSync(resolve(dir, files.shift())); } catch { /* ignore */ } }
+  } catch (e) {
+    console.error('snapshotSubmissions falló (no crítico):', e);
+  }
 }
 
 function makeId(prefix) {
@@ -1131,6 +1169,7 @@ const server = createServer(async (request, response) => {
         };
         if (existing >= 0) subs[existing] = entry; else subs.push(entry);
         const savedState = writeState({ ...base, phaseSubmissions: subs });
+        try { snapshotSubmissions(savedState); } catch { /* backup best-effort */ }
         sendJson(response, 200, { submission: entry, status: entry.status, message: wasReviewed ? 'Tus pronósticos fueron actualizados y ya cuentan en la tabla.' : 'Tus pronósticos fueron recibidos y quedarán pendientes de revisión.', updated: existing >= 0 });
         try { notifyAdminNewSubmission(entry, savedState); } catch { /* notification is best-effort */ }
         return;
@@ -1178,6 +1217,7 @@ const server = createServer(async (request, response) => {
       const ppIdx = phaseProgress.findIndex(pp => normalizeEmailValue(pp.email) === normalizeEmailValue(sub.email));
       if (ppIdx >= 0) phaseProgress[ppIdx] = { ...phaseProgress[ppIdx], status: 'approved', approvedAt: new Date().toISOString() };
       const saved = writeState({ ...base, participants, phaseSubmissions: subs, registeredUsers, phaseProgress });
+      try { snapshotSubmissions(saved); } catch { /* backup best-effort */ }
       sendJson(response, 200, { submission: subs[idx], participants: saved.participants });
       return;
     }
@@ -1286,7 +1326,8 @@ const server = createServer(async (request, response) => {
       const id = path.replace('/api/phase-submissions/', '');
       const base = readState();
       const subs = asArray(base.phaseSubmissions).filter(s => s.id !== id);
-      writeState({ ...base, phaseSubmissions: subs });
+      const savedDel = writeState({ ...base, phaseSubmissions: subs });
+      try { snapshotSubmissions(savedDel); } catch { /* backup best-effort */ }
       sendJson(response, 200, { ok: true });
       return;
     }
